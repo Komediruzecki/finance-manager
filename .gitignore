@@ -11,6 +11,6 @@ db/
 .env
 .DS_Store
 
-# Server-only symlinks (created by deploy.sh, not in git)
-# backend/assets/
-# backend/db/
+# Live server symlinks (created on server, not in git)
+backend/assets/
+backend/db/

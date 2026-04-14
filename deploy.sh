@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR"
 
 echo "Setting up symlinks for live server..."
 
-# Create db directory if it doesn't exist
+# Create db directory and symlink if it doesn't exist
 if [ ! -d "db" ]; then
     mkdir -p db
     echo "Created db/ directory"
@@ -21,7 +21,7 @@ if [ ! -L "backend/db" ]; then
     echo "Created backend/db symlink"
 fi
 
-# Create assets directory if it doesn't exist
+# Create assets directory and symlink if it doesn't exist
 if [ ! -d "assets" ]; then
     mkdir -p assets
     echo "Created assets/ directory"
@@ -33,17 +33,14 @@ if [ ! -L "backend/assets" ]; then
     echo "Created backend/assets symlink"
 fi
 
-# Remove old public symlink if it exists
+# Ensure Apache can serve frontend
 if [ -L "public" ]; then
     rm public
     echo "Removed old public symlink"
 fi
 
-echo ""
-echo "Symlinks ready!"
+echo "Symlinks ready. Restart Apache if needed:"
+echo "  sudo systemctl reload apache2"
 echo ""
 echo "To start the backend server:"
 echo "  cd backend && NODE_PATH=../node_modules node index.js"
-echo ""
-echo "To restart Apache (if needed):"
-echo "  sudo systemctl reload apache2"
