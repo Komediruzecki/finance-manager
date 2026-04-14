@@ -159,6 +159,13 @@ function migrate() {
     try { db.exec('ALTER TABLE settings ADD COLUMN profile_id INTEGER DEFAULT 1'); } catch(e) {}
   }
 
+  // Migration: Fix sample transaction amounts (should be positive, type determines sign)
+  if (columnExists('transactions', 'amount')) {
+    try {
+      db.exec("UPDATE transactions SET amount = ABS(amount) WHERE profile_id = 1 AND amount < 0");
+    } catch(e) {}
+  }
+
   // Migration: Add user_id to profiles table
   if (!columnExists('profiles', 'user_id')) {
     try { db.exec('ALTER TABLE profiles ADD COLUMN user_id INTEGER REFERENCES users(id)'); } catch(e) {}
@@ -216,8 +223,8 @@ function migrate() {
     db.prepare('SELECT name, id FROM categories WHERE profile_id = 1').all().forEach(c => { cats[c.name] = c.id; });
 
     const samples = [
-      ['Monthly Salary', -4500, -15, 'Salary', 'income'],
-      ['Freelance Project', -850, -30, 'Freelance', 'income'],
+      ['Monthly Salary', 4500, -15, 'Salary', 'income'],
+      ['Freelance Project', 850, -30, 'Freelance', 'income'],
       ['Rent Payment', 1200, -3, 'Housing', 'expense'],
       ['Grocery Shopping', 185.50, -5, 'Food & Dining', 'expense'],
       ['Grocery Shopping', 142.30, -18, 'Food & Dining', 'expense'],
