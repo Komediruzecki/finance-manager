@@ -2,9 +2,14 @@
   "name": "finance-manager",
   "version": "1.0.0",
   "description": "Personal Finance Tracker",
-  "main": "server/index.js",
+  "main": "backend/index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node backend/index.js",
+    "dev": "NODE_PATH=./node_modules node backend/index.js",
+    "test": "NODE_PATH=./node_modules jest --coverage",
+    "test:watch": "NODE_PATH=./node_modules jest --watch",
+    "test:backend": "NODE_PATH=./node_modules jest backend/",
+    "test:frontend": "NODE_PATH=./node_modules jest frontend/"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
@@ -12,5 +17,19 @@
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/test/**/*.test.js"],
+    "collectCoverageFrom": [
+      "backend/**/*.js",
+      "!backend/index.js"
+    ],
+    "setupFilesAfterEnv": ["./test/jest.setup.js"],
+    "verbose": true
   }
 }
