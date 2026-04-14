@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate JavaScript syntax
+        run: |
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('frontend/index.html', 'utf8');
+            const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+            if (scriptMatch) {
+              const script = scriptMatch[1];
+              try {
+                new Function(script);
+                console.log('JavaScript syntax is valid');
+              } catch (e) {
+                console.error('JavaScript syntax error:', e.message);
+                process.exit(1);
+              }
+            }
+          "
