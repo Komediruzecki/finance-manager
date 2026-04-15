@@ -40,12 +40,16 @@ function parseDateString(dateStr) {
   return new Date().toISOString().split("T")[0];
 }
 
+// Session secret: require env var in production, use crypto random in dev
+const SESSION_SECRET = process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) {
+  console.warn('WARNING: Using randomly generated SESSION_SECRET. Set SESSION_SECRET env var for production!');
+}
+
 // Session middleware
 app.use(
   session({
-    secret:
-      process.env.SESSION_SECRET ||
-      "finance-manager-secret-key-change-in-production",
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
