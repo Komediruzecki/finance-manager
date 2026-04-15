@@ -2172,16 +2172,19 @@ const analytics = {
     this.populateYears();
     this.load();
   },
-  populateYears() {
+  async populateYears() {
     const select = document.getElementById('analytics-year');
-    if (select.options.length > 1) return; // Already populated
-    const currentYear = new Date().getFullYear();
-    for (let y = currentYear; y >= currentYear - 10; y--) {
-      const opt = document.createElement('option');
-      opt.value = y;
-      opt.textContent = y;
-      select.appendChild(opt);
-    }
+    try {
+      const { minYear, maxYear } = await api('/analytics/year-range');
+      if (!minYear || !maxYear) return;
+      select.innerHTML = '<option value="">All Years</option>';
+      for (let y = maxYear; y >= minYear; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        select.appendChild(opt);
+      }
+    } catch(e) { console.error('Failed to load years:', e); }
   },
   onYearChange() {
     this.load();
