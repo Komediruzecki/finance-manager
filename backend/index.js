@@ -1535,6 +1535,15 @@ app.post('/api/calculator/retire', (req, res) => {
       }),
       inputs: { currentAge, retirementAge, currentSavings, monthlyContribution, annualReturn, adjustedExpenses, withdrawalRate, country }
     });
+=======
+app.get('/api/analytics/year-range', (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const range = db.prepare(`SELECT MIN(date) as min_date, MAX(date) as max_date FROM transactions WHERE profile_id = ?`).get(pid);
+    const minYear = range.min_date ? parseInt(range.min_date.slice(0, 4)) : null;
+    const maxYear = range.max_date ? parseInt(range.max_date.slice(0, 4)) : null;
+    res.json({ minYear, maxYear });
+>>>>>>> fix/analytics-year-range
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

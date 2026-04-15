@@ -2385,8 +2385,7 @@ const analytics = {
   pieChart: null,
   currentPeriod: 'day',
   init() {
-    this.populateYears();
-    this.load();
+    this.populateYears().then(() => this.load());
   },
   async populateYears() {
     const select = document.getElementById('analytics-year');
