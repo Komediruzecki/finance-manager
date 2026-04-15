@@ -361,6 +361,20 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
 .pagination-controls { display: flex; gap: 4px; }
 
 /* Toast */
+/* Loading spinner */
+.loading-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+.loading-spinner.dark { border-color: rgba(0,0,0,.2); border-top-color: var(--text); }
+.btn .loading-spinner { width: 16px; height: 16px; border-width: 2px; }
+.btn.loading { pointer-events: none; opacity: .7; }
+.table-loading { opacity: .5; pointer-events: none; }
+.row-loading::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.1);
+  display: flex; align-items: center; justify-content: center; }
+.row-loading { position: relative; }
+.btn-loading-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; margin-left: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
 .toast { padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
   box-shadow: var(--shadow-lg); animation: slideIn .2s; max-width: 320px; }
@@ -810,7 +824,8 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
     <div id="import-tab-file">
       <div class="card">
         <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById('import-file-input').click()">
-          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span class="loading-spinner dark" id="import-spinner" style="display:none;"></span>
+          <svg id="import-drop-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           <p><strong>Click to upload</strong> or drag and drop</p>
           <p style="font-size:12px;">CSV, XLSX, XLS files supported</p>
           <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="dataImport.handleFile(this.files[0])">
@@ -1176,7 +1191,7 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="modal.close('tx-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="transactions.save()">Save Transaction</button>
+      <button class="btn btn-primary" id="tx-save-btn" onclick="transactions.save()">Save Transaction</button>
     </div>
   </div>
 </div>
@@ -1270,7 +1285,7 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="modal.close('cat-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="categories.save()">Save Category</button>
+      <button class="btn btn-primary" id="cat-save-btn" onclick="categories.save()">Save Category</button>
     </div>
   </div>
 </div>
@@ -1371,7 +1386,7 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="modal.close('loan-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="loans.saveLoan()">Save Loan</button>
+      <button class="btn btn-primary" id="loan-save-btn" onclick="loans.saveLoan()">Save Loan</button>
     </div>
   </div>
 </div>
@@ -2314,6 +2329,8 @@ const transactions = {
   page: 1,
   perPage: 50,
   async load() {
+    const table = document.getElementById('tx-table-body');
+    if (table) table.classList.add('table-loading');
     const search = document.getElementById('tx-search')?.value || '';
     const type = document.getElementById('tx-type-filter')?.value || '';
     const cat = document.getElementById('tx-cat-filter')?.value || '';
@@ -2334,6 +2351,7 @@ const transactions = {
   },
   render(data, currency = 'EUR') {
     const tbody = document.getElementById('tx-table-body');
+    if (tbody) tbody.classList.remove('table-loading');
     if (!data.rows || data.rows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><p>No transactions found</p></div></td></tr>`;
       document.getElementById('tx-pagination-info').textContent = '0 transactions';
@@ -2423,29 +2441,38 @@ const transactions = {
   },
   async edit(id) { this.openModal(id); },
   async save() {
-    const id = document.getElementById('tx-id').value;
-    const data = {
-      description: document.getElementById('tx-description').value,
-      amount: parseFloat(document.getElementById('tx-amount').value),
-      date: document.getElementById('tx-date').value,
-      beneficiary: document.getElementById('tx-beneficiary').value,
-      payor: document.getElementById('tx-payor').value,
-      category_id: document.getElementById('tx-category').value || null,
-      currency: document.getElementById('tx-currency').value,
-      amount_local: parseFloat(document.getElementById('tx-amount-local').value) || null,
-      means_of_payment: document.getElementById('tx-means').value,
-      exchange_rate: parseFloat(document.getElementById('tx-exchange-rate').value) || 1,
-      type: this.currentType,
-      notes: document.getElementById('tx-notes').value
-    };
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/transactions/${id}` : '/transactions';
-    const result = await api(url, { method, body: data });
-    if (result.error) { toast(result.error, 'error'); return; }
-    toast(id ? 'Transaction updated' : 'Transaction added', 'success');
-    modal.close('tx-modal');
-    this.load();
-    dashboard.load();
+    const btn = document.getElementById('tx-save-btn');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    btn.classList.add('loading');
+    try {
+      const id = document.getElementById('tx-id').value;
+      const data = {
+        description: document.getElementById('tx-description').value,
+        amount: parseFloat(document.getElementById('tx-amount').value),
+        date: document.getElementById('tx-date').value,
+        beneficiary: document.getElementById('tx-beneficiary').value,
+        payor: document.getElementById('tx-payor').value,
+        category_id: document.getElementById('tx-category').value || null,
+        currency: document.getElementById('tx-currency').value,
+        amount_local: parseFloat(document.getElementById('tx-amount-local').value) || null,
+        means_of_payment: document.getElementById('tx-means').value,
+        exchange_rate: parseFloat(document.getElementById('tx-exchange-rate').value) || 1,
+        type: this.currentType,
+        notes: document.getElementById('tx-notes').value
+      };
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/transactions/${id}` : '/transactions';
+      const result = await api(url, { method, body: data });
+      if (result.error) { toast(result.error, 'error'); return; }
+      toast(id ? 'Transaction updated' : 'Transaction added', 'success');
+      modal.close('tx-modal');
+      this.load();
+      dashboard.load();
+    } finally {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
+    }
   },
   async delete(id) {
     if (!confirm('Delete this transaction?')) return;
@@ -2743,19 +2770,28 @@ const categories = {
   },
   async edit(id) { this.openModal(id); },
   async save() {
-    const id = document.getElementById('cat-id').value;
-    const data = {
-      name: document.getElementById('cat-name').value,
-      color: document.getElementById('cat-color').value,
-      type: this.currentType
-    };
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/categories/${id}` : '/categories';
-    const result = await api(url, { method, body: data });
-    if (result.error) { toast(result.error, 'error'); return; }
-    toast(id ? 'Category updated' : 'Category added', 'success');
-    modal.close('cat-modal');
-    this.load();
+    const btn = document.getElementById('cat-save-btn');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    btn.classList.add('loading');
+    try {
+      const id = document.getElementById('cat-id').value;
+      const data = {
+        name: document.getElementById('cat-name').value,
+        color: document.getElementById('cat-color').value,
+        type: this.currentType
+      };
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/categories/${id}` : '/categories';
+      const result = await api(url, { method, body: data });
+      if (result.error) { toast(result.error, 'error'); return; }
+      toast(id ? 'Category updated' : 'Category added', 'success');
+      modal.close('cat-modal');
+      this.load();
+    } finally {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
+    }
   },
   async delete(id) {
     if (!confirm('Delete this category?')) return;
@@ -3089,34 +3125,43 @@ const loans = {
     rpList.appendChild(rp);
   },
   async saveLoan() {
-    const id = document.getElementById('loan-id').value;
-    const ratePeriods = [];
-    document.querySelectorAll('.rate-period-item').forEach(item => {
-      const rate = parseFloat(item.querySelector('.rp-rate').value);
-      const start = parseInt(item.querySelector('.rp-start').value);
-      const end = item.querySelector('.rp-end').value ? parseInt(item.querySelector('.rp-end').value) : null;
-      if (rate && start) ratePeriods.push({ rate, start_month: start, end_month: end });
-    });
-    const data = {
-      name: document.getElementById('loan-name').value,
-      principal: parseFloat(document.getElementById('loan-principal').value),
-      start_date: document.getElementById('loan-start').value,
-      term_months: parseInt(document.getElementById('loan-term').value),
-      interest_rate: parseFloat(document.getElementById('loan-rate').value),
-      rate_periods: ratePeriods
-    };
-    if (id) data.id = parseInt(id);
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/loans/${id}` : '/loans';
-    const result = await api(url, { method, body: data });
-    if (result.error) { toast(result.error, 'error'); return; }
-    // Invalidate cache so rate/prepayment changes trigger a fresh calculation
-    if (id) {
-      delete this.loanCache[parseInt(id)];
+    const btn = document.getElementById('loan-save-btn');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    btn.classList.add('loading');
+    try {
+      const id = document.getElementById('loan-id').value;
+      const ratePeriods = [];
+      document.querySelectorAll('.rate-period-item').forEach(item => {
+        const rate = parseFloat(item.querySelector('.rp-rate').value);
+        const start = parseInt(item.querySelector('.rp-start').value);
+        const end = item.querySelector('.rp-end').value ? parseInt(item.querySelector('.rp-end').value) : null;
+        if (rate && start) ratePeriods.push({ rate, start_month: start, end_month: end });
+      });
+      const data = {
+        name: document.getElementById('loan-name').value,
+        principal: parseFloat(document.getElementById('loan-principal').value),
+        start_date: document.getElementById('loan-start').value,
+        term_months: parseInt(document.getElementById('loan-term').value),
+        interest_rate: parseFloat(document.getElementById('loan-rate').value),
+        rate_periods: ratePeriods
+      };
+      if (id) data.id = parseInt(id);
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/loans/${id}` : '/loans';
+      const result = await api(url, { method, body: data });
+      if (result.error) { toast(result.error, 'error'); return; }
+      // Invalidate cache so rate/prepayment changes trigger a fresh calculation
+      if (id) {
+        delete this.loanCache[parseInt(id)];
+      }
+      toast(id ? 'Loan updated' : 'Loan created', 'success');
+      modal.close('loan-modal');
+      this.load();
+    } finally {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
     }
-    toast(id ? 'Loan updated' : 'Loan created', 'success');
-    modal.close('loan-modal');
-    this.load();
   },
   async editLoan(id) { this.openLoanModal(id); },
   async deleteLoan(id) {
@@ -3679,10 +3724,16 @@ const importData = {
     if (!file) return;
     const fd = new FormData();
     fd.append('file', file);
+    const spinner = document.getElementById('import-spinner');
+    const dropIcon = document.getElementById('import-drop-icon');
+    spinner.style.display = 'inline-block';
+    dropIcon.style.display = 'none';
     toast('Parsing file...', 'info');
     try {
       const resp = await fetch(API + '/import/upload', { method: 'POST', body: fd });
       const data = await resp.json();
+      spinner.style.display = '';
+      dropIcon.style.display = '';
       if (data.error) { toast(data.error, 'error'); return; }
 
       // If multiple sheets, show selector
@@ -3699,7 +3750,11 @@ const importData = {
       this.headers = data.headers;
       this.rows = data.rows;
       this.buildMapping(data);
-    } catch(e) { toast('Failed to parse file: ' + e.message, 'error'); }
+    } catch(e) {
+      spinner.style.display = '';
+      dropIcon.style.display = '';
+      toast('Failed to parse file: ' + e.message, 'error');
+    }
   },
   async loadFileSheet() {
     const sheetSelect = document.getElementById('import-sheet-select');
