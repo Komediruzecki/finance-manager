@@ -866,7 +866,7 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
         <div class="import-preview table-wrap" id="import-preview"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;">
           <button class="btn btn-secondary" onclick="dataImport.reset()">Cancel</button>
-          <button class="btn btn-success" onclick="dataImport.execute()">
+          <button class="btn btn-success" id="import-execute-btn" onclick="dataImport.execute()">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
             Import Transactions
           </button>
@@ -3825,6 +3825,10 @@ const importData = {
     </tbody></table>`;
   },
   async execute() {
+    const limit = this.getImportLimit();
+    const rowCount = limit > 0 ? Math.min(limit, this.rows.length) : this.rows.length;
+    if (!confirm(`Import ${rowCount} transactions? This will add new transactions to your profile.`)) return;
+
     const fields = ['description','amount','date','beneficiary','payor','category','currency','amount_local','means_of_payment','exchange_rate','type','notes'];
     const mapping = {};
     fields.forEach(f => {
@@ -3833,26 +3837,34 @@ const importData = {
     });
     if (mapping.amount === undefined) { toast('Please map the Amount column', 'error'); return; }
 
-    // Collect category type overrides from the review section
-    const categoryTypes = {};
-    if (this.detectedCategories) {
-      Object.keys(this.detectedCategories).forEach(name => {
-        const sel = document.getElementById(`cat-type-${btoa(name)}`);
-        if (sel) categoryTypes[name] = sel.value;
-      });
-    }
+    const btn = document.getElementById('import-execute-btn');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="loading-spinner"></span> Importing...';
+    btn.classList.add('loading');
+    try {
+      // Collect category type overrides from the review section
+      const categoryTypes = {};
+      if (this.detectedCategories) {
+        Object.keys(this.detectedCategories).forEach(name => {
+          const sel = document.getElementById(`cat-type-${btoa(name)}`);
+          if (sel) categoryTypes[name] = sel.value;
+        });
+      }
 
-    const limit = this.getImportLimit();
-    const rowsToImport = limit > 0 ? this.rows.slice(0, limit) : this.rows;
-    const result = await api('/import/execute', {
-      method: 'POST',
-      body: { rows: rowsToImport, mapping, categoryTypes }
-    });
-    if (result.error) { toast(result.error, 'error'); return; }
-    toast(result.message, 'success');
-    this.reset();
-    if (typeof transactions !== 'undefined') transactions.load();
-    if (typeof dashboard !== 'undefined') dashboard.load();
+      const rowsToImport = limit > 0 ? this.rows.slice(0, limit) : this.rows;
+      const result = await api('/import/execute', {
+        method: 'POST',
+        body: { rows: rowsToImport, mapping, categoryTypes }
+      });
+      if (result.error) { toast(result.error, 'error'); return; }
+      toast(result.message, 'success');
+      this.reset();
+      if (typeof transactions !== 'undefined') transactions.load();
+      if (typeof dashboard !== 'undefined') dashboard.load();
+    } finally {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
+    }
   },
   async fetchGoogleSheet() {
     const url = document.getElementById('gs-url').value;
