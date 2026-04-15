@@ -869,14 +869,11 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="period-selector">
-          <button class="active" onclick="analytics.setPeriod('day')" id="period-day">Day</button>
-          <button onclick="analytics.setPeriod('week')" id="period-week">Week</button>
-          <button onclick="analytics.setPeriod('month')" id="period-month">Month</button>
+          <button class="active" onclick="analytics.setType('expense')" id="type-expense">Expense</button>
+          <button onclick="analytics.setType('income')" id="type-income">Income</button>
         </div>
-        <select class="form-control" id="analytics-year" onchange="analytics.onYearChange()" style="width:auto;min-width:100px;">
-          <option value="">All Years</option>
-        </select>
-        <select class="form-control" id="analytics-month-filter" onchange="analytics.load()" style="width:auto;min-width:120px;">
+        <select class="form-control" id="analytics-year" onchange="analytics.onYearChange()" style="width:auto;min-width:100px;"></select>
+        <select class="form-control" id="analytics-month-filter" onchange="analytics.onMonthChange()" style="width:auto;min-width:120px;">
           <option value="">All Months</option>
           <option value="01">January</option>
           <option value="02">February</option>
@@ -890,6 +887,9 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
           <option value="10">October</option>
           <option value="11">November</option>
           <option value="12">December</option>
+        </select>
+        <select class="form-control" id="analytics-week-filter" onchange="analytics.load()" style="width:auto;min-width:200px;display:none;">
+          <option value="">All Weeks</option>
         </select>
       </div>
     </div>
@@ -2388,58 +2388,76 @@ const transactions = {
 const analytics = {
   chart: null,
   pieChart: null,
-  currentPeriod: 'day',
+  currentType: 'expense',
   init() {
     this.populateYears().then(() => this.load());
   },
   async populateYears() {
     const select = document.getElementById('analytics-year');
     try {
-      const { minYear, maxYear } = await api('/analytics/year-range');
-      if (!minYear || !maxYear) return;
-      select.innerHTML = '<option value="">All Years</option>';
-      for (let y = maxYear; y >= minYear; y--) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        select.appendChild(opt);
-      }
+      const { years } = await api('/analytics/distinct-years');
+      if (!years || years.length === 0) return;
+      select.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
     } catch(e) { console.error('Failed to load years:', e); }
   },
   onYearChange() {
+    document.getElementById('analytics-month-filter').value = '';
+    document.getElementById('analytics-week-filter').value = '';
+    document.getElementById('analytics-week-filter').style.display = 'none';
     this.load();
   },
-  setPeriod(period) {
-    this.currentPeriod = period;
+  async onMonthChange() {
+    const month = document.getElementById('analytics-month-filter').value;
+    const year = document.getElementById('analytics-year').value;
+    const weekSelect = document.getElementById('analytics-week-filter');
+    if (month) {
+      try {
+        const { weeks } = await api(`/analytics/weeks?year=${year}&month=${month}`);
+        weekSelect.innerHTML = '<option value="">All Weeks</option>' + weeks.map(w => `<option value="${w.week}">${w.label}</option>`).join('');
+        weekSelect.style.display = '';
+      } catch(e) { console.error('Failed to load weeks:', e); }
+    } else {
+      weekSelect.value = '';
+      weekSelect.style.display = 'none';
+    }
+    this.load();
+  },
+  setType(type) {
+    this.currentType = type;
     document.querySelectorAll('#page-analytics .period-selector button').forEach(b => b.classList.remove('active'));
-    document.getElementById(`period-${period}`).classList.add('active');
+    document.getElementById(`type-${type}`).classList.add('active');
     this.load();
   },
   async load() {
     const year = document.getElementById('analytics-year').value;
     const month = document.getElementById('analytics-month-filter').value;
-    let url = `/analytics/category-trends?period=${this.currentPeriod}`;
-    if (year && month) {
-      url = `/analytics/category-trends?year=${year}&month=${month}&period=${this.currentPeriod}`;
-    } else if (year) {
-      url = `/analytics/category-trends?year=${year}&period=${this.currentPeriod}`;
-    }
+    const week = document.getElementById('analytics-week-filter').value;
+    let url = `/analytics/category-trends?year=${year}&type=${this.currentType}`;
+    if (month) url += `&month=${month}`;
+    if (week) url += `&week=${week}`;
     const [data, settings] = await Promise.all([
       api(url),
       api('/settings')
     ]);
     this.currentCurrency = settings.local_currency || 'EUR';
-    this.renderStackedChart(data);
+    this.renderStackedChart(data, { year, month, week });
     this.renderPieChart(data);
     this.renderTopCategories(data);
     this.renderAverages(data);
   },
   currentCurrency: 'EUR',
-  renderStackedChart(data) {
+  renderStackedChart(data, { year, month, week }) {
     const currency = this.currentCurrency;
     const ctx = document.getElementById('analytics-stacked-chart').getContext('2d');
     if (this.chart) this.chart.destroy();
     const cc = chartColors();
+
+    // Determine label density based on view level
+    let maxTicks = 12;
+    if (week) maxTicks = 7;
+    else if (month) maxTicks = 15;
+    else maxTicks = 12;
+
     this.chart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -2449,7 +2467,7 @@ const analytics = {
           data: ds.data,
           backgroundColor: ds.color,
           borderRadius: 2,
-          barPercentage: this.currentPeriod === 'day' ? 0.8 : 0.6
+          barPercentage: week ? 0.8 : month ? 0.8 : 0.7
         }))
       },
       options: {
@@ -2473,7 +2491,12 @@ const analytics = {
           x: {
             stacked: true,
             grid: { display: false, color: cc.grid },
-            ticks: { color: cc.text, maxRotation: 45, minRotation: 45 }
+            ticks: {
+              color: cc.text,
+              maxRotation: 45,
+              minRotation: 0,
+              maxTicksLimit: maxTicks
+            }
           },
           y: {
             stacked: true,
@@ -2548,7 +2571,7 @@ const analytics = {
     const total = totalByCat.reduce((a, b) => a + b.total, 0);
     const el = document.getElementById('analytics-top-categories');
     if (totalByCat.length === 0) {
-      el.innerHTML = '<div class="empty-state"><p>No expense data</p></div>';
+      el.innerHTML = `<div class="empty-state"><p>No ${this.currentType} data</p></div>`;
       return;
     }
     el.innerHTML = totalByCat.map(c => {
