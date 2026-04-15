@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+version: "3.9"
+
+>>>>>>> pr-51
 services:
   app:
     build:
