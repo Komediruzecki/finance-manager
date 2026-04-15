@@ -1449,6 +1449,9 @@ app.post('/api/calculator/retire', (req, res) => {
 
     // Project savings until retirement
     const monthsToRetirement = (retirementAge - currentAge) * 12;
+    if (monthsToRetirement <= 0) {
+      return res.status(400).json({ error: 'Retirement age must be greater than current age' });
+    }
     const monthlyReturn = annualReturn / 100 / 12;
 
     let savings = currentSavings;
