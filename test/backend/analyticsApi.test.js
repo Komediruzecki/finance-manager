@@ -29,9 +29,11 @@ describe('Analytics API — weeks', () => {
     });
   });
 
-  test('GET /api/analytics/weeks requires year param', async () => {
+  test('GET /api/analytics/weeks without year returns empty weeks array', async () => {
     const resp = await request(BASE_URL).get('/api/analytics/weeks');
-    expect(resp.status).toBe(400);
+    expect(resp.status).toBe(200);
+    expect(resp.body).toHaveProperty('weeks');
+    expect(Array.isArray(resp.body.weeks)).toBe(true);
   });
 });
 

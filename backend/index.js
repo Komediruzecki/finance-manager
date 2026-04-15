@@ -1306,7 +1306,7 @@ app.get('/api/analytics/weeks', (req, res) => {
     const pid = getProfileId(req);
     const year = parseInt(req.query.year);
     const month = req.query.month ? String(req.query.month).padStart(2, '0') : null;
-    if (!year) { res.status(400).json({ error: 'year is required' }); return; }
+    if (!year) { res.json({ weeks: [] }); return; }
     const weeks = [];
     const firstDay = month ? new Date(year, parseInt(month) - 1, 1) : new Date(year, 0, 1);
     const last = month ? new Date(year, parseInt(month), 0).getDate() : 31;
