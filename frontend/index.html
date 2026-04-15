@@ -579,6 +579,10 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
         <div class="chart-container short"><canvas id="chart-cashflow"></canvas></div>
       </div>
       <div class="card">
+        <div class="card-header"><div><div class="card-title">Recent Transactions</div></div></div>
+        <div id="recent-transactions"></div>
+      </div>
+      <div class="card">
         <div class="card-header"><div><div class="card-title">Upcoming Recurring</div><div class="card-subtitle">Auto-populate bills and subscriptions</div></div>
         <button class="btn btn-ghost btn-sm" onclick="recurring.openModal()">+ Add</button></div>
         <div id="recurring-list"></div>
@@ -3422,7 +3426,7 @@ const retirement = {
     try {
       const resp = await fetch(API + '/calculator/retire', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Profile-Id': getProfileId() },
+        headers: { 'Content-Type': 'application/json', 'X-Profile-Id': profile.currentId },
         body: JSON.stringify(payload)
       });
       const result = await resp.json();
