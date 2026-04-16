@@ -1142,6 +1142,17 @@ input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
         <button class="btn btn-primary" onclick="generatePlSummaryPDF()">Download P&L PDF</button>
       </div>
     </div>
+
+    <div class="card" style="max-width:600px; margin-top:24px;">
+      <div class="settings-section-title">Annual Financial Report</div>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Download a comprehensive PDF with embedded charts and monthly breakdown for any year.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <select class="form-control" id="annual-report-year" style="width:auto;min-width:100px;">
+          <option value="">Year</option>
+        </select>
+        <button class="btn btn-primary" onclick="generateAnnualPDF()">Download Annual PDF</button>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -4141,6 +4152,65 @@ function generatePlSummaryPDF() {
   window.open(`/api/reports/pl-summary-pdf?year=${year}`, '_blank');
 }
 
+async function populateAnnualReportYears() {
+  const select = document.getElementById('annual-report-year');
+  if (!select) return;
+  try {
+    const { years } = await api('/analytics/distinct-years');
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      select.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+async function generateAnnualPDF() {
+  const year = document.getElementById('annual-report-year').value;
+  if (!year) { alert('Please select a year'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  try {
+    showDashboard();
+    await new Promise(r => setTimeout(r, 500));
+
+    const charts = {};
+    if (window.dashboard && window.dashboard.charts) {
+      if (window.dashboard.charts.category) charts.category = window.dashboard.charts.category.toBase64Image();
+      if (window.dashboard.charts.monthly) charts.monthly = window.dashboard.charts.monthly.toBase64Image();
+      if (window.dashboard.charts.cashflow) charts.cashflow = window.dashboard.charts.cashflow.toBase64Image();
+    }
+
+    const resp = await fetch('/api/reports/annual-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year: parseInt(year), charts })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || 'PDF generation failed');
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `annual-report-${year}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Failed to generate PDF: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Download Annual PDF';
+  }
+}
+
 // ==================== SETTINGS ====================
 const settings = {
   async load() {
@@ -4153,6 +4223,7 @@ const settings = {
     populatePdfReportYears();
     populateTaxSummaryYears();
     populatePlSummaryYears();
+    populateAnnualReportYears();
   },
   async save() {
     const data = { local_currency: document.getElementById('setting-currency').value };

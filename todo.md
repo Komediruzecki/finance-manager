@@ -30,6 +30,7 @@
 ## Reports
 - [x] **Monthly PDF report** — Generate a downloadable monthly summary report
 - [x] **Tax category grouping** — Tag categories as tax-deductible, generate year-end tax summary
+- [x] **Annual financial report PDF** — Full-year PDF with embedded Chart.js charts and monthly breakdown with running net worth
 - [ ] **Income vs expense summary** — Year-end P&L style report
 
 ## UI/UX
