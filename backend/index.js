@@ -3033,6 +3033,217 @@ app.get("/api/reports/pl-summary-pdf", (req, res) => {
   }
 });
 
+// ANNUAL FINANCIAL REPORT PDF
+// ============================
+app.post("/api/reports/annual-pdf", (req, res) => {
+  try {
+    const { year, charts } = req.body;
+
+    if (!year || !/^\d{4}$/.test(String(year))) {
+      return res.status(400).json({ error: "Valid year is required" });
+    }
+
+    const pid = getProfileId(req);
+
+    // Decode chart images from base64 data URLs
+    const chartImages = {};
+    if (charts) {
+      ['category', 'monthly', 'cashflow'].forEach((key) => {
+        const dataUrl = charts[key];
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/png;base64,')) {
+          try {
+            chartImages[key] = Buffer.from(dataUrl.split(',')[1], 'base64');
+          } catch (e) { /* skip invalid chart */ }
+        }
+      });
+    }
+
+    const currency = db.prepare(
+      "SELECT value FROM settings WHERE key='local_currency' AND (profile_id=? OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1"
+    ).get(pid)?.value || 'USD';
+    const symbols = { EUR: "€", USD: "$", GBP: "£", CHF: "CHF " };
+    const fmt = (amt) => (symbols[currency] || currency + " ") + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    // Fetch monthly data for all 12 months
+    const monthlyData = [];
+    let runningBalance = 0;
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (let m = 1; m <= 12; m++) {
+      const monthStr = String(m).padStart(2, '0');
+      const startStr = `${year}-${monthStr}-01`;
+      const lastDay = new Date(parseInt(year), m, 0).getDate();
+      const endStr = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+
+      const row = db.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE 0 END), 0) as income,
+          COALESCE(SUM(CASE WHEN type='expense' THEN amount ELSE 0 END), 0) as expense
+        FROM transactions
+        WHERE profile_id=? AND date>=? AND date<=?
+      `).get(pid, startStr, endStr);
+
+      const net = row.income - row.expense;
+      runningBalance += net;
+      totalIncome += row.income;
+      totalExpenses += row.expense;
+      monthlyData.push({
+        month: monthNames[m - 1],
+        income: row.income,
+        expense: row.expense,
+        net,
+        balance: runningBalance,
+      });
+    }
+
+    const netSavings = totalIncome - totalExpenses;
+
+    // Generate PDF
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="annual-report-${year}.pdf"`);
+    doc.pipe(res);
+
+    const titleColor = "#1e293b";
+    const headerBg = "#f1f5f9";
+    const borderColor = "#cbd5e1";
+    const incomeColor = "#059669";
+    const expenseColor = "#dc2626";
+    const mutedColor = "#64748b";
+    const netColor = netSavings >= 0 ? "#059669" : "#dc2626";
+    const pageW = doc.page.width - 80;
+
+    // Header
+    doc.fillColor(titleColor).fontSize(22).font("Helvetica-Bold")
+      .text(`Annual Financial Report — ${year}`, 50, 50, { width: pageW, align: "center" });
+    doc.moveDown(0.3);
+    doc.fillColor(mutedColor).fontSize(11).font("Helvetica")
+      .text(`Finance Manager  |  Generated: ${new Date().toLocaleDateString()}`, { align: "center" });
+
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+
+    // P&L Summary box
+    const boxH = 65;
+    const boxY = doc.y + 10;
+    const colW = pageW / 3;
+
+    doc.fillColor(headerBg).rect(50, boxY, pageW, boxH).fill();
+    doc.strokeColor(borderColor).rect(50, boxY, pageW, boxH).stroke();
+
+    doc.y = boxY + 10;
+    doc.fillColor(titleColor).fontSize(12).font("Helvetica-Bold")
+      .text(`${year} Annual Summary`, 50, doc.y, { width: pageW, align: "center" });
+    doc.moveDown(0.5);
+
+    doc.fontSize(10).font("Helvetica");
+    doc.fillColor(incomeColor).font("Helvetica-Bold").fontSize(10)
+      .text("Total Income", 50 + 10, doc.y, { width: colW, align: "center" });
+    doc.fillColor(incomeColor).fontSize(14)
+      .text(fmt(totalIncome), 50 + 10, doc.y + 14, { width: colW, align: "center" });
+
+    doc.fillColor(expenseColor).font("Helvetica-Bold").fontSize(10)
+      .text("Total Expenses", 50 + colW + 10, doc.y, { width: colW, align: "center" });
+    doc.fillColor(expenseColor).fontSize(14)
+      .text(fmt(totalExpenses), 50 + colW + 10, doc.y + 14, { width: colW, align: "center" });
+
+    doc.fillColor(netColor).font("Helvetica-Bold").fontSize(10)
+      .text("Net Savings", 50 + colW * 2 + 10, doc.y, { width: colW, align: "center" });
+    doc.fillColor(netColor).fontSize(14)
+      .text(fmt(netSavings), 50 + colW * 2 + 10, doc.y + 14, { width: colW, align: "center" });
+
+    doc.moveDown(2);
+
+    // Embedded charts
+    const chartWidth = Math.min(380, pageW);
+    const chartHeight = chartWidth * 0.65;
+
+    if (chartImages.category && chartImages.category.length > 100) {
+      try {
+        doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold").text("Spending by Category");
+        doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+        doc.moveDown(0.3);
+        doc.image(chartImages.category, 50, doc.y, { width: chartWidth, height: chartHeight, fit: [chartWidth, chartHeight] });
+        doc.y += chartHeight + 15;
+      } catch (e) { doc.moveDown(2); }
+    }
+
+    if (chartImages.monthly && chartImages.monthly.length > 100) {
+      try {
+        doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold").text("Monthly Income vs Expenses");
+        doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+        doc.moveDown(0.3);
+        doc.image(chartImages.monthly, 50, doc.y, { width: chartWidth, height: chartHeight, fit: [chartWidth, chartHeight] });
+        doc.y += chartHeight + 15;
+      } catch (e) { doc.moveDown(2); }
+    }
+
+    if (chartImages.cashflow && chartImages.cashflow.length > 100) {
+      try {
+        doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold").text("Cumulative Cash Flow");
+        doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+        doc.moveDown(0.3);
+        doc.image(chartImages.cashflow, 50, doc.y, { width: chartWidth, height: chartHeight, fit: [chartWidth, chartHeight] });
+        doc.y += chartHeight + 15;
+      } catch (e) { doc.moveDown(2); }
+    }
+
+    if (doc.y > doc.page.height - 280) {
+      doc.addPage();
+      doc.y = 50;
+    }
+
+    // Monthly Breakdown Table
+    doc.moveDown(0.5);
+    doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold").text("Monthly Breakdown");
+    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+    doc.moveDown(0.3);
+
+    const tableTop = doc.y;
+    const col = { month: 90, income: 120, expense: 120, net: 110, balance: 110 };
+    const rowH = 18;
+
+    doc.fillColor(headerBg).rect(50, tableTop, pageW, rowH).fill();
+    doc.strokeColor(borderColor).rect(50, tableTop, pageW, rowH).stroke();
+    doc.fillColor(titleColor).fontSize(9).font("Helvetica-Bold");
+    doc.text("Month", 54, tableTop + 5, { width: col.month, align: "left" });
+    doc.text("Income", 54 + col.month, tableTop + 5, { width: col.income, align: "right" });
+    doc.text("Expenses", 54 + col.month + col.income, tableTop + 5, { width: col.expense, align: "right" });
+    doc.text("Net", 54 + col.month + col.income + col.expense, tableTop + 5, { width: col.net, align: "right" });
+    doc.text("Balance", 54 + col.month + col.income + col.expense + col.net, tableTop + 5, { width: col.balance, align: "right" });
+
+    monthlyData.forEach((data, i) => {
+      const rowY = tableTop + rowH * (i + 1);
+      const bg = i % 2 === 0 ? "#ffffff" : "#f8fafc";
+      doc.fillColor(bg).rect(50, rowY, pageW, rowH).fill();
+      doc.strokeColor(borderColor).rect(50, rowY, pageW, rowH).stroke();
+
+      doc.fillColor(titleColor).fontSize(9).font("Helvetica");
+      doc.text(data.month, 54, rowY + 4, { width: col.month, align: "left" });
+
+      doc.fillColor(incomeColor).fontSize(9).text(data.income.toFixed(2), 54 + col.month, rowY + 4, { width: col.income, align: "right" });
+      doc.fillColor(expenseColor).fontSize(9).text(data.expense.toFixed(2), 54 + col.month + col.income, rowY + 4, { width: col.expense, align: "right" });
+
+      doc.fillColor(data.net >= 0 ? incomeColor : expenseColor).fontSize(9).text(data.net.toFixed(2), 54 + col.month + col.income + col.expense, rowY + 4, { width: col.net, align: "right" });
+      doc.fillColor(data.balance >= 0 ? incomeColor : expenseColor).fontSize(9).text(data.balance.toFixed(2), 54 + col.month + col.income + col.expense + col.net, rowY + 4, { width: col.balance, align: "right" });
+    });
+
+    doc.y = Math.max(doc.y, tableTop + rowH * 14) + 20;
+    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
+      .text(`Generated by Finance Manager — ${new Date().toLocaleDateString()}`, { align: "center" });
+
+    doc.end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Catch-all: serve index.html for SPA
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "frontend", "index.html"));
