@@ -65,6 +65,92 @@ app.use(
   }),
 );
 
+// ==================== RATE LIMITING ====================
+// API rate limiter: 100 requests per minute per IP+profile
+const apiRateLimiter = (() => {
+  const store = new Map();
+  const WINDOW_MS = 60 * 1000; // 1 minute
+  const MAX_REQUESTS = 100;
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, data] of store.entries()) {
+      if (now > data.resetTime) store.delete(key);
+    }
+  }, WINDOW_MS);
+
+  return (req, res, next) => {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const profileId = parseInt(req.headers["x-profile-id"] || req.query.profile_id || 1);
+    const key = `ip:${ip}:profile:${profileId}`;
+    const now = Date.now();
+    let data = store.get(key);
+
+    if (!data || now > data.resetTime) {
+      data = { count: 0, resetTime: now + WINDOW_MS };
+      store.set(key, data);
+    }
+
+    data.count++;
+    const remaining = MAX_REQUESTS - data.count;
+    res.setHeader('X-RateLimit-Limit', String(MAX_REQUESTS));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, remaining)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(data.resetTime / 1000)));
+
+    if (data.count > MAX_REQUESTS) {
+      const retryAfter = Math.ceil((data.resetTime - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Too many requests. Please wait before trying again.',
+        retryAfter
+      });
+    }
+    next();
+  };
+})();
+
+// Auth rate limiter: 10 login attempts per 15 minutes per IP
+const authRateLimiter = (() => {
+  const store = new Map();
+  const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+  const MAX_REQUESTS = 10; // Stricter for auth
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, data] of store.entries()) {
+      if (now > data.resetTime) store.delete(ip);
+    }
+  }, WINDOW_MS);
+
+  return (req, res, next) => {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const now = Date.now();
+    let data = store.get(ip);
+
+    if (!data || now > data.resetTime) {
+      data = { count: 0, resetTime: now + WINDOW_MS };
+      store.set(ip, data);
+    }
+
+    data.count++;
+    const remaining = MAX_REQUESTS - data.count;
+    res.setHeader('X-RateLimit-Limit', String(MAX_REQUESTS));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, remaining)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(data.resetTime / 1000)));
+
+    if (data.count > MAX_REQUESTS) {
+      const retryAfter = Math.ceil((data.resetTime - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Too many login attempts. Please wait before trying again.',
+        retryAfter
+      });
+    }
+    next();
+  };
+})();
+
+// ==================== MIDDLEWARE ====================
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -100,7 +186,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", authRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -127,18 +213,18 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-app.post("/api/auth/logout", (req, res) => {
+app.post("/api/auth/logout", apiRateLimiter, (req, res) => {
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ error: "Logout failed" });
     res.json({ ok: true });
   });
 });
 
-app.get("/api/auth/me", requireAuth, (req, res) => {
+app.get("/api/auth/me", apiRateLimiter, requireAuth, (req, res) => {
   res.json({ userId: req.session.userId, username: req.session.username });
 });
 // ========================
-app.get("/api/profiles", (req, res) => {
+app.get("/api/profiles", apiRateLimiter, (req, res) => {
   try {
     let profiles;
     if (req.session.userId) {
@@ -170,7 +256,7 @@ app.get("/api/profiles", (req, res) => {
   }
 });
 
-app.post("/api/profiles", (req, res) => {
+app.post("/api/profiles", apiRateLimiter, (req, res) => {
   try {
     if (!req.session.userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -200,7 +286,7 @@ app.post("/api/profiles", (req, res) => {
   }
 });
 
-app.delete("/api/profiles/:id", (req, res) => {
+app.delete("/api/profiles/:id", apiRateLimiter, (req, res) => {
   try {
     if (!req.session.userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -233,7 +319,7 @@ app.delete("/api/profiles/:id", (req, res) => {
   }
 });
 
-app.delete("/api/profile/data", (req, res) => {
+app.delete("/api/profile/data", apiRateLimiter, (req, res) => {
   // Nuke all data for the current profile but keep the profile itself
   try {
     const pid = getProfileId(req);
@@ -281,7 +367,7 @@ app.delete("/api/profile/data", (req, res) => {
 // ========================
 // SETTINGS (per-profile)
 // ========================
-app.get("/api/settings", (req, res) => {
+app.get("/api/settings", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -297,7 +383,7 @@ app.get("/api/settings", (req, res) => {
   }
 });
 
-app.put("/api/settings", (req, res) => {
+app.put("/api/settings", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const upsert = db.prepare(
@@ -314,7 +400,7 @@ app.put("/api/settings", (req, res) => {
 // ========================
 // CATEGORIES (per-profile)
 // ========================
-app.get("/api/categories", (req, res) => {
+app.get("/api/categories", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -334,7 +420,7 @@ app.get("/api/categories", (req, res) => {
   }
 });
 
-app.post("/api/categories", (req, res) => {
+app.post("/api/categories", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color, icon, type, parent_id, tax_deductible } = req.body;
@@ -365,7 +451,7 @@ app.post("/api/categories", (req, res) => {
   }
 });
 
-app.put("/api/categories/:id", (req, res) => {
+app.put("/api/categories/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color, icon, type, parent_id, tax_deductible } = req.body;
@@ -391,7 +477,7 @@ app.put("/api/categories/:id", (req, res) => {
   }
 });
 
-app.delete("/api/categories/:id", (req, res) => {
+app.delete("/api/categories/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
@@ -405,7 +491,7 @@ app.delete("/api/categories/:id", (req, res) => {
   }
 });
 
-app.delete("/api/categories", (req, res) => {
+app.delete("/api/categories", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     db.prepare("DELETE FROM categories WHERE profile_id=?").run(pid);
@@ -418,7 +504,7 @@ app.delete("/api/categories", (req, res) => {
 // ========================
 // TRANSACTIONS (per-profile)
 // ========================
-app.get("/api/transactions", (req, res) => {
+app.get("/api/transactions", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -510,7 +596,7 @@ app.get("/api/transactions", (req, res) => {
   }
 });
 
-app.get("/api/transactions/summary", (req, res) => {
+app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { startDate, endDate, category_ids, type, search } = req.query;
@@ -564,7 +650,7 @@ app.get("/api/transactions/summary", (req, res) => {
   }
 });
 
-app.post("/api/transactions", (req, res) => {
+app.post("/api/transactions", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -623,7 +709,7 @@ app.post("/api/transactions", (req, res) => {
 });
 
 // GET single transaction by ID
-app.get("/api/transactions/:id", (req, res) => {
+app.get("/api/transactions/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { id } = req.params;
@@ -646,7 +732,7 @@ app.get("/api/transactions/:id", (req, res) => {
 });
 
 // Bulk update: PUT /api/transactions/bulk
-app.put("/api/transactions/bulk", (req, res) => {
+app.put("/api/transactions/bulk", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { ids, action, data } = req.body;
@@ -712,7 +798,7 @@ app.put("/api/transactions/bulk", (req, res) => {
   }
 });
 
-app.put("/api/transactions/:id", (req, res) => {
+app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -774,7 +860,7 @@ app.put("/api/transactions/:id", (req, res) => {
   }
 });
 
-app.delete("/api/transactions/:id", (req, res) => {
+app.delete("/api/transactions/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
@@ -788,7 +874,7 @@ app.delete("/api/transactions/:id", (req, res) => {
   }
 });
 
-app.delete("/api/transactions", (req, res) => {
+app.delete("/api/transactions", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     db.prepare("DELETE FROM transactions WHERE profile_id=?").run(pid);
@@ -801,7 +887,7 @@ app.delete("/api/transactions", (req, res) => {
 // ========================
 // BUDGETS (per-profile)
 // ========================
-app.get("/api/budgets", (req, res) => {
+app.get("/api/budgets", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -821,7 +907,7 @@ app.get("/api/budgets", (req, res) => {
   }
 });
 
-app.post("/api/budgets", (req, res) => {
+app.post("/api/budgets", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date } = req.body;
@@ -843,7 +929,7 @@ app.post("/api/budgets", (req, res) => {
   }
 });
 
-app.put("/api/budgets/:id", (req, res) => {
+app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date } = req.body;
@@ -868,7 +954,7 @@ app.put("/api/budgets/:id", (req, res) => {
   }
 });
 
-app.delete("/api/budgets/:id", (req, res) => {
+app.delete("/api/budgets/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
@@ -882,7 +968,7 @@ app.delete("/api/budgets/:id", (req, res) => {
   }
 });
 
-app.get("/api/budgets/summary", (req, res) => {
+app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year, month } = req.query;
@@ -938,7 +1024,7 @@ app.get("/api/budgets/summary", (req, res) => {
 // ========================
 // LOANS (per-profile)
 // ========================
-app.get("/api/loans", (req, res) => {
+app.get("/api/loans", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -959,7 +1045,7 @@ app.get("/api/loans", (req, res) => {
   }
 });
 
-app.post("/api/loans", (req, res) => {
+app.post("/api/loans", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -1004,7 +1090,7 @@ app.post("/api/loans", (req, res) => {
   }
 });
 
-app.get("/api/loans/:id", (req, res) => {
+app.get("/api/loans/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1025,7 +1111,7 @@ app.get("/api/loans/:id", (req, res) => {
   }
 });
 
-app.put("/api/loans/:id", (req, res) => {
+app.put("/api/loans/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -1077,7 +1163,7 @@ app.put("/api/loans/:id", (req, res) => {
   }
 });
 
-app.delete("/api/loans/:id", (req, res) => {
+app.delete("/api/loans/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
@@ -1092,7 +1178,7 @@ app.delete("/api/loans/:id", (req, res) => {
 });
 
 // Rate periods CRUD
-app.post("/api/loans/:id/rates", (req, res) => {
+app.post("/api/loans/:id/rates", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1111,7 +1197,7 @@ app.post("/api/loans/:id/rates", (req, res) => {
   }
 });
 
-app.put("/api/loans/:id/rates/:rateId", (req, res) => {
+app.put("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1134,7 +1220,7 @@ app.put("/api/loans/:id/rates/:rateId", (req, res) => {
   }
 });
 
-app.delete("/api/loans/:id/rates/:rateId", (req, res) => {
+app.delete("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1152,7 +1238,7 @@ app.delete("/api/loans/:id/rates/:rateId", (req, res) => {
 });
 
 // Prepayments CRUD
-app.post("/api/loans/:id/prepayments", (req, res) => {
+app.post("/api/loans/:id/prepayments", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1171,7 +1257,7 @@ app.post("/api/loans/:id/prepayments", (req, res) => {
   }
 });
 
-app.delete("/api/loans/:id/prepayments/:prepayId", (req, res) => {
+app.delete("/api/loans/:id/prepayments/:prepayId", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1189,7 +1275,7 @@ app.delete("/api/loans/:id/prepayments/:prepayId", (req, res) => {
 });
 
 // Calculate amortization
-app.post("/api/loans/:id/calculate", (req, res) => {
+app.post("/api/loans/:id/calculate", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
@@ -1263,7 +1349,7 @@ app.post("/api/loans/:id/calculate", (req, res) => {
 // ========================
 // DASHBOARD (per-profile)
 // ========================
-app.get("/api/dashboard/summary", (req, res) => {
+app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year, month } = req.query;
@@ -1352,7 +1438,7 @@ app.get("/api/dashboard/summary", (req, res) => {
   }
 });
 
-app.get("/api/dashboard/charts", (req, res) => {
+app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { months = 12 } = req.query;
@@ -1422,7 +1508,7 @@ app.get("/api/dashboard/charts", (req, res) => {
   }
 });
 
-app.get("/api/dashboard/net-worth", (req, res) => {
+app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     // Get account balances
@@ -1520,7 +1606,7 @@ app.get("/api/dashboard/net-worth", (req, res) => {
 // ========================
 const importFiles = {}; // temp storage for reloading specific sheets
 
-app.post("/api/import/upload", upload.single("file"), (req, res) => {
+app.post("/api/import/upload", apiRateLimiter, upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const workbook = XLSX.readFile(req.file.path);
@@ -1565,7 +1651,7 @@ app.post("/api/import/upload", upload.single("file"), (req, res) => {
   }
 });
 
-app.post("/api/import/file-sheet", (req, res) => {
+app.post("/api/import/file-sheet", apiRateLimiter, (req, res) => {
   try {
     const { fileId, sheetName } = req.body;
     const entry = importFiles[fileId];
@@ -1593,7 +1679,7 @@ app.post("/api/import/file-sheet", (req, res) => {
   }
 });
 
-app.post("/api/import/googlesheet", (req, res) => {
+app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
   const { url, sheetName } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
 
@@ -1757,7 +1843,7 @@ app.post("/api/import/googlesheet", (req, res) => {
   })();
 });
 
-app.post("/api/import/execute", (req, res) => {
+app.post("/api/import/execute", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { rows, mapping, categoryTypes } = req.body;
@@ -1919,7 +2005,7 @@ app.post("/api/import/execute", (req, res) => {
 // ========================
 // ACCOUNTS (per-profile)
 // ========================
-app.get("/api/accounts", (req, res) => {
+app.get("/api/accounts", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const accounts = db
@@ -1933,7 +2019,7 @@ app.get("/api/accounts", (req, res) => {
   }
 });
 
-app.post("/api/accounts", (req, res) => {
+app.post("/api/accounts", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, type, currency, balance, notes } = req.body;
@@ -1958,7 +2044,7 @@ app.post("/api/accounts", (req, res) => {
   }
 });
 
-app.put("/api/accounts/:id", (req, res) => {
+app.put("/api/accounts/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, type, currency, balance, notes } = req.body;
@@ -1985,7 +2071,7 @@ app.put("/api/accounts/:id", (req, res) => {
   }
 });
 
-app.delete("/api/accounts/:id", (req, res) => {
+app.delete("/api/accounts/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const existing = db
@@ -2005,7 +2091,7 @@ app.delete("/api/accounts/:id", (req, res) => {
 // ========================
 // RECURRING TRANSACTIONS
 // ========================
-app.get("/api/recurring", (req, res) => {
+app.get("/api/recurring", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -2025,7 +2111,7 @@ app.get("/api/recurring", (req, res) => {
   }
 });
 
-app.post("/api/recurring", (req, res) => {
+app.post("/api/recurring", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -2060,7 +2146,7 @@ app.post("/api/recurring", (req, res) => {
   }
 });
 
-app.put("/api/recurring/:id", (req, res) => {
+app.put("/api/recurring/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const existing = db
@@ -2101,7 +2187,7 @@ app.put("/api/recurring/:id", (req, res) => {
   }
 });
 
-app.delete("/api/recurring/:id", (req, res) => {
+app.delete("/api/recurring/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     db.prepare(
@@ -2113,7 +2199,7 @@ app.delete("/api/recurring/:id", (req, res) => {
   }
 });
 
-app.post("/api/recurring/:id/populate", (req, res) => {
+app.post("/api/recurring/:id/populate", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const r = db
@@ -2163,7 +2249,7 @@ app.post("/api/recurring/:id/populate", (req, res) => {
 // ========================
 // STATS (per-profile)
 // ========================
-app.get("/api/stats/monthly", (req, res) => {
+app.get("/api/stats/monthly", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { months = 24 } = req.query;
@@ -2205,7 +2291,7 @@ app.get("/api/stats/monthly", (req, res) => {
 // ========================
 // ANALYTICS
 // ========================
-app.get("/api/analytics/distinct-years", (req, res) => {
+app.get("/api/analytics/distinct-years", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -2223,7 +2309,7 @@ app.get("/api/analytics/distinct-years", (req, res) => {
   }
 });
 
-app.get("/api/analytics/weeks", (req, res) => {
+app.get("/api/analytics/weeks", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const year = parseInt(req.query.year);
@@ -2265,7 +2351,7 @@ app.get("/api/analytics/weeks", (req, res) => {
 // ========================
 // ANALYTICS - Stacked Category Trends
 // ========================
-app.get("/api/analytics/category-trends", (req, res) => {
+app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -2418,7 +2504,7 @@ app.get("/api/analytics/category-trends", (req, res) => {
 // ========================
 // EXPORT (per-profile)
 // ========================
-app.get("/api/export/:type", (req, res) => {
+app.get("/api/export/:type", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { type } = req.params;
@@ -2520,7 +2606,7 @@ app.get("/api/export/:type", (req, res) => {
 // ========================
 // RETIREMENT CALCULATOR
 // ========================
-app.post("/api/calculator/retire", (req, res) => {
+app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
   try {
     const {
       currentAge = 30,
@@ -2671,7 +2757,7 @@ app.post("/api/calculator/retire", (req, res) => {
 // ========================
 // MONTHLY PDF REPORT
 // ========================
-app.get("/api/reports/monthly-pdf", (req, res) => {
+app.get("/api/reports/monthly-pdf", apiRateLimiter, (req, res) => {
   try {
     const { year, month } = req.query;
     if (!year || !month) {
@@ -2846,7 +2932,7 @@ app.get("/api/reports/monthly-pdf", (req, res) => {
 // =====================
 
 // JSON tax summary
-app.get("/api/reports/tax-summary", (req, res) => {
+app.get("/api/reports/tax-summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year } = req.query;
@@ -2893,7 +2979,7 @@ app.get("/api/reports/tax-summary", (req, res) => {
 });
 
 // Year-end tax summary PDF
-app.get("/api/reports/tax-summary-pdf", (req, res) => {
+app.get("/api/reports/tax-summary-pdf", apiRateLimiter, (req, res) => {
   try {
     const { year } = req.query;
     if (!year || !/^\d{4}$/.test(String(year))) {
@@ -3036,7 +3122,7 @@ app.get("/api/reports/tax-summary-pdf", (req, res) => {
 // =====================
 
 // JSON P&L summary
-app.get("/api/reports/pl-summary", (req, res) => {
+app.get("/api/reports/pl-summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year } = req.query;
@@ -3083,7 +3169,7 @@ app.get("/api/reports/pl-summary", (req, res) => {
 });
 
 // Year-end P&L PDF
-app.get("/api/reports/pl-summary-pdf", (req, res) => {
+app.get("/api/reports/pl-summary-pdf", apiRateLimiter, (req, res) => {
   try {
     const { year } = req.query;
     if (!year || !/^\d{4}$/.test(String(year))) {
@@ -3232,7 +3318,7 @@ app.get("/api/reports/pl-summary-pdf", (req, res) => {
 // ANNUAL FINANCIAL REPORT PDF
 // ============================
 // Uses puppeteer to render charts via a dedicated export page, then embeds screenshot in PDF
-app.get("/api/reports/annual-pdf", async (req, res) => {
+app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
   try {
     const { year } = req.query;
 
