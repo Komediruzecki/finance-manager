@@ -72,7 +72,21 @@ const txFilters = {
     const allCheckbox = document.getElementById('tx-cat-all');
     const checkboxes = document.querySelectorAll('.tx-cat-checkbox');
     checkboxes.forEach((cb) => { cb.checked = allCheckbox.checked; });
-    this.selectedCategories = allCheckbox.checked ? [] : [];
+    // If "All" is checked, use empty array (show all). If unchecked, use empty to show all as fallback.
+    // The key is we don't toggle between empty and specific - either all or nothing based on checkbox state
+    if (allCheckbox.checked) {
+      this.selectedCategories = [];
+    } else {
+      // When unchecking "All", check if any individual are checked
+      const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+      if (anyChecked) {
+        this.selectedCategories = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+      } else {
+        // No individual selected - check "All" back on as fallback (show all)
+        allCheckbox.checked = true;
+        this.selectedCategories = [];
+      }
+    }
     this.updateLabel();
     if (typeof transactions !== 'undefined') transactions.load();
   },
@@ -81,6 +95,7 @@ const txFilters = {
     const allCheckbox = document.getElementById('tx-cat-all');
     const checkboxes = document.querySelectorAll('.tx-cat-checkbox:checked');
     this.selectedCategories = Array.from(checkboxes).map((cb) => parseInt(cb.value));
+    // "All" checkbox is checked only when no specific categories are selected
     allCheckbox.checked = this.selectedCategories.length === 0;
     this.updateLabel();
     if (typeof transactions !== 'undefined') transactions.load();
