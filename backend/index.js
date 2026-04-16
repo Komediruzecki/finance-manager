@@ -645,6 +645,73 @@ app.get("/api/transactions/:id", (req, res) => {
   }
 });
 
+// Bulk update: PUT /api/transactions/bulk
+app.put("/api/transactions/bulk", (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { ids, action, data } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No transaction IDs provided" });
+    }
+    if (ids.length > 1000) {
+      return res.status(400).json({ error: "Cannot update more than 1000 transactions at once" });
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    const authParams = [pid, ...ids];
+
+    if (action === 'delete') {
+      const stmt = db.prepare(`DELETE FROM transactions WHERE profile_id = ? AND id IN (${placeholders})`);
+      const result = stmt.run(...authParams);
+      return res.json({ ok: true, deleted: result.changes });
+    }
+
+    if (action === 'update') {
+      if (!data || typeof data !== 'object') {
+        return res.status(400).json({ error: "No update data provided" });
+      }
+
+      const allowedFields = ['category_id', 'type', 'description', 'beneficiary', 'payor', 'notes'];
+      const updates = [];
+      const updateParams = [];
+
+      for (const field of allowedFields) {
+        if (data.hasOwnProperty(field)) {
+          if (field === 'category_id') {
+            updates.push('category_id = ?');
+            updateParams.push(data.category_id === null || data.category_id === '' ? null : parseInt(data.category_id));
+          } else if (field === 'type') {
+            if (!['income', 'expense', 'transfer'].includes(data.type)) {
+              return res.status(400).json({ error: "Invalid type. Must be income, expense, or transfer" });
+            }
+            updates.push('type = ?');
+            updateParams.push(data.type);
+          } else {
+            updates.push(`${field} = ?`);
+            updateParams.push(data[field] || '');
+          }
+        }
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+
+      updates.push("updated_at = datetime('now')");
+      updateParams.push(pid, ...ids);
+
+      const stmt = db.prepare(`UPDATE transactions SET ${updates.join(', ')} WHERE profile_id = ? AND id IN (${placeholders})`);
+      const result = stmt.run(...updateParams);
+      return res.json({ ok: true, updated: result.changes });
+    }
+
+    return res.status(400).json({ error: "Invalid action. Must be 'delete' or 'update'" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put("/api/transactions/:id", (req, res) => {
   try {
     const pid = getProfileId(req);

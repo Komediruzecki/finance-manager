@@ -126,10 +126,19 @@
 
     <div id="tx-summary-bar" class="tx-summary-bar" style="display:none;"></div>
 
+    <div id="tx-bulk-bar" class="bulk-action-bar" style="display:none;">
+      <span id="tx-bulk-count">0 selected</span>
+      <button class="btn btn-secondary btn-sm" onclick="bulkEdit.openCategoryModal()">Change Category</button>
+      <button class="btn btn-secondary btn-sm" onclick="bulkEdit.openTypeModal()">Change Type</button>
+      <button class="btn btn-danger btn-sm" onclick="bulkEdit.deleteSelected()">Delete Selected</button>
+      <button class="btn btn-ghost btn-sm" onclick="bulkEdit.clearSelection()">Deselect All</button>
+    </div>
+
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead id="tx-table-sortable"><tr>
+            <th class="th-checkbox"><input type="checkbox" id="tx-bulk-select-all" onchange="bulkEdit.toggleSelectAll()"></th>
             <th data-sort="date" onclick="transactions.sortByColumn('date')">Date <span class="sort-arrow"> &#9660;&#9650;</span></th>
             <th data-sort="description" onclick="transactions.sortByColumn('description')">Description <span class="sort-arrow"> &#9660;&#9650;</span></th>
             <th data-sort="category_name" onclick="transactions.sortByColumn('category_name')">Category <span class="sort-arrow"> &#9660;&#9650;</span></th>
