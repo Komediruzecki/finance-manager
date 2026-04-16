@@ -547,8 +547,8 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     }
     if (search) {
       sql +=
-        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (sort) {
       const sortCol = ['date', 'amount', 'description', 'category_name', 'type', 'beneficiary', 'payor'].includes(sort) ? (sort === 'category_name' ? 'c.name' : `t.${sort}`) : 't.date';
@@ -586,8 +586,8 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     }
     if (search) {
       countSql +=
-        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ?)";
-      cparams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+      cparams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     const total = db.prepare(countSql).get(...cparams).c;
     res.json({ rows, total });
@@ -634,8 +634,8 @@ app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
       params.push(type);
     }
     if (search) {
-      sql += " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      sql += " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     const result = db.prepare(sql).get(...params);
