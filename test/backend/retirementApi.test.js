@@ -90,7 +90,7 @@ describe('Retirement Calculator API', () => {
   });
 
   test('POST /api/calculator/retire handles country cost-of-living adjustment', async () => {
-    // Thailand is 0.5x cost of living, so 30000 * 0.5 = 15000 expenses
+    // Croatia has 0.6x cost of living, so 30000 * 0.6 = 18000 expenses
     const resp = await request(BASE_URL)
       .post('/api/calculator/retire')
       .send({
@@ -99,12 +99,12 @@ describe('Retirement Calculator API', () => {
         currentSavings: 0,
         monthlyContribution: 0,
         annualExpenses: 30000,
-        country: 'thailand'
+        country: 'croatia'
       });
 
     expect(resp.status).toBe(200);
-    // 15000 / 0.04 = 375000 (half of default)
-    expect(resp.body.fireNumber).toBe(375000);
+    // 18000 / 0.04 = 450000
+    expect(resp.body.fireNumber).toBe(450000);
   });
 
   test('POST /api/calculator/retire timeline contains year/age/savings', async () => {
