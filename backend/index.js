@@ -1606,8 +1606,10 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const { year, month } = req.query;
+    // Support both "YYYY-MM" format and just "MM"
+    const monthPart = month ? (month.includes('-') ? month.split('-')[1] : month) : null;
     const y = year || new Date().getFullYear();
-    const m = month;
+    const m = monthPart;
     let startDate, endDate;
 
     if (m) {
