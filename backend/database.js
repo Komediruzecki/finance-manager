@@ -340,35 +340,224 @@ function migrate() {
   const txCount = db.prepare('SELECT COUNT(*) as c FROM transactions WHERE profile_id = 1').get();
   if (txCount.c === 0) {
     const insertTx = db.prepare(
-      'INSERT INTO transactions (description, amount, date, category_id, type, profile_id, currency) VALUES (?,?,?,?,?,?,?)'
+      'INSERT INTO transactions (description, amount, date, category_id, type, profile_id, currency, beneficiary, means_of_payment) VALUES (?,?,?,?,?,?,?,?,?)'
     );
-    const now = new Date();
     // Get category IDs for ExampleProfile
     const cats = {};
     db.prepare('SELECT name, id FROM categories WHERE profile_id = 1').all().forEach(c => { cats[c.name] = c.id; });
 
-    const samples = [
-      ['Monthly Salary', 4500, -15, 'Salary', 'income'],
-      ['Freelance Project', 850, -30, 'Freelance', 'income'],
-      ['Rent Payment', 1200, -3, 'Housing', 'expense'],
-      ['Grocery Shopping', 185.50, -5, 'Food & Dining', 'expense'],
-      ['Grocery Shopping', 142.30, -18, 'Food & Dining', 'expense'],
-      ['Electricity Bill', 95.00, -7, 'Utilities', 'expense'],
-      ['Internet Bill', 49.99, -12, 'Utilities', 'expense'],
-      ['Gas Station Fill-up', 65.00, -10, 'Transportation', 'expense'],
-      ['Public Transport Monthly', 45.00, -25, 'Transportation', 'expense'],
-      ['Netflix Subscription', 15.99, -35, 'Entertainment', 'expense'],
-      ['Gym Membership', 49.99, -20, 'Healthcare', 'expense'],
-      ['Health Checkup', 120.00, -45, 'Healthcare', 'expense'],
-      ['Online Shopping', 89.95, -40, 'Shopping', 'expense'],
-      ['Restaurant Dinner', 78.50, -8, 'Food & Dining', 'expense'],
-      ['Book Purchase', 24.99, -50, 'Education', 'expense'],
-    ];
+    // Generate 26 years of realistic transactions (2000-2026)
+    const startYear = 2000;
+    const currentYear = 2026;
+    const inflationRate = 0.03; // 3% annual inflation
 
-    for (const [desc, amt, daysAgo, catName, type] of samples) {
-      const d = new Date(now);
-      d.setDate(d.getDate() + daysAgo);
-      insertTx.run(desc, amt, d.toISOString().split('T')[0], cats[catName] || null, type, 1, 'USD');
+    const catId = (name) => cats[name] || null;
+
+    // Helper to get inflation multiplier for a given year
+    const inflationMult = (year) => Math.pow(1 + inflationRate, year - startYear);
+
+    // Seed each month from 2000 to current month
+    for (let year = startYear; year <= currentYear; year++) {
+      const monthsToSeed = year === currentYear ? 4 : 12; // Only Jan-Apr 2026
+      for (let month = 1; month <= monthsToSeed; month++) {
+        const ym = `${year}-${String(month).padStart(2, '0')}`;
+        const mult = inflationMult(year);
+
+        // --- INCOME: Bi-weekly salary (twice a month) + occasional freelance ---
+        const baseSalary = 3500 * mult;
+        // Bi-weekly salary payments (1st and 15th)
+        const payDates = ['01', '15'];
+        for (const day of payDates) {
+          const date = `${ym}-${day}`;
+          insertTx.run('Monthly Salary Deposit', baseSalary / 2, date, catId('Salary'), 'income', 1, 'USD', 'Acme Corp', 'Direct Deposit');
+        }
+        // Quarterly freelance income (3rd month of each quarter)
+        if (month % 3 === 0 && year >= 2002) {
+          const freelance = (600 + Math.random() * 400) * mult;
+          const day = 20 + Math.floor(Math.random() * 5);
+          insertTx.run('Freelance Project Payment', freelance, `${ym}-${String(Math.min(day, 28)).padStart(2, '0')}`, catId('Freelance'), 'income', 1, 'USD', 'Client Project', 'Bank Transfer');
+        }
+        // Annual bonus in December
+        if (month === 12 && year >= 2003) {
+          const bonus = (2000 + Math.random() * 1500) * mult;
+          insertTx.run('Year-End Bonus', bonus, `${ym}-20`, catId('Salary'), 'income', 1, 'USD', 'Acme Corp', 'Direct Deposit');
+        }
+        // Annual investment dividend in March
+        if (month === 3 && year >= 2005) {
+          const dividend = (500 + Math.random() * 300) * mult;
+          insertTx.run('Investment Dividend', dividend, `${ym}-15`, catId('Investments'), 'income', 1, 'USD', 'Vanguard Index Fund', 'Reinvested');
+        }
+
+        // --- EXPENSES: Recurring monthly bills ---
+        // Rent (1st of each month)
+        const rent = (900 + Math.random() * 100) * mult;
+        insertTx.run('Monthly Rent', rent, `${ym}-01`, catId('Housing'), 'expense', 1, 'USD', 'Oakwood Apartments', 'ACH');
+        // Utilities (variable, mid-month)
+        const electric = (60 + Math.random() * 40) * mult;
+        insertTx.run('Electricity Bill', electric, `${ym}-12`, catId('Utilities'), 'expense', 1, 'USD', 'City Power Co', 'Auto-Pay');
+        const gas = (45 + Math.random() * 30) * mult;
+        insertTx.run('Natural Gas Bill', gas, `${ym}-15`, catId('Utilities'), 'expense', 1, 'USD', 'Metro Gas', 'Auto-Pay');
+        const water = (35 + Math.random() * 15) * mult;
+        insertTx.run('Water & Sewage', water, `${ym}-18`, catId('Utilities'), 'expense', 1, 'USD', 'Municipal Water', 'Auto-Pay');
+        // Internet (20th)
+        const internet = (45 + Math.random() * 20) * mult;
+        insertTx.run('Internet Service', internet, `${ym}-20`, catId('Utilities'), 'expense', 1, 'USD', 'FiberNet ISP', 'Credit Card');
+        // Phone plan (10th)
+        const phone = (55 + Math.random() * 25) * mult;
+        insertTx.run('Mobile Phone Plan', phone, `${ym}-10`, catId('Utilities'), 'expense', 1, 'USD', 'Verizon Wireless', 'Auto-Pay');
+
+        // --- FOOD & DINING: Weekly grocery runs + occasional dining ---
+        const groceryWeeks = year >= 2010 ? 4 : 3; // More weeks after 2010
+        for (let w = 0; w < groceryWeeks; w++) {
+          const weekDay = 5 + w * 7; // Friday or Saturday
+          const grocery = (80 + Math.random() * 60) * mult;
+          insertTx.run('Grocery Shopping - Weekly', grocery, `${ym}-${String(Math.min(weekDay, 28)).padStart(2, '0')}`, catId('Food & Dining'), 'expense', 1, 'USD', 'Whole Foods Market', 'Debit Card');
+        }
+        // Restaurant dinners (2-3 times per month, more frequent in later years)
+        const restaurantCount = year >= 2015 ? 4 : 2;
+        for (let r = 0; r < restaurantCount; r++) {
+          const rDay = 7 + r * 6 + Math.floor(Math.random() * 3);
+          const restaurant = (35 + Math.random() * 45) * mult;
+          const restaurants = ['Olive Garden', 'Thai Palace', 'Burger Joint', 'Sushi Bar', 'Pizza Place', 'Local Bistro'];
+          insertTx.run('Restaurant Dinner', restaurant, `${ym}-${String(Math.min(rDay, 28)).padStart(2, '0')}`, catId('Food & Dining'), 'expense', 1, 'USD', restaurants[Math.floor(Math.random() * restaurants.length)], 'Credit Card');
+        }
+        // Coffee shops (3-4 times per week after 2008)
+        if (year >= 2008) {
+          for (let d = 0; d < 4; d++) {
+            const cDay = 3 + d * 7 + Math.floor(Math.random() * 3);
+            const coffee = (4 + Math.random() * 3) * mult;
+            insertTx.run('Coffee Shop', coffee, `${ym}-${String(Math.min(cDay, 28)).padStart(2, '0')}`, catId('Food & Dining'), 'expense', 1, 'USD', 'Starbucks', 'Credit Card');
+          }
+        }
+
+        // --- TRANSPORTATION ---
+        // Gas for car (weekly after 2005)
+        if (year >= 2005) {
+          for (let w = 0; w < 4; w++) {
+            const gDay = 3 + w * 7;
+            const gasAmt = (35 + Math.random() * 25) * mult;
+            insertTx.run('Gas Station Fill-up', gasAmt, `${ym}-${String(Math.min(gDay, 28)).padStart(2, '0')}`, catId('Transportation'), 'expense', 1, 'USD', 'Shell Gas Station', 'Credit Card');
+          }
+        }
+        // Public transit pass (monthly, after 2010)
+        if (year >= 2010 && month === 1) {
+          const transit = (85 + Math.random() * 20) * mult;
+          insertTx.run('Monthly Transit Pass', transit, `${ym}-01`, catId('Transportation'), 'expense', 1, 'USD', 'Metro Transit Authority', 'Auto-Pay');
+        }
+        // Car insurance (quarterly)
+        if (month % 3 === 1) {
+          const insurance = (120 + Math.random() * 40) * mult;
+          insertTx.run('Car Insurance Premium', insurance, `${ym}-${String(Math.min(5 + Math.floor(Math.random() * 10), 28)).padStart(2, '0')}`, catId('Transportation'), 'expense', 1, 'USD', 'State Farm Insurance', 'ACH');
+        }
+        // Parking (occasional)
+        for (let p = 0; p < 3; p++) {
+          const pDay = 8 + p * 8 + Math.floor(Math.random() * 4);
+          const parking = (12 + Math.random() * 8) * mult;
+          insertTx.run('Parking Fee', parking, `${ym}-${String(Math.min(pDay, 28)).padStart(2, '0')}`, catId('Transportation'), 'expense', 1, 'USD', 'Downtown Parking', 'Credit Card');
+        }
+
+        // --- HEALTHCARE ---
+        // Health insurance (monthly, employer deducted from salary - but also personal contribution)
+        if (year >= 2003) {
+          const healthIns = (150 + Math.random() * 50) * mult;
+          insertTx.run('Health Insurance Premium', healthIns, `${ym}-05`, catId('Healthcare'), 'expense', 1, 'USD', 'Blue Cross', 'Payroll Deduction');
+        }
+        // Pharmacy (occasional, more frequent after 2020)
+        const pharmFreq = year >= 2020 ? 3 : 2;
+        for (let p = 0; p < pharmFreq; p++) {
+          const phDay = 10 + p * 7 + Math.floor(Math.random() * 3);
+          const pharmacy = (15 + Math.random() * 35) * mult;
+          insertTx.run('Pharmacy - Prescription', pharmacy, `${ym}-${String(Math.min(phDay, 28)).padStart(2, '0')}`, catId('Healthcare'), 'expense', 1, 'USD', 'CVS Pharmacy', 'Insurance Copay');
+        }
+        // Gym membership (monthly, after 2012)
+        if (year >= 2012) {
+          const gym = (45 + Math.random() * 15) * mult;
+          insertTx.run('Gym Membership', gym, `${ym}-01`, catId('Healthcare'), 'expense', 1, 'USD', 'Planet Fitness', 'Auto-Pay');
+        }
+
+        // --- ENTERTAINMENT ---
+        // Streaming services (after 2015)
+        if (year >= 2015) {
+          const streaming = (12 + Math.random() * 8) * mult;
+          insertTx.run('Netflix Subscription', streaming, `${ym}-15`, catId('Entertainment'), 'expense', 1, 'USD', 'Netflix', 'Credit Card');
+        }
+        if (year >= 2019) {
+          const spotify = (10 + Math.random() * 2) * mult;
+          insertTx.run('Spotify Premium', spotify, `${ym}-20`, catId('Entertainment'), 'expense', 1, 'USD', 'Spotify', 'Credit Card');
+        }
+        if (year >= 2020) {
+          const disney = (8 + Math.random() * 3) * mult;
+          insertTx.run('Disney+ Subscription', disney, `${ym}-10`, catId('Entertainment'), 'expense', 1, 'USD', 'Disney+', 'Credit Card');
+        }
+        // Movie theater (occasional)
+        const movieFreq = year >= 2015 ? 3 : 2;
+        for (let m = 0; m < movieFreq; m++) {
+          const movDay = 14 + m * 9 + Math.floor(Math.random() * 4);
+          const movie = (14 + Math.random() * 8) * mult;
+          insertTx.run('Movie Theater', movie, `${ym}-${String(Math.min(movDay, 28)).padStart(2, '0')}`, catId('Entertainment'), 'expense', 1, 'USD', 'AMC Theaters', 'Credit Card');
+        }
+
+        // --- SHOPPING ---
+        // Amazon orders (bi-weekly after 2008)
+        if (year >= 2008) {
+          for (let a = 0; a < 3; a++) {
+            const aDay = 7 + a * 10 + Math.floor(Math.random() * 3);
+            const amazon = (30 + Math.random() * 70) * mult;
+            insertTx.run('Online Shopping - Amazon', amazon, `${ym}-${String(Math.min(aDay, 28)).padStart(2, '0')}`, catId('Shopping'), 'expense', 1, 'USD', 'Amazon.com', 'Credit Card');
+          }
+        }
+        // Clothing (seasonal, quarterly)
+        if (month === 3 || month === 9) {
+          const clothing = (80 + Math.random() * 120) * mult;
+          const cDay = 15 + Math.floor(Math.random() * 5);
+          insertTx.run('Clothing - Seasonal', clothing, `${ym}-${String(Math.min(cDay, 28)).padStart(2, '0')}`, catId('Shopping'), 'expense', 1, 'USD', 'Macy\'s', 'Credit Card');
+        }
+        // Holiday shopping (December)
+        if (month === 12) {
+          const holiday = (200 + Math.random() * 200) * mult;
+          const hDay = 15 + Math.floor(Math.random() * 10);
+          insertTx.run('Holiday Gift Shopping', holiday, `${ym}-${String(Math.min(hDay, 26)).padStart(2, '0')}`, catId('Shopping'), 'expense', 1, 'USD', 'Various Retailers', 'Credit Card');
+        }
+
+        // --- EDUCATION ---
+        // Books/courses (occasional)
+        for (let e = 0; e < 2; e++) {
+          const eDay = 10 + e * 12 + Math.floor(Math.random() * 5);
+          const edu = (25 + Math.random() * 75) * mult;
+          insertTx.run('Books / Online Course', edu, `${ym}-${String(Math.min(eDay, 28)).padStart(2, '0')}`, catId('Education'), 'expense', 1, 'USD', 'Barnes & Noble', 'Credit Card');
+        }
+        // Professional certification (annual, February)
+        if (month === 2 && year >= 2010) {
+          const cert = (200 + Math.random() * 300) * mult;
+          insertTx.run('Professional Certification Fee', cert, `${ym}-15`, catId('Education'), 'expense', 1, 'USD', 'Professional Association', 'Credit Card');
+        }
+
+        // --- PERSONAL CARE ---
+        for (let pc = 0; pc < 3; pc++) {
+          const pcDay = 6 + pc * 9 + Math.floor(Math.random() * 3);
+          const personal = (25 + Math.random() * 35) * mult;
+          insertTx.run('Personal Care Items', personal, `${ym}-${String(Math.min(pcDay, 28)).padStart(2, '0')}`, catId('Personal Care'), 'expense', 1, 'USD', 'Target', 'Credit Card');
+        }
+        // Haircut (bi-monthly)
+        const haircutDay = 20 + Math.floor(Math.random() * 5);
+        const haircut = (25 + Math.random() * 15) * mult;
+        insertTx.run('Haircut / Barber', haircut, `${ym}-${String(Math.min(haircutDay, 28)).padStart(2, '0')}`, catId('Personal Care'), 'expense', 1, 'USD', 'Local Barber Shop', 'Cash');
+
+        // --- TRAVEL (seasonal, twice a year after 2010) ---
+        if (year >= 2010 && (month === 7 || month === 12)) {
+          const travelBase = (1200 + Math.random() * 800) * mult;
+          const travelDay = 5 + Math.floor(Math.random() * 10);
+          insertTx.run('Vacation Travel Expense', travelBase, `${ym}-${String(Math.min(travelDay, 28)).padStart(2, '0')}`, catId('Travel'), 'expense', 1, 'USD', 'Travel Expenses', 'Credit Card');
+        }
+
+        // --- ADDITIONAL VARIANCE: Random small expenses ---
+        // Occasional coffee/lunch at work
+        for (let i = 0; i < 8; i++) {
+          const lDay = 2 + i * 3 + Math.floor(Math.random() * 2);
+          const lunch = (8 + Math.random() * 12) * mult;
+          insertTx.run('Lunch at Work', lunch, `${ym}-${String(Math.min(lDay, 28)).padStart(2, '0')}`, catId('Food & Dining'), 'expense', 1, 'USD', 'Office Cafeteria', 'Cash');
+        }
+      }
     }
   }
 }
