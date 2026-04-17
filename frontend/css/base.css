@@ -338,11 +338,20 @@ body {
   font-size: 12px;
   margin-top: 4px;
 }
-.stat-card-change.positive {
+.stat-card-change.positive,
+.stat-card-delta.positive {
   color: var(--success);
 }
-.stat-card-change.negative {
+.stat-card-change.negative,
+.stat-card-delta.negative {
   color: var(--danger);
+}
+.stat-card-delta {
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .chart-container {

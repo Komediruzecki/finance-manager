@@ -1757,6 +1757,34 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
     ytdSummary.net = ytdSummary.income - ytdSummary.expense;
 
     // Get currency setting
+    // Previous period comparison
+    let prevStartDate, prevEndDate;
+    if (m) {
+      // Previous month
+      const pm = m == 1 ? 12 : m - 1;
+      const py = m == 1 ? y - 1 : y;
+      prevStartDate = `${py}-${String(pm).padStart(2, "0")}-01`;
+      const nextPm = pm == 12 ? 1 : pm + 1;
+      const nextPy = pm == 12 ? py + 1 : py;
+      prevEndDate = `${nextPy}-${String(nextPm).padStart(2, "0")}-01`;
+    } else {
+      // Previous year
+      prevStartDate = `${y - 1}-01-01`;
+      prevEndDate = `${y}-01-01`;
+    }
+
+    const prevMonthly = db
+      .prepare(
+        `SELECT type, SUM(COALESCE(amount_local, amount)) as total FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? AND date < ? GROUP BY type`,
+      )
+      .all(...pids, prevStartDate, prevEndDate);
+    const prevSummary = { income: 0, expense: 0 };
+    for (const r of prevMonthly) {
+      if (r.type === "income") prevSummary.income = r.total;
+      else if (r.type === "expense") prevSummary.expense = r.total;
+    }
+
+    // Get currency setting
     const currencyRow = db
       .prepare(
         `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`,
@@ -1766,6 +1794,7 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
 
     res.json({
       summary,
+      prevSummary,
       recent,
       ytd: ytdSummary,
       month: m ? `${y}-${String(m).padStart(2, "0")}` : y,
