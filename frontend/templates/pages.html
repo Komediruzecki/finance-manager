@@ -44,6 +44,20 @@
       <div class="stat-card networth"><div class="stat-card-label">Net Worth</div><div class="stat-card-value" id="stat-networth">$0</div><div class="stat-card-delta" id="delta-networth"></div></div>
     </div>
 
+    <div class="card" id="savings-rate-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Savings Rate Goal</div>
+          <div class="card-subtitle" id="savings-rate-subtitle">Loading...</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" class="form-control" id="savings-rate-goal-input" min="1" max="100" placeholder="Target %" style="width:80px;font-size:13px;">
+          <button class="btn btn-secondary btn-sm" onclick="dashboard.setSavingsRateGoal()">Set Goal</button>
+        </div>
+      </div>
+      <div id="savings-rate-content"></div>
+    </div>
+
     <div class="card" id="budget-alerts-card" style="display:none;">
       <div class="card-header"><div><div class="card-title">Budget Alerts</div><div class="card-subtitle" id="budget-alerts-subtitle">Categories nearing budget limits</div></div></div>
       <div id="budget-alerts-list"></div>
@@ -286,6 +300,9 @@
     </div>
 
     <div id="loans-list"></div>
+
+    <!-- Detailed Amortization Table Container -->
+    <div id="amortization-table-container" style="display:none;"></div>
   </div>
 
   <!-- RETIREMENT CALCULATOR -->

@@ -443,8 +443,9 @@ const loans = {
     const s = result.summary;
 
     details.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
         <button class="btn btn-secondary btn-sm" onclick="loans.calculate(${loanId}, true)" title="Recalculate with current loan data">Recalculate</button>
+        <button class="btn btn-primary btn-sm" onclick="loans.toggleDetailedAmortization(${loanId})" id="amort-toggle-${loanId}">View Amortization</button>
       </div>
       <div class="loan-summary-grid">
         <div class="loan-summary-stat">
@@ -677,5 +678,224 @@ const loans = {
         },
       },
     });
+  },
+
+  toggleDetailedAmortization(loanId) {
+    const container = document.getElementById('amortization-table-container');
+    const toggleBtn = document.getElementById(`amort-toggle-${loanId}`);
+    const isVisible = container.style.display !== 'none';
+
+    if (isVisible) {
+      container.style.display = 'none';
+      toggleBtn.textContent = 'View Amortization';
+    } else {
+      if (this.loanCache[loanId]) {
+        this.renderDetailedAmortization(loanId, this.loanCache[loanId].result, this.loanCache[loanId].loan);
+        container.style.display = 'block';
+        toggleBtn.textContent = 'Hide Amortization';
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        toast('Please calculate the loan first', 'info');
+      }
+    }
+  },
+
+  generateAmortizationData(loan) {
+    const data = [];
+    const startDate = new Date(loan.start_date);
+    const schedule = loan.schedule || [];
+
+    if (!schedule.length) return data;
+
+    let cumulativeInterest = 0;
+    let cumulativePrincipal = 0;
+    const initialBalance = schedule[0] ? schedule[0].balance + schedule[0].principal : loan.principal;
+
+    schedule.forEach((row, idx) => {
+      cumulativeInterest += row.interest;
+      cumulativePrincipal += row.principal;
+
+      const paymentDate = new Date(startDate);
+      paymentDate.setMonth(paymentDate.getMonth() + row.month - 1);
+
+      data.push({
+        month: row.month,
+        paymentNum: row.month,
+        beginningBalance: idx === 0 ? initialBalance : (schedule[idx - 1].balance),
+        paymentAmount: row.payment + row.prepayment,
+        principalPortion: row.principal,
+        interestPortion: row.interest,
+        endingBalance: Math.max(0, row.balance),
+        cumulativeInterest,
+        cumulativePrincipal,
+        rate: row.rate,
+        prepayment: row.prepayment,
+        date: paymentDate.toISOString().split('T')[0],
+      });
+    });
+
+    return data;
+  },
+
+  renderDetailedAmortization(loanId, result, loan) {
+    const container = document.getElementById('amortization-table-container');
+    const currency = this.currentCurrency;
+    const schedule = result.schedule;
+
+    if (!schedule || !schedule.length) {
+      container.innerHTML = '<div class="card"><p>No schedule data available</p></div>';
+      return;
+    }
+
+    const rows = this.generateAmortizationData({ ...loan, schedule });
+
+    // Calculate totals
+    const totalPayment = rows.reduce((sum, r) => sum + r.paymentAmount, 0);
+    const totalPrincipal = rows.reduce((sum, r) => sum + r.principalPortion, 0);
+    const totalInterest = rows.reduce((sum, r) => sum + r.interestPortion, 0);
+    const isLongTable = rows.length > 24;
+
+    const tableRows = rows.map((row, idx) => {
+      const isYearMarker = row.month % 12 === 0;
+      const rowClass = isYearMarker ? 'year-marker' : '';
+
+      return `<tr class="${rowClass}">
+        <td>${row.month}</td>
+        <td>${row.date}</td>
+        <td class="td-amount">${formatCurrency(row.paymentAmount, currency)}</td>
+        <td class="td-amount income">${formatCurrency(row.principalPortion, currency)}</td>
+        <td class="td-amount expense">${formatCurrency(row.interestPortion, currency)}</td>
+        <td style="font-weight:600;">${formatCurrency(row.endingBalance, currency)}</td>
+        <td>${row.rate.toFixed(3)}%</td>
+        ${row.prepayment > 0 ? `<td class="td-amount" style="color:var(--success);font-weight:600;">${formatCurrency(row.prepayment, currency)}</td>` : '<td>-</td>'}
+        <td>${formatCurrency(row.cumulativePrincipal, currency)}</td>
+        <td>${formatCurrency(row.cumulativeInterest, currency)}</td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="card" style="margin-top:24px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Detailed Amortization Schedule</div>
+            <div class="card-subtitle">${loan.name} - ${rows.length} payments</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-ghost btn-sm" onclick="loans.exportAmortizationCsv(${loanId})">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Export CSV
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="loans.closeDetailedAmortization(${loanId})">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="amort-detailed-wrap${isLongTable ? ' scrollable' : ''}">
+          <table class="amort-detailed-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Payment</th>
+                <th>Principal</th>
+                <th>Interest</th>
+                <th>Balance</th>
+                <th>Rate</th>
+                <th>Prepayment</th>
+                <th>Cum. Principal</th>
+                <th>Cum. Interest</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td colspan="2"><strong>Totals</strong></td>
+                <td class="td-amount"><strong>${formatCurrency(totalPayment, currency)}</strong></td>
+                <td class="td-amount income"><strong>${formatCurrency(totalPrincipal, currency)}</strong></td>
+                <td class="td-amount expense"><strong>${formatCurrency(totalInterest, currency)}</strong></td>
+                <td colspan="5"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);display:flex;gap:16px;">
+          <span><span style="background:rgba(16,185,129,.2);padding:2px 6px;border-radius:4px;margin-right:4px;">&nbsp;</span> Year End</span>
+        </div>
+      </div>
+    `;
+  },
+
+  closeDetailedAmortization(loanId) {
+    const container = document.getElementById('amortization-table-container');
+    const toggleBtn = document.getElementById(`amort-toggle-${loanId}`);
+    container.style.display = 'none';
+    toggleBtn.textContent = 'View Amortization';
+  },
+
+  exportAmortizationCsv(loanId) {
+    if (!this.loanCache[loanId]) {
+      toast('Please calculate the loan first', 'error');
+      return;
+    }
+
+    const { result, loan } = this.loanCache[loanId];
+    const rows = this.generateAmortizationData({ ...loan, schedule: result.schedule });
+
+    // CSV header
+    const headers = [
+      'Month',
+      'Date',
+      'Payment',
+      'Principal',
+      'Interest',
+      'Balance',
+      'Rate (%)',
+      'Prepayment',
+      'Cumulative Principal',
+      'Cumulative Interest',
+    ];
+
+    // Build CSV content
+    let csvContent = headers.join(',') + '\n';
+
+    rows.forEach(row => {
+      const values = [
+        row.month,
+        row.date,
+        row.paymentAmount.toFixed(2),
+        row.principalPortion.toFixed(2),
+        row.interestPortion.toFixed(2),
+        row.endingBalance.toFixed(2),
+        row.rate.toFixed(3),
+        row.prepayment.toFixed(2),
+        row.cumulativePrincipal.toFixed(2),
+        row.cumulativeInterest.toFixed(2),
+      ];
+      csvContent += values.join(',') + '\n';
+    });
+
+    // Add totals row
+    const totalPayment = rows.reduce((sum, r) => sum + r.paymentAmount, 0);
+    const totalPrincipal = rows.reduce((sum, r) => sum + r.principalPortion, 0);
+    const totalInterest = rows.reduce((sum, r) => sum + r.interestPortion, 0);
+
+    csvContent += `\n"Totals",,${totalPayment.toFixed(2)},${totalPrincipal.toFixed(2)},${totalInterest.toFixed(2)}\n`;
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${loan.name.replace(/[^a-z0-9]/gi, '_')}_amortization.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast('CSV exported successfully', 'success');
   },
 };

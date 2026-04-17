@@ -152,6 +152,9 @@ const dashboard = {
     // Budget alerts
     this.loadBudgetAlerts();
 
+    // Savings rate
+    this.loadSavingsRate();
+
     // Recent transactions
     const rt = document.getElementById('recent-transactions');
     if (!data.recent || data.recent.length === 0) {
@@ -436,6 +439,114 @@ const dashboard = {
       if (card) card.style.display = 'none';
     }
   },
+  async loadSavingsRate() {
+    const card = document.getElementById('savings-rate-card');
+    if (!card) return;
+    try {
+      const year = document.getElementById('dashboard-year').value;
+      const month = document.getElementById('dashboard-month-select').value;
+
+      // Fetch current month summary for savings rate calculation
+      let summaryUrl = '/dashboard/summary';
+      if (year && month) summaryUrl += `?year=${year}&month=${month}`;
+      else if (year) summaryUrl += `?year=${year}`;
+
+      const [summaryData, allSettings] = await Promise.all([
+        api(summaryUrl),
+        api('/api/settings'),
+      ]);
+
+      const income = summaryData.summary?.income || 0;
+      const expense = summaryData.summary?.expense || 0;
+      const goal = parseFloat(allSettings.savings_rate_goal) || null;
+
+      const content = document.getElementById('savings-rate-content');
+      const subtitle = document.getElementById('savings-rate-subtitle');
+      const goalInput = document.getElementById('savings-rate-goal-input');
+
+      if (goalInput && goal) goalInput.value = goal;
+
+      // No goal set — show prompt
+      if (!goal) {
+        card.style.display = 'block';
+        subtitle.textContent = 'Set a savings rate target to track your progress';
+        content.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 8px;opacity:.4;"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p style="font-size:14px;margin:0;">Enter your target savings rate above and click "Set Goal"</p>
+        </div>`;
+        return;
+      }
+
+      // Calculate current savings rate
+      const currentRate = income > 0 ? ((income - expense) / income) * 100 : 0;
+
+      // Get previous month for MoM
+      let prevRate = null;
+      if (year && month) {
+        let prevYear = parseInt(year);
+        let prevMonth = parseInt(month) - 1;
+        if (prevMonth < 1) { prevMonth = 12; prevYear--; }
+        const prevData = await api(`/dashboard/summary?year=${prevYear}&month=${String(prevMonth).padStart(2, '0')}`);
+        const prevIncome = prevData.summary?.income || 0;
+        const prevExpense = prevData.summary?.expense || 0;
+        prevRate = prevIncome > 0 ? ((prevIncome - prevExpense) / prevIncome) * 100 : 0;
+      }
+
+      // Color coding
+      const progressPct = Math.min(100, (currentRate / goal) * 100);
+      let statusColor, statusLabel;
+      if (currentRate >= goal) {
+        statusColor = 'var(--success)';
+        statusLabel = 'On Track';
+      } else if (currentRate >= goal * 0.5) {
+        statusColor = '#f59e0b';
+        statusLabel = 'Getting There';
+      } else {
+        statusColor = 'var(--error)';
+        statusLabel = 'Below Target';
+      }
+
+      // Month label
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const monthLabel = month ? `${monthNames[parseInt(month) - 1]}` : (year ? year : 'All Time');
+
+      // MoM delta
+      let momHtml = '';
+      if (prevRate !== null) {
+        const delta = currentRate - prevRate;
+        const arrow = delta >= 0 ? '▲' : '▼';
+        const momColor = delta >= 0 ? 'var(--success)' : 'var(--error)';
+        momHtml = `<span style="font-size:12px;color:${momColor};font-weight:500;margin-left:8px;">${arrow} ${Math.abs(delta).toFixed(1)}% vs last month</span>`;
+      }
+
+      card.style.display = 'block';
+      subtitle.textContent = `${monthLabel} ${year || ''}`;
+
+      content.innerHTML = `
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
+            <span style="font-size:28px;font-weight:700;color:${statusColor};">${currentRate.toFixed(1)}%</span>
+            <span style="font-size:14px;color:var(--text-secondary);">savings rate</span>
+            <span style="margin-left:auto;font-size:12px;font-weight:600;color:${statusColor};background:${statusColor}15;padding:2px 8px;border-radius:10px;">${statusLabel}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-secondary);">
+            Target: <strong>${goal}%</strong>${momHtml}
+          </div>
+        </div>
+        <div style="background:var(--bg-secondary);border-radius:6px;height:10px;overflow:hidden;margin-bottom:12px;">
+          <div style="width:${Math.min(100, progressPct)}%;height:100%;background:${statusColor};border-radius:6px;transition:width .4s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);">
+          <span>${currentRate.toFixed(1)}% of ${goal}% goal</span>
+          <span>${income > 0 ? `Balance: ${formatCurrency(income - expense, settings.local_currency || 'EUR')}` : 'No income data'}</span>
+        </div>`;
+    } catch (e) {
+      console.warn('Savings rate load failed:', e);
+      const card = document.getElementById('savings-rate-card');
+      if (card) card.style.display = 'none';
+    }
+  },
+  async loadBudgetAlerts() {
     const card = document.getElementById('budget-alerts-card');
     if (!card) return;
     try {
@@ -489,6 +600,27 @@ const dashboard = {
         .join('');
     } catch (e) {
       card.style.display = 'none';
+    }
+  },
+  async setSavingsRateGoal() {
+    const input = document.getElementById('savings-rate-goal-input');
+    if (!input) return;
+    const value = parseFloat(input.value);
+    if (isNaN(value) || value <= 0 || value > 100) {
+      input.style.borderColor = 'var(--error)';
+      setTimeout(() => { input.style.borderColor = ''; }, 1500);
+      return;
+    }
+    try {
+      await api('/api/settings', {
+        method: 'PUT',
+        body: { savings_rate_goal: value },
+      });
+      input.value = value;
+      input.style.borderColor = '';
+      this.loadSavingsRate();
+    } catch (e) {
+      console.error('Failed to save savings rate goal:', e);
     }
   },
 };

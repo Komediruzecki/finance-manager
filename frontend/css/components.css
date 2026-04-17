@@ -761,3 +761,149 @@ th[data-sort].sorted .sort-arrow {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================
+   Detailed Amortization Table Styles
+   ============================================ */
+
+.amort-detailed-wrap {
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+
+.amort-detailed-wrap.scrollable {
+  max-height: 600px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.amort-detailed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 800px;
+}
+
+.amort-detailed-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--card-bg);
+}
+
+.amort-detailed-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.amort-detailed-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.amort-detailed-table tbody tr:nth-child(even) {
+  background: var(--bg-secondary);
+}
+
+.amort-detailed-table tbody tr:hover {
+  background: var(--hover-bg);
+}
+
+.amort-detailed-table tbody tr.year-marker {
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom: 2px solid var(--success);
+}
+
+.amort-detailed-table tbody tr.year-marker td {
+  font-weight: 600;
+  color: var(--success);
+}
+
+.amort-detailed-table tbody tr.prepayment-row {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.amort-detailed-table tbody tr.rate-change-row {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.amort-detailed-table tfoot {
+  background: var(--bg-secondary);
+  border-top: 2px solid var(--border);
+}
+
+.amort-detailed-table tfoot td {
+  font-weight: 600;
+  padding: 12px;
+  border-bottom: none;
+}
+
+.amort-detailed-table .totals-row {
+  background: var(--bg-secondary);
+}
+
+.amort-detailed-table .td-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Existing amortization table styles */
+.amort-table {
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+
+.amort-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.amort-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.amort-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.amort-table tbody tr:nth-child(even) {
+  background: var(--bg-secondary);
+}
+
+.amort-table tbody tr:hover {
+  background: var(--hover-bg);
+}
+
+.amort-table tbody tr.prepayment-row {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.amort-table tbody tr.rate-change-row {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.amort-table .td-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
