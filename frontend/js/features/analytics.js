@@ -14,15 +14,24 @@ const analytics = {
       if (!years || years.length === 0) return;
       select.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join('');
 
-      // Populate sankey month dropdown
-      const currentYear = new Date().getFullYear();
-      const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
-      sankeyMonth.innerHTML = '<option value="">Select Month</option>' +
-        monthNames.slice(1).map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${i + 1 === parseInt(currentMonth) ? 'selected' : ''}>${m}</option>`).join('');
+      // Populate sankey month dropdown with last 12 months
+      const now = new Date();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const currentYear = now.getFullYear();
 
-      // Now load analytics data
+      let options = '<option value="">Select Month</option>';
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(currentYear, now.getMonth() - i, 1);
+        const val = String(d.getMonth() + 1).padStart(2, '0');
+        const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        options += `<option value="${val}" ${val === currentMonth ? 'selected' : ''}>${label}</option>`;
+      }
+      sankeyMonth.innerHTML = options;
+
+      // Now load analytics data and sankey for current month
       this.load();
+      this.loadSankey(); // Auto-load sankey for current month
     } catch (e) {
       console.error('Failed to load years:', e);
     }
