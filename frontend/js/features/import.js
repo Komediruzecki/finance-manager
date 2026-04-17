@@ -142,9 +142,9 @@ const importData = {
         document.getElementById('map-beneficiary').value = i;
       if (lower.includes('payor') || lower.includes('from') || lower.includes('sender'))
         document.getElementById('map-payor').value = i;
-      if (lower.includes('category') || lower.includes('type'))
+      if (lower === 'category' || lower === 'cat')
         document.getElementById('map-category').value = i;
-      if (lower.includes('currency')) document.getElementById('map-currency').value = i;
+      if (lower === 'currency') document.getElementById('map-currency').value = i;
       if (lower.includes('local')) document.getElementById('map-amount_local').value = i;
       if (lower.includes('means') || lower.includes('method') || lower.includes('payment'))
         document.getElementById('map-means_of_payment').value = i;
