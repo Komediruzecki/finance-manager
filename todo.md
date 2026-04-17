@@ -51,4 +51,4 @@
 - [ ] **Transaction search** — Full-text search across transaction descriptions and notes
 - [ ] **Tags** — Add free-form tags to transactions for flexible categorization
 - [ ] **PWA support** — Add manifest and service worker for installable app on mobile
-- [ ] **API rate limiting** — Add rate limiting to protect the API
+- [x] **API rate limiting** — Add rate limiting to protect the API
