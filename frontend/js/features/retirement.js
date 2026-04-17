@@ -10,6 +10,8 @@ const retirement = {
   },
   init() {
     this.currentCurrency = settings.local_currency || 'EUR';
+    this.loadEmergencyFund();
+    compoundInterest.calculate();
   },
   handleCountryChange() {
     const country = document.getElementById('ret-country').value;
@@ -52,6 +54,69 @@ const retirement = {
       this.renderResults(result);
     } catch (e) {
       toast('Calculation failed: ' + e.message, 'error');
+    }
+  },
+  async loadEmergencyFund() {
+    const section = document.getElementById('emergency-fund-section');
+    if (!section) return;
+    try {
+      const data = await api('/calculator/emergency-fund');
+      const currency = this.currentCurrency;
+
+      document.getElementById('ef-fund-subtitle').textContent =
+        `Based on last ${data.monthsWithData} months of transactions`;
+      document.getElementById('ef-monthly-expenses').textContent =
+        formatCurrency(data.avgMonthlyExpenses, currency);
+      document.getElementById('ef-current-fund').textContent =
+        formatCurrency(data.totalEmergencyFund, currency);
+
+      const list = document.getElementById('ef-coverage-list');
+      list.innerHTML = (data.coverage || [])
+        .map((c) => {
+          const statusColor =
+            c.status === 'complete'
+              ? 'var(--success)'
+              : c.status === 'partial'
+              ? '#f59e0b'
+              : 'var(--error)';
+          const statusBg =
+            c.status === 'complete'
+              ? 'rgba(16,185,129,0.08)'
+              : c.status === 'partial'
+              ? 'rgba(245,158,11,0.08)'
+              : 'rgba(239,68,68,0.08)';
+          const statusLabel =
+            c.status === 'complete'
+              ? 'Funded'
+              : c.status === 'partial'
+              ? 'In Progress'
+              : 'Not Funded';
+          return `<div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div>
+                <span style="font-weight:600;">${c.label}</span>
+                <span style="font-size:12px;color:var(--text-secondary);margin-left:8px;">${c.months} months</span>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-weight:600;">${formatCurrency(c.current, currency)}</span>
+                <span style="color:var(--text-secondary);font-size:12px;"> / ${formatCurrency(c.required, currency)}</span>
+              </div>
+            </div>
+            <div style="background:var(--bg-secondary);border-radius:4px;height:8px;overflow:hidden;">
+              <div style="width:${c.coveragePct}%;height:100%;background:${statusColor};border-radius:4px;transition:width .3s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;">
+              <span style="font-size:12px;color:${statusColor};font-weight:500;">${statusLabel}</span>
+              <span style="font-size:12px;color:var(--text-secondary);">${c.coveragePct}%</span>
+            </div>
+          </div>`;
+        })
+        .join('');
+    } catch (e) {
+      document.getElementById('ef-fund-subtitle').textContent =
+        'Connect accounts & transactions to track your emergency fund';
+      document.getElementById('emergency-fund-content').innerHTML =
+        '<p style="color:var(--text-secondary);text-align:center;padding:20px;">Add savings accounts and record transactions to see your emergency fund status.</p>';
     }
   },
   renderResults(result) {
@@ -169,3 +234,117 @@ const retirement = {
   },
 };
 window.retirement = retirement;
+
+// ==================== COMPOUND INTEREST PROJECTOR ====================
+const compoundInterest = {
+  chart: null,
+  _debounceTimer: null,
+  scheduleUpdate() {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => this.calculate(), 400);
+  },
+  async calculate() {
+    const payload = {
+      principal: parseFloat(document.getElementById('ci-principal').value) || 0,
+      monthlyContribution: parseFloat(document.getElementById('ci-contrib').value) || 0,
+      annualReturn: parseFloat(document.getElementById('ci-return').value) || 7,
+      years: parseInt(document.getElementById('ci-years').value) || 10,
+    };
+    try {
+      const resp = await fetch(API + '/calculator/compound-interest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Profile-Id': profile.currentId },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (data.error) { toast(data.error, 'error'); return; }
+      this.render(data);
+    } catch (e) {
+      toast('Calculation failed: ' + e.message, 'error');
+    }
+  },
+  render(data) {
+    const currency = retirement.currentCurrency;
+    const cc = chartColors();
+
+    document.getElementById('ci-final-balance').textContent = formatCurrency(data.finalBalance, currency);
+    document.getElementById('ci-total-contrib').textContent = formatCurrency(data.totalContributions, currency);
+    document.getElementById('ci-total-interest').textContent = formatCurrency(data.totalInterest, currency);
+    document.getElementById('ci-export-btn').style.display = '';
+
+    // Scenario cards
+    const sc = document.getElementById('ci-scenarios');
+    sc.innerHTML = (data.scenarios || []).map(s =>
+      `<div style="background:rgba(${s.return === 4 ? '59,130,246' : s.return === 6 ? '16,185,129' : '139,92,246'},0.08);border-left:3px solid ${s.color};padding:10px 12px;border-radius:6px;margin-bottom:6px;font-size:13px;">
+        <span style="font-weight:600;">${s.name} (${s.return}%)</span>
+        <span style="color:var(--text-secondary);margin-left:8px;">${formatCurrency(s.finalBalance, currency)}</span>
+      </div>`
+    ).join('');
+
+    // Chart: balance, contributions, interest
+    const proj = data.projection || [];
+    if (this.chart) this.chart.destroy();
+    const ctx = document.getElementById('ci-chart').getContext('2d');
+    this.chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: proj.map(p => `Year ${p.year}`),
+        datasets: [
+          {
+            label: 'Total Balance',
+            data: proj.map(p => p.balance),
+            borderColor: cc.primary,
+            backgroundColor: cc.primaryBg,
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+          },
+          {
+            label: 'Contributions',
+            data: proj.map(p => p.contributions),
+            borderColor: '#f59e0b',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0,
+            borderWidth: 2,
+            borderDash: [4, 4],
+            pointRadius: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, color: cc.legend } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw, currency)}`,
+            },
+          },
+        },
+        scales: {
+          y: {
+            ticks: { callback: v => formatCurrency(v, currency), color: cc.text },
+            grid: { color: cc.grid },
+          },
+          x: {
+            ticks: { color: cc.text, maxTicksLimit: 10 },
+            grid: { color: cc.grid },
+          },
+        },
+      },
+    });
+  },
+  exportChart() {
+    const canvas = document.getElementById('ci-chart');
+    if (!canvas) return;
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'compound-interest-projection.png';
+    a.click();
+  },
+};
+window.compoundInterest = compoundInterest;

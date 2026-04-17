@@ -11,13 +11,13 @@
 ## Finance Calculations
 - [x] **Retirement calculator** — Model retirement readiness based on current savings, expenses, and withdrawal rate (consider different countries/cost of living)
 - [x] **FIRE calculator** — Calculate when financial independence is achievable with configurable savings rate
-- [ ] **Compound interest projector** — Visualize growth of savings/investments over time with different contribution scenarios
+- [x] **Compound interest projector** — Visualize growth of savings/investments over time with different contribution scenarios
 - [x] **Savings goal tracker** — Set target amounts with deadlines, track progress bars
 - [ ] **Mortgage vs rent comparison** — Calculate total cost of ownership over time including maintenance, opportunity cost
-- [ ] **Emergency fund tracker** — Calculate recommended emergency fund (3/6/12 months) vs current savings
+- [x] **Emergency fund tracker** — Calculate recommended emergency fund (3/6/12 months) vs current savings
 
 ## Budgeting
-- [ ] **Budget alerts** — Notify when a category is nearing its monthly budget limit
+- [x] **Budget alerts** — Notify when a category is nearing its monthly budget limit
 - [ ] **Budget rollover** — Allow unused budget to carry forward to next month
 - [ ] **Zero-based budgeting** — Envelope-style where every dollar gets assigned to a category
 - [x] **Budget vs actual report** — Side-by-side comparison of budgeted vs spent per category
