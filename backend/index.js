@@ -260,6 +260,19 @@ app.post("/api/auth/logout", apiRateLimiter, (req, res) => {
 app.get("/api/auth/me", apiRateLimiter, requireAuth, (req, res) => {
   res.json({ userId: req.session.userId, username: req.session.username });
 });
+
+// ==================== APP INFO ====================
+const APP_VERSION = '1.0.0';
+const APP_REPO = 'https://github.com/Komediruzecki/finance-manager';
+
+app.get("/api/app-info", (req, res) => {
+  res.json({
+    version: APP_VERSION,
+    repository: APP_REPO,
+    nodeVersion: process.version,
+  });
+});
+
 // ========================
 app.get("/api/profiles", apiRateLimiter, (req, res) => {
   try {
