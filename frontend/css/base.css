@@ -260,6 +260,7 @@ body {
   box-shadow: var(--shadow);
   padding: 20px;
   overflow-x: hidden;
+  margin-bottom: 16px;
 }
 .card-header {
   display: flex;
