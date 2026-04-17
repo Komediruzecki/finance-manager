@@ -1,11 +1,10 @@
 # Finance Manager — Improvement Ideas
-
 ## Charts & Visualization
-- [ ] **Interactive chart drill-down** — Click a bar/slice to zoom into that period
+- [x] **Interactive chart drill-down** — Click a bar/slice to zoom into that period
 - [x] **Chart export** — Download charts as PNG/SVG
 - [x] **Net worth over time chart** — Line chart on dashboard showing net worth progression
-- [ ] **Comparison mode** — Overlay two periods on the same chart to compare spending
-- [ ] **Category heatmap** — Calendar heatmap of daily spending by category
+- [x] **Comparison mode** — Overlay two periods on the same chart to compare spending
+- [x] **Category heatmap** — Calendar heatmap of daily spending by category
 - [x] **Budget vs Actual Flow** — Sankey diagram showing budgeted vs actual spending by category
 
 ## Finance Calculations
@@ -13,12 +12,12 @@
 - [x] **FIRE calculator** — Calculate when financial independence is achievable with configurable savings rate
 - [x] **Compound interest projector** — Visualize growth of savings/investments over time with different contribution scenarios
 - [x] **Savings goal tracker** — Set target amounts with deadlines, track progress bars
-- [ ] **Mortgage vs rent comparison** — Calculate total cost of ownership over time including maintenance, opportunity cost
+- [x] **Mortgage vs rent comparison** — Calculate total cost of ownership over time including maintenance, opportunity cost
 - [x] **Emergency fund tracker** — Calculate recommended emergency fund (3/6/12 months) vs current savings
 
 ## Budgeting
 - [x] **Budget alerts** — Notify when a category is nearing its monthly budget limit
-- [ ] **Budget rollover** — Allow unused budget to carry forward to next month
+- [x] **Budget rollover** — Allow unused budget to carry forward to next month
 - [ ] **Zero-based budgeting** — Envelope-style where every dollar gets assigned to a category
 - [x] **Budget vs actual report** — Side-by-side comparison of budgeted vs spent per category
 
@@ -26,7 +25,7 @@
 - [ ] **Live currency conversion** — Fetch real-time exchange rates for multi-currency tracking
 - [x] **Recurring transactions** — Mark transactions as recurring, auto-populate future entries
 - [x] **Data export** — Full CSV/JSON backup export of all transactions and categories
-- [ ] **Improved CSV import** — Smart detection of column types, duplicate detection
+- [x] **Improved CSV import** — Smart detection of column types, duplicate detection
 
 ## Reports
 - [x] **Monthly PDF report** — Generate a downloadable monthly summary report
@@ -45,18 +44,18 @@
 
 ## Accounts & Net Worth
 - [x] **Multi-account net worth** — Aggregate all account balances (giro, savings, investment) into net worth dashboard
-- [ ] **Account reconciliation** — Mark transactions as reconciled against bank statements
+- [x] **Account reconciliation** — Mark transactions as reconciled against bank statements
 - [x] **Account balance history** — Track and display balance changes over time per account
 
 ## Additional Ideas
-- [ ] **Bill reminder / due date tracker** — Mark recurring transactions as bills with due dates, get reminders
+- [x] **Bill reminder / due date tracker** — Mark recurring transactions as bills with due dates, get reminders
 - [ ] **Savings rate goal** — Set a target savings rate % and track progress monthly
 - [x] **Month-over-month trends** — Automatic comparison with previous month/quarter on dashboard
-- [ ] **Recurring transaction insights** — Show upcoming recurring charges this month
+- [x] **Recurring transaction insights** — Show upcoming recurring charges this month
 - [ ] **Loan amortization table** — Detailed month-by-month breakdown with export option
 
 ## Technical
 - [x] **Transaction search** — Full-text search across transaction descriptions and notes
-- [ ] **Tags** — Add free-form tags to transactions for flexible categorization
+- [x] **Tags** — Add free-form tags to transactions for flexible categorization
 - [ ] **PWA support** — Add manifest and service worker for installable app on mobile
 - [x] **API rate limiting** — Add rate limiting to protect the API
