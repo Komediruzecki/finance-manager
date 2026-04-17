@@ -44,6 +44,11 @@
       <div class="stat-card networth"><div class="stat-card-label">Net Worth</div><div class="stat-card-value" id="stat-networth">$0</div><div class="stat-card-delta" id="delta-networth"></div></div>
     </div>
 
+    <div class="card" id="budget-alerts-card" style="display:none;">
+      <div class="card-header"><div><div class="card-title">Budget Alerts</div><div class="card-subtitle" id="budget-alerts-subtitle">Categories nearing budget limits</div></div></div>
+      <div id="budget-alerts-list"></div>
+    </div>
+
     <div class="grid-2">
       <div class="card">
         <div class="card-header"><div><div class="card-title">Spending by Category</div><div class="card-subtitle">This month's expenses</div></div>
@@ -291,6 +296,61 @@
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         </button>
         <canvas id="ret-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Emergency Fund Tracker -->
+    <div class="card" id="emergency-fund-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Emergency Fund Tracker</div>
+          <div class="card-subtitle" id="ef-fund-subtitle">Loading...</div>
+        </div>
+      </div>
+      <div id="emergency-fund-content">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px;">
+          <div>
+            <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">Avg Monthly Expenses</div>
+            <div style="font-size:22px;font-weight:700;" id="ef-monthly-expenses">-</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">Emergency Savings</div>
+            <div style="font-size:22px;font-weight:700;color:var(--success);" id="ef-current-fund">-</div>
+          </div>
+        </div>
+        <div id="ef-coverage-list"></div>
+      </div>
+    </div>
+
+    <!-- Compound Interest Projector -->
+    <div class="card" id="compound-section">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Compound Interest Projector</div>
+          <div class="card-subtitle">Visualize investment growth over time</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="compoundInterest.exportChart()" title="Export chart" id="ci-export-btn" style="display:none;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
+      </div>
+      <div class="compound-layout">
+        <div class="compound-left">
+          <div class="grid-2" oninput="compoundInterest.scheduleUpdate()">
+            <div class="form-group"><label class="form-label">Initial Investment</label><input type="number" class="form-control" id="ci-principal" value="10000"></div>
+            <div class="form-group"><label class="form-label">Monthly Contribution</label><input type="number" class="form-control" id="ci-contrib" value="500"></div>
+            <div class="form-group"><label class="form-label">Annual Return (%)</label><input type="number" step="0.1" class="form-control" id="ci-return" value="7"></div>
+            <div class="form-group"><label class="form-label">Years</label><input type="number" class="form-control" id="ci-years" value="20"></div>
+          </div>
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px;">
+            <div><div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Final Balance</div><div style="font-size:20px;font-weight:700;color:var(--success);" id="ci-final-balance">-</div></div>
+            <div><div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Total Contributions</div><div style="font-size:20px;font-weight:600;" id="ci-total-contrib">-</div></div>
+            <div><div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Interest Earned</div><div style="font-size:20px;font-weight:600;color:var(--primary);" id="ci-total-interest">-</div></div>
+          </div>
+          <div id="ci-scenarios" style="margin-top:16px;"></div>
+        </div>
+        <div class="compound-right" style="position:relative;">
+          <canvas id="ci-chart"></canvas>
+        </div>
       </div>
     </div>
   </div>
