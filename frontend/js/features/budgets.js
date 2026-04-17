@@ -27,7 +27,7 @@ const budgets = {
           const pct = b.percentage || 0;
           const diff = Math.abs(b.remaining);
           const isOver = b.remaining < 0;
-          const cls = pct >= 100 ? 'over' : pct >= 75 ? 'warning' : 'ok';
+          const cls = pct > 100 ? 'over' : pct >= 75 ? 'warning' : 'ok';
           const circleSize = 60;
           const strokeWidth = 5;
           const radius = (circleSize - strokeWidth) / 2;

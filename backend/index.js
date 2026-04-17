@@ -1880,7 +1880,7 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
           remaining,
           percentage: Math.round(pct),
           status:
-            pct >= 100
+            pct > 100
               ? 'over'
               : pct >= alertThreshold
               ? 'warning'
