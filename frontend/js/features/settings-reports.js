@@ -209,6 +209,17 @@ const settings = {
     populateTaxSummaryYears();
     populatePlSummaryYears();
     populateAnnualReportYears();
+    // Load app info for About section
+    this.loadAppInfo();
+  },
+  async loadAppInfo() {
+    try {
+      const info = await api('/app-info');
+      const versionEl = document.getElementById('app-version');
+      if (versionEl) versionEl.textContent = info.version || '1.0.0';
+    } catch (e) {
+      console.error('Failed to load app info:', e);
+    }
   },
   async save() {
     const data = { local_currency: document.getElementById('setting-currency').value };
