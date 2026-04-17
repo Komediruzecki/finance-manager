@@ -538,6 +538,347 @@ app.delete("/api/categories", apiRateLimiter, (req, res) => {
   }
 });
 
+// ==================== CATEGORY MAPPINGS ====================
+
+// Built-in merchant dictionary (50+ common merchants)
+const MERCHANT_DICTIONARY = [
+  // Streaming
+  { pattern: 'netflix', category: 'Streaming', confidence: 0.95 },
+  { pattern: 'spotify', category: 'Streaming', confidence: 0.95 },
+  { pattern: 'youtube', category: 'Streaming', confidence: 0.90 },
+  { pattern: 'disney+', category: 'Streaming', confidence: 0.95 },
+  { pattern: 'hulu', category: 'Streaming', confidence: 0.95 },
+  { pattern: 'apple tv', category: 'Streaming', confidence: 0.90 },
+  { pattern: 'hbo', category: 'Streaming', confidence: 0.90 },
+  { pattern: 'prime video', category: 'Streaming', confidence: 0.95 },
+  // Shopping
+  { pattern: 'amazon', category: 'Shopping', confidence: 0.90 },
+  { pattern: 'ebay', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'walmart', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'target', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'costco', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'ikea', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'zara', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'h&m', category: 'Shopping', confidence: 0.95 },
+  { pattern: 'macy', category: 'Shopping', confidence: 0.95 },
+  // Food & Dining
+  { pattern: 'uber eats', category: 'Food & Dining', confidence: 0.95 },
+  { pattern: 'doordash', category: 'Food & Dining', confidence: 0.95 },
+  { pattern: 'grubhub', category: 'Food & Dining', confidence: 0.95 },
+  { pattern: 'mcdonald', category: 'Food & Dining', confidence: 0.90 },
+  { pattern: 'starbucks', category: 'Food & Dining', confidence: 0.90 },
+  { pattern: 'chipotle', category: 'Food & Dining', confidence: 0.90 },
+  { pattern: 'subway', category: 'Food & Dining', confidence: 0.90 },
+  { pattern: 'domino', category: 'Food & Dining', confidence: 0.90 },
+  { pattern: 'pizza', category: 'Food & Dining', confidence: 0.70 },
+  { pattern: 'restaurant', category: 'Food & Dining', confidence: 0.70 },
+  { pattern: 'cafe', category: 'Food & Dining', confidence: 0.70 },
+  { pattern: 'coffee', category: 'Food & Dining', confidence: 0.70 },
+  // Transportation
+  { pattern: 'uber', category: 'Transportation', confidence: 0.90 },
+  { pattern: 'lyft', category: 'Transportation', confidence: 0.95 },
+  { pattern: 'shell', category: 'Transportation', confidence: 0.90 },
+  { pattern: 'chevron', category: 'Transportation', confidence: 0.90 },
+  { pattern: 'exxon', category: 'Transportation', confidence: 0.90 },
+  { pattern: 'bp ', category: 'Transportation', confidence: 0.85 },
+  { pattern: 'parking', category: 'Transportation', confidence: 0.85 },
+  { pattern: 'toll', category: 'Transportation', confidence: 0.90 },
+  { pattern: 'metro', category: 'Transportation', confidence: 0.85 },
+  // Utilities
+  { pattern: 'electric', category: 'Utilities', confidence: 0.85 },
+  { pattern: 'water bill', category: 'Utilities', confidence: 0.90 },
+  { pattern: 'gas bill', category: 'Utilities', confidence: 0.90 },
+  { pattern: 'internet', category: 'Utilities', confidence: 0.85 },
+  { pattern: 'phone', category: 'Utilities', confidence: 0.85 },
+  { pattern: 'mobile', category: 'Utilities', confidence: 0.85 },
+  { pattern: 'at&t', category: 'Utilities', confidence: 0.90 },
+  { pattern: 'verizon', category: 'Utilities', confidence: 0.90 },
+  { pattern: 't-mobile', category: 'Utilities', confidence: 0.90 },
+  // Healthcare
+  { pattern: 'pharmacy', category: 'Healthcare', confidence: 0.85 },
+  { pattern: 'cvs', category: 'Healthcare', confidence: 0.95 },
+  { pattern: 'walgreens', category: 'Healthcare', confidence: 0.95 },
+  { pattern: 'hospital', category: 'Healthcare', confidence: 0.90 },
+  { pattern: 'doctor', category: 'Healthcare', confidence: 0.85 },
+  { pattern: 'clinic', category: 'Healthcare', confidence: 0.85 },
+  { pattern: 'dental', category: 'Healthcare', confidence: 0.90 },
+  { pattern: 'optometrist', category: 'Healthcare', confidence: 0.90 },
+  // Entertainment
+  { pattern: 'cinema', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'theater', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'concert', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'ticketmaster', category: 'Entertainment', confidence: 0.95 },
+  { pattern: 'steam', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'playstation', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'xbox', category: 'Entertainment', confidence: 0.90 },
+  // Housing
+  { pattern: 'rent', category: 'Housing', confidence: 0.95 },
+  { pattern: 'mortgage', category: 'Housing', confidence: 0.95 },
+  { pattern: 'hoa', category: 'Housing', confidence: 0.90 },
+  { pattern: 'insurance', category: 'Housing', confidence: 0.70 },
+  // Income
+  { pattern: 'payroll', category: 'Salary', confidence: 0.95 },
+  { pattern: 'salary', category: 'Salary', confidence: 0.95 },
+  { pattern: 'direct deposit', category: 'Salary', confidence: 0.90 },
+  { pattern: 'freelance', category: 'Freelance', confidence: 0.90 },
+  { pattern: 'dividend', category: 'Investments', confidence: 0.95 },
+  { pattern: 'interest', category: 'Investments', confidence: 0.90 },
+];
+
+// Get learned mappings for profile
+app.get("/api/categories/mappings", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const rows = db.prepare(`
+      SELECT cm.*, c.name as category_name, c.color as category_color
+      FROM category_mappings cm
+      JOIN categories c ON cm.category_id = c.id
+      WHERE cm.profile_id = ?
+      ORDER BY cm.use_count DESC, cm.confidence DESC
+    `).all(pid);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add/update a mapping
+app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { pattern, category_id, confidence, use_count } = req.body;
+
+    // Check if mapping already exists
+    const existing = db.prepare(
+      'SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?'
+    ).get(pid, pattern);
+
+    if (existing) {
+      // Update existing mapping
+      db.prepare(`
+        UPDATE category_mappings
+        SET category_id=?, confidence=?, use_count=?
+        WHERE id=?
+      `).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
+      res.json({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 });
+    } else {
+      // Insert new mapping
+      const info = db.prepare(`
+        INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(pid, pattern, category_id, confidence || 0.9, use_count || 1);
+      res.json({ ok: true, id: info.lastInsertRowid });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a mapping
+app.delete("/api/categories/mappings/:id", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const result = db.prepare(
+      'DELETE FROM category_mappings WHERE id=? AND profile_id=?'
+    ).run(req.params.id, pid);
+    if (result.changes === 0)
+      return res.status(404).json({ error: "Not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fuzzy matching helper using Dice coefficient (faster than Levenshtein for this use case)
+function diceCoefficient(a, b) {
+  if (!a || !b) return 0;
+  const s1 = a.toLowerCase();
+  const s2 = b.toLowerCase();
+  const bigrams1 = new Set();
+  const bigrams2 = new Set();
+
+  for (let i = 0; i < s1.length - 1; i++) {
+    bigrams1.add(s1.slice(i, i + 2));
+  }
+  for (let i = 0; i < s2.length - 1; i++) {
+    bigrams2.add(s2.slice(i, i + 2));
+  }
+
+  let intersection = 0;
+  bigrams1.forEach(bg => {
+    if (bigrams2.has(bg)) intersection++;
+  });
+
+  return (2 * intersection) / (bigrams1.size + bigrams2.size);
+}
+
+// Auto-map uncategorized transactions
+app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { transaction_ids } = req.body;
+
+    // Get categories for matching
+    const categories = db.prepare(
+      'SELECT id, name, color, type FROM categories WHERE profile_id = ?'
+    ).all(pid);
+
+    // Get learned mappings
+    const learnedMappings = db.prepare(`
+      SELECT pattern, category_id, confidence, use_count
+      FROM category_mappings
+      WHERE profile_id = ?
+    `).all(pid);
+
+    // Get transactions to auto-map (uncategorized or "Other")
+    let txQuery = `
+      SELECT t.id, t.description, t.beneficiary, t.payor, c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.profile_id = ? AND (t.category_id IS NULL OR c.name = 'Other')
+    `;
+    let params = [pid];
+
+    if (transaction_ids && transaction_ids.length > 0) {
+      txQuery += ' AND t.id IN (' + transaction_ids.map(() => '?').join(',') + ')';
+      params = params.concat(transaction_ids);
+    }
+
+    const transactions = db.prepare(txQuery).all(...params);
+
+    const proposedMappings = [];
+
+    for (const tx of transactions) {
+      const searchText = `${tx.description} ${tx.beneficiary || ''} ${tx.payor || ''}`.toLowerCase();
+      const normalizedSearch = searchText.replace(/[^a-z0-9]/g, '');
+
+      let bestMatch = null;
+      let bestScore = 0;
+
+      // 1. Check learned mappings first (highest priority, boosted by use_count)
+      for (const mapping of learnedMappings) {
+        const patternLower = mapping.pattern.toLowerCase();
+        if (normalizedSearch.includes(patternLower.replace(/[^a-z0-9]/g, ''))) {
+          const score = mapping.confidence * Math.min(1 + Math.log10(mapping.use_count + 1) * 0.2, 1.5);
+          if (score > bestScore) {
+            bestScore = score;
+            const cat = categories.find(c => c.id === mapping.category_id);
+            if (cat) {
+              bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: score };
+            }
+          }
+        }
+      }
+
+      // 2. Check merchant dictionary
+      if (!bestMatch || bestScore < 0.8) {
+        for (const merchant of MERCHANT_DICTIONARY) {
+          const patternLower = merchant.pattern.toLowerCase();
+          if (normalizedSearch.includes(patternLower.replace(/[^a-z0-9]/g, ''))) {
+            if (merchant.confidence > bestScore) {
+              bestScore = merchant.confidence;
+              const cat = categories.find(c => c.name.toLowerCase() === merchant.category.toLowerCase());
+              if (cat) {
+                bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: merchant.confidence };
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Token overlap matching with category names
+      if (!bestMatch || bestScore < 0.6) {
+        const searchTokens = normalizedSearch.split(/[0-9]+/).filter(t => t.length > 2);
+
+        for (const cat of categories) {
+          const catTokens = cat.name.toLowerCase().replace(/[^a-z]/g, '').split('').filter(c => c.length > 2);
+
+          // Calculate token overlap
+          let matches = 0;
+          for (const token of searchTokens) {
+            if (cat.name.toLowerCase().includes(token) || token.length > 3 && cat.name.toLowerCase().split('').some(c => c.startsWith(token.slice(0, 3)))) {
+              matches++;
+            }
+          }
+
+          if (matches > 0) {
+            const score = (matches / Math.max(searchTokens.length, catTokens.length)) * 0.5;
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: score };
+            }
+          }
+        }
+      }
+
+      if (bestMatch) {
+        proposedMappings.push({
+          transaction_id: tx.id,
+          description: tx.description,
+          proposed_category_id: bestMatch.category_id,
+          proposed_category_name: bestMatch.category_name,
+          proposed_category_color: bestMatch.category_color,
+          confidence: Math.min(bestMatch.confidence, 1),
+        });
+      }
+    }
+
+    res.json({
+      total: transactions.length,
+      mapped: proposedMappings.length,
+      mappings: proposedMappings
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Apply confirmed mappings to transactions
+app.post("/api/categories/apply-mappings", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { mappings } = req.body;
+
+    if (!mappings || !Array.isArray(mappings)) {
+      return res.status(400).json({ error: "Invalid mappings array" });
+    }
+
+    const updateTx = db.prepare(
+      'UPDATE transactions SET category_id = ?, updated_at = datetime("now") WHERE id = ? AND profile_id = ?'
+    );
+    const insertMapping = db.prepare(`
+      INSERT OR REPLACE INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
+      VALUES (?, ?, ?, ?, 1)
+    `);
+
+    let updated = 0;
+
+    for (const mapping of mappings) {
+      const { transaction_id, category_id, pattern } = mapping;
+
+      // Update transaction
+      const result = updateTx.run(category_id, transaction_id, pid);
+      if (result.changes > 0) updated++;
+
+      // Store mapping for future use
+      if (pattern) {
+        const normalizedPattern = pattern.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalizedPattern.length >= 3) {
+          try {
+            insertMapping.run(pid, normalizedPattern, category_id, 0.9);
+          } catch (e) {
+            // Ignore duplicate errors
+          }
+        }
+      }
+    }
+
+    res.json({ ok: true, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========================
 // TAGS (per-profile)
 // ========================
