@@ -22,28 +22,31 @@ const PAGES_TPL = path.join(FRONTEND, 'templates', 'pages.html');
 const MODALS_TPL = path.join(TEMPLATES, 'modals.html');
 const TOAST_TPL = path.join(TEMPLATES, 'toast.html');
 
+// Cache bust: use timestamp to force fresh loads
+const CACHE_BUST = Date.now();
+
 // External JS scripts - D3 and modular JS files
 const jsScripts = `<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-<script src="js/core/api.js"></script>
-<script src="js/core/auth.js"></script>
-<script src="js/core/theme.js"></script>
-<script src="js/core/modal.js"></script>
-<script src="js/core/profile.js"></script>
-<script src="js/core/router.js"></script>
-<script src="js/features/dashboard.js"></script>
-<script src="js/features/transactions.js"></script>
-<script src="js/features/budgets.js"></script>
-<script src="js/features/loans.js"></script>
-<script src="js/features/retirement.js"></script>
-<script src="js/features/analytics.js"></script>
-<script src="js/features/categories-accounts.js"></script>
-<script src="js/features/import.js"></script>
-<script src="js/features/settings-reports.js"></script>
-<script src="js/features/chartExport.js"></script>
-<script src="js/features/bulkEdit.js"></script>
-<script src="js/features/quickadd.js"></script>
-<script src="js/app.js"></script>
+<script src="js/core/api.js?v=${CACHE_BUST}"></script>
+<script src="js/core/auth.js?v=${CACHE_BUST}"></script>
+<script src="js/core/theme.js?v=${CACHE_BUST}"></script>
+<script src="js/core/modal.js?v=${CACHE_BUST}"></script>
+<script src="js/core/profile.js?v=${CACHE_BUST}"></script>
+<script src="js/core/router.js?v=${CACHE_BUST}"></script>
+<script src="js/features/dashboard.js?v=${CACHE_BUST}"></script>
+<script src="js/features/transactions.js?v=${CACHE_BUST}"></script>
+<script src="js/features/budgets.js?v=${CACHE_BUST}"></script>
+<script src="js/features/loans.js?v=${CACHE_BUST}"></script>
+<script src="js/features/retirement.js?v=${CACHE_BUST}"></script>
+<script src="js/features/analytics.js?v=${CACHE_BUST}"></script>
+<script src="js/features/categories-accounts.js?v=${CACHE_BUST}"></script>
+<script src="js/features/import.js?v=${CACHE_BUST}"></script>
+<script src="js/features/settings-reports.js?v=${CACHE_BUST}"></script>
+<script src="js/features/chartExport.js?v=${CACHE_BUST}"></script>
+<script src="js/features/bulkEdit.js?v=${CACHE_BUST}"></script>
+<script src="js/features/quickadd.js?v=${CACHE_BUST}"></script>
+<script src="js/app.js?v=${CACHE_BUST}"></script>
 `;
 
 function build() {
