@@ -18,6 +18,6 @@ if (dz) {
 // Global init bootstrap
 nav.init();
 if (typeof dashboard !== 'undefined') dashboard.init();
-if (typeof profile !== 'undefined') profile.refreshUI();
+if (typeof profile !== 'undefined') profile.init();
 if (typeof theme !== 'undefined') theme.init();
 if (typeof auth !== 'undefined') auth.checkLogin();
