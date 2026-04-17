@@ -3318,13 +3318,8 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
         const baseUrl = `http://localhost:${PORT}`;
         await exportPage.goto(`${baseUrl}/export-monthly.html`, { waitUntil: 'networkidle0', timeout: 30000 });
 
-        // Wait for charts to render (wait for canvas elements to exist)
-        await exportPage.waitForSelector('canvas', { timeout: 10000 });
-        // Additional wait for Chart.js to fully render
-        await exportPage.waitForFunction(() => {
-          const canvases = document.querySelectorAll('canvas');
-          return canvases.length >= 2 && canvases.every(c => c.width > 0 && c.height > 0);
-        }, { timeout: 15000 });
+        // Wait for the page to signal that charts have finished rendering
+        await exportPage.waitForFunction(() => window.__RENDER_DONE__ === true, { timeout: 30000 });
 
         pdfBuffer = Buffer.from(await exportPage.pdf({
           format: 'A4',
@@ -3933,13 +3928,8 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
         const baseUrl = `http://localhost:${PORT}`;
         await exportPage.goto(`${baseUrl}/export.html`, { waitUntil: 'networkidle0', timeout: 30000 });
 
-        // Wait for charts to render (wait for canvas elements to exist)
-        await exportPage.waitForSelector('canvas', { timeout: 10000 });
-        // Additional wait for Chart.js to fully render
-        await exportPage.waitForFunction(() => {
-          const canvases = document.querySelectorAll('canvas');
-          return canvases.length >= 3 && canvases.every(c => c.width > 0 && c.height > 0);
-        }, { timeout: 15000 });
+        // Wait for the page to signal that charts have finished rendering
+        await exportPage.waitForFunction(() => window.__RENDER_DONE__ === true, { timeout: 30000 });
 
         // Generate PDF directly from the rendered page (puppeteer returns Uint8Array, convert to Buffer)
         pdfBuffer = Buffer.from(await exportPage.pdf({
