@@ -1,4 +1,25 @@
 // ==================== NAVIGATION / ROUTER ====================
+
+// Mobile sidebar toggle
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  sidebar.classList.toggle('collapsed');
+  overlay.classList.toggle('show');
+}
+
+// Close sidebar when navigating on mobile
+function closeSidebarOnNavigate() {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    if (!sidebar.classList.contains('collapsed')) {
+      sidebar.classList.add('collapsed');
+      overlay.classList.remove('show');
+    }
+  }
+}
+
 const nav = {
   init() {
     document.querySelectorAll('.nav-item').forEach((a) => {
@@ -9,6 +30,7 @@ const nav = {
         document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
         document.getElementById(`page-${page}`).classList.add('active');
         window.location.hash = page;
+        closeSidebarOnNavigate(); // Close sidebar on mobile after navigation
         if (page === 'dashboard') dashboard.load();
         if (page === 'transactions') {
           txFilters.init();

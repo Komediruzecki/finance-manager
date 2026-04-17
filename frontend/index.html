@@ -14,8 +14,16 @@
 <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
+<!-- MOBILE OVERLAY -->
+<div class="mobile-overlay" id="mobile-overlay" onclick="toggleSidebar()"></div>
+
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
   <div class="sidebar-logo">
     <h1>Finance<span>.</span></h1>
     <p>Personal Finance Tracker</p>
@@ -1508,26 +1516,26 @@
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-<script src="js/core/api.js?v=1776443743125"></script>
-<script src="js/core/auth.js?v=1776443743125"></script>
-<script src="js/core/theme.js?v=1776443743125"></script>
-<script src="js/core/modal.js?v=1776443743125"></script>
-<script src="js/core/profile.js?v=1776443743125"></script>
-<script src="js/core/router.js?v=1776443743125"></script>
-<script src="js/features/dashboard.js?v=1776443743125"></script>
-<script src="js/features/transactions.js?v=1776443743125"></script>
-<script src="js/features/budgets.js?v=1776443743125"></script>
-<script src="js/features/loans.js?v=1776443743125"></script>
-<script src="js/features/retirement.js?v=1776443743125"></script>
-<script src="js/features/analytics.js?v=1776443743125"></script>
-<script src="js/features/categories-accounts.js?v=1776443743125"></script>
-<script src="js/features/import.js?v=1776443743125"></script>
-<script src="js/features/settings-reports.js?v=1776443743125"></script>
-<script src="js/features/chartExport.js?v=1776443743125"></script>
-<script src="js/features/bulkEdit.js?v=1776443743125"></script>
-<script src="js/features/quickadd.js?v=1776443743125"></script>
-<script src="js/features/savingsGoals.js?v=1776443743125"></script>
-<script src="js/app.js?v=1776443743125"></script>
+<script src="js/core/api.js?v=1776445592351"></script>
+<script src="js/core/auth.js?v=1776445592351"></script>
+<script src="js/core/theme.js?v=1776445592351"></script>
+<script src="js/core/modal.js?v=1776445592351"></script>
+<script src="js/core/profile.js?v=1776445592351"></script>
+<script src="js/core/router.js?v=1776445592351"></script>
+<script src="js/features/dashboard.js?v=1776445592351"></script>
+<script src="js/features/transactions.js?v=1776445592351"></script>
+<script src="js/features/budgets.js?v=1776445592351"></script>
+<script src="js/features/loans.js?v=1776445592351"></script>
+<script src="js/features/retirement.js?v=1776445592351"></script>
+<script src="js/features/analytics.js?v=1776445592351"></script>
+<script src="js/features/categories-accounts.js?v=1776445592351"></script>
+<script src="js/features/import.js?v=1776445592351"></script>
+<script src="js/features/settings-reports.js?v=1776445592351"></script>
+<script src="js/features/chartExport.js?v=1776445592351"></script>
+<script src="js/features/bulkEdit.js?v=1776445592351"></script>
+<script src="js/features/quickadd.js?v=1776445592351"></script>
+<script src="js/features/savingsGoals.js?v=1776445592351"></script>
+<script src="js/app.js?v=1776445592351"></script>
 
 </body>
 </html>
