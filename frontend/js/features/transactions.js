@@ -1,7 +1,25 @@
+// ==================== UTILITIES ====================
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function renderTagPills(tags) {
+  if (!tags || tags.length === 0) return '';
+  return tags.map((tag) => {
+    const bg = hexToRgba(tag.color, 0.2);
+    return `<span class="tx-tag-pill" style="background:${bg};color:${tag.color};" title="${escapeHtml(tag.name)}">${escapeHtml(tag.name)}</span>`;
+  }).join('');
+}
+
 // ==================== TRANSACTION FILTERS ====================
 const txFilters = {
   currentPreset: 'month',
   selectedCategories: [],
+  selectedTagIds: [],
 
   async init() {
     // Populate year dropdown from distinct-years API
@@ -28,6 +46,75 @@ const txFilters = {
     }
     this.setPreset('month');
     this.loadCategories(); // Load categories for multi-select filter
+    this.loadTags(); // Load tags for tag filter
+  },
+
+  async loadTags() {
+    try {
+      const tags = await api('/tags');
+      window._allTags = Array.isArray(tags) ? tags : [];
+      this.initTagFilter();
+    } catch (e) { /* ignore */ }
+  },
+
+  initTagFilter() {
+    const container = document.getElementById('tx-tag-filter-container');
+    if (!container) return;
+    const tags = window._allTags || [];
+
+    container.innerHTML = `
+      <div class="tx-tag-filter" id="tx-tag-filter">
+        <div class="tx-tag-filter-display" onclick="txFilters.toggleTagFilter()">
+          <span id="tx-tag-filter-label">All Tags</span>
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </div>
+        <div class="tx-tag-filter-dropdown" id="tx-tag-filter-dropdown">
+          ${tags.map((tag) => `
+            <label class="tx-tag-filter-option">
+              <input type="checkbox" class="tx-tag-checkbox" value="${tag.id}" onchange="txFilters.onTagChange()">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${tag.color};margin-right:4px;flex-shrink:0;"></span>
+              <span>${escapeHtml(tag.name)}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const filter = document.getElementById('tx-tag-filter');
+      if (filter && !filter.contains(e.target)) {
+        filter.classList.remove('open');
+      }
+    });
+  },
+
+  toggleTagFilter() {
+    const filter = document.getElementById('tx-tag-filter');
+    if (filter) filter.classList.toggle('open');
+  },
+
+  onTagChange() {
+    const checkboxes = document.querySelectorAll('.tx-tag-checkbox:checked');
+    this.selectedTagIds = Array.from(checkboxes).map((cb) => parseInt(cb.value));
+    this.updateTagLabel();
+    if (typeof transactions !== 'undefined') transactions.load();
+  },
+
+  updateTagLabel() {
+    const label = document.getElementById('tx-tag-filter-label');
+    if (!label) return;
+    if (this.selectedTagIds.length === 0) {
+      label.textContent = 'All Tags';
+    } else {
+      label.textContent = `${this.selectedTagIds.length} Tag${this.selectedTagIds.length !== 1 ? 's' : ''}`;
+    }
+  },
+
+  clearTagFilter() {
+    this.selectedTagIds = [];
+    document.querySelectorAll('.tx-tag-checkbox').forEach((cb) => { cb.checked = false; });
+    this.updateTagLabel();
   },
 
   initMultiSelect() {
@@ -342,6 +429,7 @@ const transactions = {
     const search = document.getElementById('tx-search')?.value || '';
     const type = document.getElementById('tx-type-filter')?.value || '';
     const catIds = txFilters.selectedCategories;
+    const tagIds = txFilters.selectedTagIds;
     const from = document.getElementById('tx-date-from')?.value || '';
     const to = document.getElementById('tx-date-to')?.value || '';
 
@@ -349,6 +437,7 @@ const transactions = {
     if (search) params.append('search', search);
     if (type) params.append('type', type);
     if (catIds.length > 0) params.append('category_ids', catIds.join(','));
+    if (tagIds.length > 0) params.append('tag_ids', tagIds.join(','));
     if (from) params.append('startDate', from);
     if (to) params.append('endDate', to);
     // Reconciliation filter - show unreconciled by default, or filter by reconciled status
@@ -483,7 +572,7 @@ const transactions = {
         <input type="checkbox" class="reconcile-checkbox" ${t.reconciled ? 'checked' : ''} onchange="transactions.toggleReconcile(${t.id}, event)" title="${t.reconciled ? 'Mark unreconciled' : 'Mark reconciled'}">
       </td>
       <td>${formatDate(t.date)}</td>
-      <td><div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.description) || '-'}</div></td>
+      <td><div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.description) || '-'}${renderTagPills(t.tags)}</div></td>
       <td><span class="cat-dot" style="background:${t.category_color || '#6b7280'}"></span>${t.category_name || '-'}</td>
       <td>${t.type === 'expense' ? t.beneficiary || '-' : t.payor || '-'}</td>
       <td class="td-amount ${t.type}">${t.type === 'expense' ? '-' : '+'}${formatCurrency(t.amount_local || t.amount, currency)}</td>
@@ -535,6 +624,7 @@ const transactions = {
     document.getElementById('tx-month-filter').value = '';
     txFilters.selectedCategories = [];
     txFilters.updateLabel();
+    txFilters.clearTagFilter();
     const allCheckbox = document.getElementById('tx-cat-all');
     if (allCheckbox) allCheckbox.checked = true;
     const checkboxes = document.querySelectorAll('.tx-cat-checkbox');
@@ -579,48 +669,6 @@ const transactions = {
       }
     });
   },
-  async openModal(id = null) {
-    this.editingId = id;
-    document.getElementById('tx-modal-title').textContent = id
-      ? 'Edit Transaction'
-      : 'Add Transaction';
-
-    // Load categories
-    const catsRes = await api('/categories');
-    const cats = (catsRes && catsRes.rows) ? catsRes.rows : (Array.isArray(catsRes) ? catsRes : []);
-    const catSelect = document.getElementById('tx-category');
-    catSelect.innerHTML =
-      '<option value="">Select category...</option>' +
-      cats.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-
-    if (id) {
-      const t = await api(`/transactions/${id}`).catch(() => null);
-      if (t && !t.error) {
-        document.getElementById('tx-id').value = t.id;
-        document.getElementById('tx-description').value = t.description || '';
-        document.getElementById('tx-amount').value = t.amount || '';
-        document.getElementById('tx-date').value = t.date || '';
-        document.getElementById('tx-beneficiary').value = t.beneficiary || '';
-        document.getElementById('tx-payor').value = t.payor || '';
-        document.getElementById('tx-category').value = t.category_id || '';
-        document.getElementById('tx-currency').value = t.currency || 'USD';
-        document.getElementById('tx-amount-local').value = t.amount_local || '';
-        document.getElementById('tx-exchange-rate').value = t.exchange_rate || 1;
-        document.getElementById('tx-means').value = t.means_of_payment || '';
-        document.getElementById('tx-notes').value = t.notes || '';
-        this.setType(t.type || 'expense');
-      }
-    } else {
-      document.getElementById('tx-form').reset();
-      document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
-      document.getElementById('tx-exchange-rate').value = 1;
-      this.setType('expense');
-    }
-    modal.open('tx-modal');
-  },
-  async edit(id) {
-    await this.openModal(id);
-  },
   validate() {
     let valid = true;
     const clearErrors = () => {
@@ -660,48 +708,6 @@ const transactions = {
       setError('tx-exchange-rate', 'Exchange rate must be greater than zero');
 
     return valid;
-  },
-  async save() {
-    const btn = document.getElementById('tx-save-btn');
-    const origText = btn.textContent;
-    btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
-    btn.classList.add('loading');
-    if (!this.validate()) {
-      btn.textContent = origText;
-      btn.classList.remove('loading');
-      return;
-    }
-    try {
-      const id = document.getElementById('tx-id').value;
-      const data = {
-        description: document.getElementById('tx-description').value,
-        amount: parseFloat(document.getElementById('tx-amount').value),
-        date: document.getElementById('tx-date').value,
-        beneficiary: document.getElementById('tx-beneficiary').value,
-        payor: document.getElementById('tx-payor').value,
-        category_id: document.getElementById('tx-category').value || null,
-        currency: document.getElementById('tx-currency').value,
-        amount_local: parseFloat(document.getElementById('tx-amount-local').value) || null,
-        means_of_payment: document.getElementById('tx-means').value,
-        exchange_rate: parseFloat(document.getElementById('tx-exchange-rate').value) || 1,
-        type: this.currentType,
-        notes: document.getElementById('tx-notes').value,
-      };
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? `/transactions/${id}` : '/transactions';
-      const result = await api(url, { method, body: data });
-      if (result.error) {
-        toast(result.error, 'error');
-        return;
-      }
-      toast(id ? 'Transaction updated' : 'Transaction added', 'success');
-      modal.close('tx-modal');
-      this.load();
-      if (typeof dashboard !== 'undefined') dashboard.load();
-    } finally {
-      btn.textContent = origText;
-      btn.classList.remove('loading');
-    }
   },
   async delete(id) {
     if (!confirm('Delete this transaction?')) return;
@@ -798,6 +804,179 @@ const transactions = {
       }
     } catch (e) {
       toast('Failed to apply mappings: ' + e.message, 'error');
+    }
+  },
+
+  // ======= TAGS =======
+  selectedTags: [],  // { id, name, color }
+
+  async loadTags() {
+    try {
+      const tags = await api('/tags');
+      return Array.isArray(tags) ? tags : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  renderTagChips() {
+    const container = document.getElementById('tx-tag-chips');
+    if (!container) return;
+    const allTags = window._txModalTags || [];
+
+    container.innerHTML = allTags.map((tag) => {
+      const isSelected = this.selectedTags.some((t) => t.id === tag.id);
+      const bg = hexToRgba(tag.color, 0.15);
+      return `<span class="tx-tag-chip ${isSelected ? 'selected' : ''}"
+        style="background:${bg};color:${tag.color};"
+        data-id="${tag.id}" data-name="${escapeHtml(tag.name)}" data-color="${tag.color}"
+        onclick="transactions.toggleTag(${tag.id})">
+        ${escapeHtml(tag.name)}
+      </span>`;
+    }).join('');
+  },
+
+  toggleTag(tagId) {
+    const allTags = window._txModalTags || [];
+    const tag = allTags.find((t) => t.id === tagId);
+    if (!tag) return;
+
+    const idx = this.selectedTags.findIndex((t) => t.id === tagId);
+    if (idx >= 0) {
+      this.selectedTags.splice(idx, 1);
+    } else {
+      this.selectedTags.push({ id: tag.id, name: tag.name, color: tag.color });
+    }
+    this.renderTagChips();
+  },
+
+  async addTagFromInput() {
+    const input = document.getElementById('tx-tag-new-input');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
+
+    try {
+      const result = await api('/tags', { method: 'POST', body: { name } });
+      if (result.error) {
+        toast(result.error, 'error');
+        return;
+      }
+      const newTag = { id: result.id, name: result.name, color: result.color };
+      // Add to modal's tag list
+      if (!window._txModalTags) window._txModalTags = [];
+      if (!window._txModalTags.some((t) => t.id === newTag.id)) {
+        window._txModalTags.push(newTag);
+      }
+      // Select it
+      this.selectedTags.push(newTag);
+      input.value = '';
+      this.renderTagChips();
+    } catch (e) {
+      toast('Failed to create tag', 'error');
+    }
+  },
+
+  async edit(id) {
+    await this.openModal(id);
+  },
+
+  async openModal(id = null) {
+    this.editingId = id;
+    document.getElementById('tx-modal-title').textContent = id
+      ? 'Edit Transaction'
+      : 'Add Transaction';
+
+    // Load categories
+    const catsRes = await api('/categories');
+    const cats = (catsRes && catsRes.rows) ? catsRes.rows : (Array.isArray(catsRes) ? catsRes : []);
+    const catSelect = document.getElementById('tx-category');
+    catSelect.innerHTML =
+      '<option value="">Select category...</option>' +
+      cats.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+    // Load tags
+    window._txModalTags = await this.loadTags();
+    this.selectedTags = [];
+
+    if (id) {
+      const t = await api(`/transactions/${id}`).catch(() => null);
+      if (t && !t.error) {
+        document.getElementById('tx-id').value = t.id;
+        document.getElementById('tx-description').value = t.description || '';
+        document.getElementById('tx-amount').value = t.amount || '';
+        document.getElementById('tx-date').value = t.date || '';
+        document.getElementById('tx-beneficiary').value = t.beneficiary || '';
+        document.getElementById('tx-payor').value = t.payor || '';
+        document.getElementById('tx-category').value = t.category_id || '';
+        document.getElementById('tx-currency').value = t.currency || 'USD';
+        document.getElementById('tx-amount-local').value = t.amount_local || '';
+        document.getElementById('tx-exchange-rate').value = t.exchange_rate || 1;
+        document.getElementById('tx-means').value = t.means_of_payment || '';
+        document.getElementById('tx-notes').value = t.notes || '';
+        this.setType(t.type || 'expense');
+        // Restore selected tags
+        this.selectedTags = (t.tags || []).map((tg) => ({
+          id: tg.id, name: tg.name, color: tg.color
+        }));
+      }
+    } else {
+      document.getElementById('tx-form').reset();
+      document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('tx-exchange-rate').value = 1;
+      this.setType('expense');
+    }
+
+    this.renderTagChips();
+    modal.open('tx-modal');
+  },
+
+  async save() {
+    const btn = document.getElementById('tx-save-btn');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    btn.classList.add('loading');
+    if (!this.validate()) {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
+      return;
+    }
+    try {
+      const id = document.getElementById('tx-id').value;
+      const data = {
+        description: document.getElementById('tx-description').value,
+        amount: parseFloat(document.getElementById('tx-amount').value),
+        date: document.getElementById('tx-date').value,
+        beneficiary: document.getElementById('tx-beneficiary').value,
+        payor: document.getElementById('tx-payor').value,
+        category_id: document.getElementById('tx-category').value || null,
+        currency: document.getElementById('tx-currency').value,
+        amount_local: parseFloat(document.getElementById('tx-amount-local').value) || null,
+        means_of_payment: document.getElementById('tx-means').value,
+        exchange_rate: parseFloat(document.getElementById('tx-exchange-rate').value) || 1,
+        type: this.currentType,
+        notes: document.getElementById('tx-notes').value,
+      };
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/transactions/${id}` : '/transactions';
+      const result = await api(url, { method, body: data });
+      if (result.error) {
+        toast(result.error, 'error');
+        return;
+      }
+      // Save tags
+      const txId = id || result.id;
+      await api(`/transactions/${txId}/tags`, {
+        method: 'PUT',
+        body: { tagIds: this.selectedTags.map((t) => t.id) }
+      });
+      toast(id ? 'Transaction updated' : 'Transaction added', 'success');
+      modal.close('tx-modal');
+      this.load();
+      if (typeof dashboard !== 'undefined') dashboard.load();
+    } finally {
+      btn.textContent = origText;
+      btn.classList.remove('loading');
     }
   },
 };

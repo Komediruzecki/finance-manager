@@ -273,6 +273,13 @@ app.get("/api/app-info", (req, res) => {
   });
 });
 
+// Test endpoint: reset rate limit store
+app.post("/api/test/reset-rate-limit", (req, res) => {
+  if (global.__rateLimitStore) global.__rateLimitStore.clear();
+  if (global.__authRateLimitStore) global.__authRateLimitStore.clear();
+  res.json({ ok: true });
+});
+
 // ========================
 app.get("/api/profiles", apiRateLimiter, (req, res) => {
   try {
@@ -907,6 +914,13 @@ app.get("/api/tags", apiRateLimiter, (req, res) => {
   }
 });
 
+// Tag color palette for auto-assignment
+const TAG_COLORS = [
+  '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+  '#84cc16', '#6366f1', '#14b8a6', '#a855f7',
+];
+
 app.post("/api/tags", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
@@ -914,10 +928,16 @@ app.post("/api/tags", apiRateLimiter, (req, res) => {
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Tag name is required' });
     }
+    let tagColor = color;
+    if (!tagColor) {
+      // Cycle through palette based on existing tag count
+      const count = db.prepare("SELECT COUNT(*) as c FROM tags WHERE profile_id = ?").get(pid).c;
+      tagColor = TAG_COLORS[count % TAG_COLORS.length];
+    }
     const info = db
       .prepare("INSERT INTO tags (name, color, profile_id) VALUES (?, ?, ?)")
-      .run(name.trim(), color || '#6b7280', pid);
-    res.json({ id: info.lastInsertRowid, name: name.trim(), color: color || '#6b7280' });
+      .run(name.trim(), tagColor, pid);
+    res.json({ id: info.lastInsertRowid, name: name.trim(), color: tagColor });
   } catch (err) {
     if (err.message.includes('UNIQUE constraint')) {
       return res.status(400).json({ error: 'Tag already exists' });
@@ -959,7 +979,7 @@ app.delete("/api/tags/:id", apiRateLimiter, (req, res) => {
   }
 });
 
-// Add tags to a transaction
+// Add tags to a transaction (replaces existing)
 app.post("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
@@ -972,6 +992,29 @@ app.post("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
     // Replace existing tags with new ones
+    db.prepare("DELETE FROM transaction_tags WHERE transaction_id = ?").run(req.params.id);
+    const insertStmt = db.prepare("INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)");
+    for (const tagId of tagIds) {
+      insertStmt.run(req.params.id, tagId);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update tags for a transaction (alias for POST — replaces existing)
+app.put("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { tagIds } = req.body;
+    if (!Array.isArray(tagIds)) {
+      return res.status(400).json({ error: 'tagIds must be an array' });
+    }
+    // Verify transaction belongs to profile
+    const tx = db.prepare("SELECT id FROM transactions WHERE id = ? AND profile_id = ?").get(req.params.id, pid);
+    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
+
     db.prepare("DELETE FROM transaction_tags WHERE transaction_id = ?").run(req.params.id);
     const insertStmt = db.prepare("INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)");
     for (const tagId of tagIds) {
@@ -1061,6 +1104,7 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
       offset,
       sort,
       order,
+      tag_ids,
     } = req.query;
     let sql = `
       SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon
@@ -1069,6 +1113,16 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
       WHERE t.profile_id IN (${inClause})
     `;
     const params = [...pids];
+    let tagFilterApplied = false;
+    if (tag_ids) {
+      const tids = tag_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      if (tids.length > 0) {
+        const tagPlaceholders = tids.map(() => '?').join(',');
+        sql += ` AND t.id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id IN (${tagPlaceholders}))`;
+        params.push(...tids);
+        tagFilterApplied = true;
+      }
+    }
     if (startDate) {
       sql += " AND t.date >= ?";
       params.push(startDate);
@@ -1112,6 +1166,18 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     if (offset) sql += ` OFFSET ${parseInt(offset)}`;
     const rows = db.prepare(sql).all(...params);
 
+    // Attach tags to each transaction
+    const tagStmt = db.prepare(`
+      SELECT tg.id, tg.name, tg.color
+      FROM tags tg
+      JOIN transaction_tags tt ON tg.id = tt.tag_id
+      WHERE tt.transaction_id = ?
+      ORDER BY tg.name
+    `);
+    for (const row of rows) {
+      row.tags = tagStmt.all(row.id);
+    }
+
     // Count total
     let countSql = `SELECT COUNT(*) as c FROM transactions t WHERE t.profile_id IN (${inClause})`;
     const cparams = [...pids];
@@ -1145,6 +1211,14 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
         countSql += " AND (t.reconciled = 0 OR t.reconciled IS NULL)";
       } else if (reconciled === '1' || reconciled === 'true') {
         countSql += " AND t.reconciled = 1";
+      }
+    }
+    if (tag_ids) {
+      const tids = tag_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      if (tids.length > 0) {
+        const tagPlaceholders = tids.map(() => '?').join(',');
+        countSql += ` AND t.id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id IN (${tagPlaceholders}))`;
+        cparams.push(...tids);
       }
     }
     const total = db.prepare(countSql).get(...cparams).c;
@@ -1283,6 +1357,14 @@ app.get("/api/transactions/:id", apiRateLimiter, (req, res) => {
     if (!tx) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
+
+    tx.tags = db.prepare(`
+      SELECT tg.id, tg.name, tg.color
+      FROM tags tg
+      JOIN transaction_tags tt ON tg.id = tt.tag_id
+      WHERE tt.transaction_id = ?
+      ORDER BY tg.name
+    `).all(id);
 
     res.json(tx);
   } catch (err) {
@@ -1551,10 +1633,10 @@ app.get("/api/budgets", apiRateLimiter, (req, res) => {
 app.post("/api/budgets", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { category_id, amount, period, start_date, end_date } = req.body;
+    const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
     const info = db
       .prepare(
-        "INSERT INTO budgets (category_id, amount, period, start_date, end_date, profile_id) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO budgets (category_id, amount, period, start_date, end_date, rollover_enabled, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         category_id,
@@ -1562,6 +1644,7 @@ app.post("/api/budgets", apiRateLimiter, (req, res) => {
         period || "monthly",
         start_date,
         end_date || null,
+        rollover_enabled ? 1 : 0,
         pid,
       );
     res.json({ id: info.lastInsertRowid, ...req.body, profile_id: pid });
@@ -1573,10 +1656,10 @@ app.post("/api/budgets", apiRateLimiter, (req, res) => {
 app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { category_id, amount, period, start_date, end_date } = req.body;
+    const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
     const result = db
       .prepare(
-        "UPDATE budgets SET category_id=?, amount=?, period=?, start_date=?, end_date=? WHERE id=? AND profile_id=?",
+        "UPDATE budgets SET category_id=?, amount=?, period=?, start_date=?, end_date=?, rollover_enabled=? WHERE id=? AND profile_id=?",
       )
       .run(
         category_id,
@@ -1584,6 +1667,7 @@ app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
         period,
         start_date,
         end_date || null,
+        rollover_enabled ? 1 : 0,
         req.params.id,
         pid,
       );
@@ -1609,10 +1693,58 @@ app.delete("/api/budgets/:id", apiRateLimiter, (req, res) => {
   }
 });
 
+// Manual rollover adjustment
+app.put("/api/budgets/:id/rollover", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { rollover_amount, rollover_used, rollover_enabled } = req.body;
+
+    // Build dynamic update based on what was provided
+    const updates = [];
+    const values = [];
+
+    if (rollover_amount !== undefined) {
+      updates.push("rollover_amount = ?");
+      values.push(rollover_amount);
+    }
+    if (rollover_used !== undefined) {
+      updates.push("rollover_used = ?");
+      values.push(rollover_used);
+    }
+    if (rollover_enabled !== undefined) {
+      updates.push("rollover_enabled = ?");
+      values.push(rollover_enabled ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "No rollover fields provided" });
+    }
+
+    values.push(req.params.id, pid);
+
+    const result = db
+      .prepare(`UPDATE budgets SET ${updates.join(", ")} WHERE id = ? AND profile_id = ?`)
+      .run(...values);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "Budget not found" });
+    }
+
+    // Return updated budget
+    const budget = db
+      .prepare("SELECT * FROM budgets WHERE id = ? AND profile_id = ?")
+      .get(req.params.id, pid);
+
+    res.json({ ok: true, budget });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { year, month } = req.query;
+    const { year, month, apply_rollover } = req.query;
     const y = year || new Date().getFullYear();
     const m = month || new Date().getMonth() + 1;
     const startDate = `${y}-${String(m).padStart(2, "0")}-01`;
@@ -1646,15 +1778,75 @@ app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
     const spentMap = {};
     for (const s of spent) spentMap[s.category_id] = s.total;
 
-    const summary = budgets.map((b) => ({
-      ...b,
-      spent: spentMap[b.category_id] || 0,
-      remaining: b.amount - (spentMap[b.category_id] || 0),
-      percentage:
-        b.amount > 0
-          ? Math.min(100, ((spentMap[b.category_id] || 0) / b.amount) * 100)
-          : 0,
-    }));
+    // Calculate automatic rollover from previous month
+    let prevY = m === 1 ? y - 1 : y;
+    let prevM = m === 1 ? 12 : m - 1;
+    const prevStart = `${prevY}-${String(prevM).padStart(2, "0")}-01`;
+    const prevEnd = `${y}-${String(m).padStart(2, "0")}-01`;
+
+    // Get previous month's budgets with their spent amounts
+    const prevBudgets = db
+      .prepare(`
+        SELECT b.category_id, b.amount as budget_amount, b.rollover_enabled, b.rollover_amount, b.rollover_used
+        FROM budgets b
+        WHERE b.profile_id = ? AND b.start_date >= ? AND b.start_date < ?
+      `)
+      .all(pid, prevStart, prevEnd);
+
+    // Get previous month's spent
+    const prevSpent = db
+      .prepare(`
+        SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
+        FROM transactions
+        WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
+        GROUP BY category_id
+      `)
+      .all(pid, prevStart, prevEnd);
+
+    const prevSpentMap = {};
+    for (const s of prevSpent) prevSpentMap[s.category_id] = s.total;
+
+    // Calculate unused from previous month for each category
+    const prevUnusedMap = {};
+    for (const pb of prevBudgets) {
+      const unused = Math.max(0, pb.budget_amount - (prevSpentMap[pb.category_id] || 0));
+      prevUnusedMap[pb.category_id] = { unused, rollover_enabled: pb.rollover_enabled };
+    }
+
+    const summary = budgets.map((b) => {
+      const spentAmt = spentMap[b.category_id] || 0;
+      const baseRemaining = b.amount - spentAmt;
+
+      // Calculate rollover contribution
+      let rollover_contribution = 0;
+      let auto_rollover = 0;
+
+      if (b.rollover_enabled) {
+        const prevInfo = prevUnusedMap[b.category_id];
+        if (prevInfo && prevInfo.rollover_enabled) {
+          auto_rollover = prevInfo.unused;
+        }
+        rollover_contribution = (b.rollover_amount || 0) + auto_rollover - (b.rollover_used || 0);
+      }
+
+      // Effective budget = base budget + rollover contribution
+      const effective_budget = b.amount + Math.max(0, rollover_contribution);
+      const effective_remaining = effective_budget - spentAmt;
+
+      return {
+        ...b,
+        spent: spentAmt,
+        remaining: baseRemaining, // base remaining without rollover
+        effective_budget,
+        effective_remaining,
+        rollover_contribution: Math.max(0, rollover_contribution),
+        auto_rollover,
+        percentage:
+          b.amount > 0
+            ? Math.min(100, (spentAmt / b.amount) * 100)
+            : 0,
+      };
+    });
 
     res.json(summary);
   } catch (err) {

@@ -228,6 +228,11 @@ const analytics = {
             },
           },
         },
+        onClick: (event, elements) => {
+          if (elements.length === 0) return;
+          const idx = elements[0].index;
+          this.onStackedBarClick(idx, data, { year, month, week });
+        },
         scales: {
           x: {
             stacked: true,
@@ -309,6 +314,10 @@ const analytics = {
             },
           },
         },
+        onClick: (event, elements) => {
+          if (elements.length === 0) return;
+          this.onPieSliceClick(elements[0].index, data);
+        },
       },
     });
   },
@@ -359,6 +368,52 @@ const analytics = {
     document.getElementById('avg-week').textContent = formatCurrency(avgWeek, currency);
     document.getElementById('avg-month').textContent = formatCurrency(avgMonth, currency);
   },
+
+  // Interactive drill-down: stacked bar click → zoom into period
+  onStackedBarClick(idx, data, { year, month, week }) {
+    const label = data.labels[idx];
+    if (!label) return;
+
+    // Year view → drill into month
+    if (!month && !week) {
+      // label is like "Jan", "Feb", etc.
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const monthIdx = monthNames.indexOf(label);
+      if (monthIdx >= 0) {
+        const mm = String(monthIdx + 1).padStart(2, '0');
+        document.getElementById('analytics-year').value = year;
+        document.getElementById('analytics-month-filter').value = mm;
+        this.onMonthChange();
+        toast(`Drilled into ${label} ${year}`, 'info');
+        return;
+      }
+    }
+
+    // Month view → show breadcrumb hint
+    if (month && !week) {
+      // Could show weekly breakdown — for now just toast
+      toast(`Showing ${label} in ${month}/${year}`, 'info');
+    }
+  },
+
+  // Interactive: pie slice click → filter to category
+  onPieSliceClick(segmentIndex, data) {
+    if (!data || !data.datasets) return;
+    const cc = chartColors();
+    const totalByCat = data.datasets
+      .map((ds) => ({
+        name: ds.category,
+        total: ds.data.reduce((a, b) => a + b, 0),
+        color: ds.color,
+      }))
+      .filter((c) => c.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    if (segmentIndex >= totalByCat.length) return;
+    const cat = totalByCat[segmentIndex];
+    toast(`${cat.name}: ${formatCurrency(cat.total, this.currentCurrency)} (${((cat.total / totalByCat.reduce((a,b) => a+b.total,0)) * 100).toFixed(1)}%)`, 'info');
+  },
+
   async loadSankey() {
     const year = document.getElementById('analytics-year').value;
     const month = document.getElementById('sankey-month-filter').value;

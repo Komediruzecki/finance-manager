@@ -34,13 +34,29 @@ const budgets = {
           const circumference = 2 * Math.PI * radius;
           const offset = circumference - (pct / 100) * circumference;
           const circleColor = pct >= 100 ? 'var(--danger)' : pct >= 75 ? '#f59e0b' : 'var(--success)';
+
+          // Rollover info
+          const rolloverEnabled = b.rollover_enabled;
+          const rolloverContrib = b.rollover_contribution || 0;
+          const autoRollover = b.auto_rollover || 0;
+          const manualRollover = b.rollover_amount || 0;
+          // Show rollover if enabled and either manual or auto rollover exists
+          const hasRollover = rolloverEnabled && (manualRollover > 0 || autoRollover > 0);
+
+          // Show effective budget if rollover is active
+          const showEffectiveBudget = hasRollover;
+
           return `<div class="budget-item">
           <div class="budget-item-header">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="cat-dot" style="background:${b.category_color || '#6b7280'}"></span>
               <span class="budget-item-name">${escapeHtml(b.category_name)}</span>
+              ${hasRollover ? `<span style="font-size:11px;color:var(--text-secondary);background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;" title="${autoRollover > 0 ? `Auto: ${formatCurrency(autoRollover, currency)}` : ''}${autoRollover > 0 && manualRollover > 0 ? ', ' : ''}${manualRollover > 0 ? `Manual: ${formatCurrency(manualRollover, currency)}` : ''}">🔄 ${formatCurrency(rolloverContrib, currency)}</span>` : ''}
             </div>
             <div class="budget-item-actions">
+              ${hasRollover ? `<button class="btn btn-ghost btn-sm" onclick="budgets.adjustRollover(${b.id})" title="Adjust rollover">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </button>` : ''}
               <button class="btn btn-ghost btn-sm" onclick="budgets.openModal(${b.id})" title="Edit budget">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
@@ -58,7 +74,7 @@ const budgets = {
             <div style="flex:1;">
               <div class="budget-bar"><div class="budget-bar-fill ${cls}" style="width:${Math.min(100, pct)}%"></div></div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                <span style="font-size:13px;font-weight:600;">${formatCurrency(b.spent || 0, currency)} <span style="font-weight:400;color:var(--text-secondary);">/ ${formatCurrency(b.amount, currency)}</span></span>
+                <span style="font-size:13px;font-weight:600;">${formatCurrency(b.spent || 0, currency)} <span style="font-weight:400;color:var(--text-secondary);">/ ${formatCurrency(showEffectiveBudget ? (b.effective_budget || b.amount) : b.amount, currency)}</span></span>
                 <span class="${isOver ? 'text-danger' : 'text-success'}" style="font-size:12px;font-weight:500;">${isOver ? 'Over' : 'Under'}: ${formatCurrency(diff, currency)}</span>
               </div>
             </div>
@@ -278,11 +294,23 @@ const budgets = {
         document.getElementById('budget-period').value = b.period;
         document.getElementById('budget-start').value = b.start_date || '';
         document.getElementById('budget-end').value = b.end_date || '';
+        document.getElementById('budget-rollover-enabled').checked = !!b.rollover_enabled;
+        document.getElementById('budget-rollover-amount').value = b.rollover_amount || 0;
+        document.getElementById('budget-rollover-manual-group').style.display = b.rollover_enabled ? 'block' : 'none';
       }
     } else {
       document.getElementById('budget-form').reset();
       document.getElementById('budget-start').value = new Date().toISOString().split('T')[0];
+      document.getElementById('budget-rollover-enabled').checked = false;
+      document.getElementById('budget-rollover-amount').value = 0;
+      document.getElementById('budget-rollover-manual-group').style.display = 'none';
     }
+
+    // Toggle rollover manual group visibility
+    document.getElementById('budget-rollover-enabled').onchange = function() {
+      document.getElementById('budget-rollover-manual-group').style.display = this.checked ? 'block' : 'none';
+    };
+
     modal.open('budget-modal');
   },
   async save() {
@@ -293,6 +321,7 @@ const budgets = {
       period: document.getElementById('budget-period').value,
       start_date: document.getElementById('budget-start').value,
       end_date: document.getElementById('budget-end').value || null,
+      rollover_enabled: document.getElementById('budget-rollover-enabled').checked,
     };
     const method = id ? 'PUT' : 'POST';
     const url = id ? `/budgets/${id}` : '/budgets';
@@ -304,6 +333,32 @@ const budgets = {
     toast(id ? 'Budget updated' : 'Budget added', 'success');
     modal.close('budget-modal');
     this.load();
+  },
+  async adjustRollover(id) {
+    // Get current rollover info and allow adjustment
+    const summary = await api('/budgets/summary');
+    const budget = summary.find(b => b.id === id);
+    if (!budget) return;
+
+    const newAmount = prompt(
+      `Adjust manual rollover amount for "${budget.category_name}":\n\nCurrent: ${formatCurrency(budget.rollover_amount || 0, 'USD')}\nAuto from last month: ${formatCurrency(budget.auto_rollover || 0, 'USD')}\n\nEnter new manual rollover amount:`,
+      budget.rollover_amount || 0
+    );
+
+    if (newAmount === null) return;
+
+    const amount = parseFloat(newAmount) || 0;
+    const result = await api(`/budgets/${id}/rollover`, {
+      method: 'PUT',
+      body: { rollover_amount: amount }
+    });
+
+    if (result.ok || !result.error) {
+      toast('Rollover adjusted', 'success');
+      this.load();
+    } else {
+      toast(result.error || 'Failed to adjust rollover', 'error');
+    }
   },
   async delete(id) {
     if (!confirm('Delete this budget?')) return;

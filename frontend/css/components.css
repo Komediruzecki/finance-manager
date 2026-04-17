@@ -626,6 +626,133 @@ th[data-sort].sorted .sort-arrow {
   margin: 0;
 }
 
+/* Tag selector */
+.tx-tag-selector {
+  margin-top: 8px;
+}
+.tx-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.tx-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: opacity 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.tx-tag-chip:hover {
+  opacity: 0.8;
+}
+.tx-tag-chip.selected {
+  border-color: currentColor;
+}
+.tx-tag-chip .tag-remove {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+  opacity: 0.6;
+  width: 12px;
+  height: 12px;
+}
+.tx-tag-chip .tag-remove:hover {
+  opacity: 1;
+}
+.tx-tag-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tx-tag-new-input {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.tx-tag-new-input:focus {
+  border-color: var(--text-muted);
+  border-style: solid;
+}
+.tx-tag-new-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Tag pills in transaction list */
+.tx-tag-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* Tag filter dropdown */
+.tx-tag-filter {
+  position: relative;
+  display: inline-block;
+}
+.tx-tag-filter-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  min-width: 120px;
+  user-select: none;
+}
+.tx-tag-filter-display svg {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.tx-tag-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  padding: 6px 0;
+  display: none;
+}
+.tx-tag-filter.open .tx-tag-filter-dropdown {
+  display: block;
+}
+.tx-tag-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.tx-tag-filter-option:hover {
+  background: var(--bg-secondary);
+}
+
 @media (max-width: 1024px) {
   .housing-calc-layout {
     grid-template-columns: 1fr;

@@ -1,5 +1,5 @@
 /**
- * Tests for transaction tags feature
+ * Tests for transaction tags feature - frontend integration
  */
 
 const { readFrontendContent, fs, path } = require('./testUtils');
@@ -14,14 +14,27 @@ const databaseJs = fs.readFileSync(
   'utf8'
 );
 
-describe('Transaction Tags Feature', () => {
-  let combinedContent;
+const transactionsJs = fs.readFileSync(
+  path.join(__dirname, '../../frontend/js/features/transactions.js'),
+  'utf8'
+);
 
-  beforeAll(() => {
-    const content = readFrontendContent();
-    combinedContent = content.combinedContent;
-  });
+const modalsHtml = fs.readFileSync(
+  path.join(__dirname, '../../frontend/templates/modals.html'),
+  'utf8'
+);
 
+const pagesHtml = fs.readFileSync(
+  path.join(__dirname, '../../frontend/templates/pages.html'),
+  'utf8'
+);
+
+const componentsCss = fs.readFileSync(
+  path.join(__dirname, '../../frontend/css/components.css'),
+  'utf8'
+);
+
+describe('Transaction Tags Feature - Frontend', () => {
   describe('Backend tag support', () => {
     test('tags table exists in database schema', () => {
       expect(databaseJs).toMatch(/CREATE TABLE.*tags/);
@@ -55,12 +68,24 @@ describe('Transaction Tags Feature', () => {
       expect(backendIndex).toMatch(/app\.post\s*\(\s*["']\/api\/transactions\/.*\/tags["']/);
     });
 
+    test('PUT /api/transactions/:id/tags endpoint exists', () => {
+      expect(backendIndex).toMatch(/app\.put\s*\(\s*["']\/api\/transactions\/.*\/tags["']/);
+    });
+
     test('GET /api/transactions/:id/tags endpoint exists', () => {
       expect(backendIndex).toMatch(/app\.get\s*\(\s*["']\/api\/transactions\/.*\/tags["']/);
     });
 
-    test('GET /api/transactions/by-tag/:tagId endpoint exists', () => {
-      expect(backendIndex).toMatch(/app\.get\s*\(\s*["']\/api\/transactions\/by-tag\//);
+    test('GET /api/transactions includes tags in response', () => {
+      expect(backendIndex).toMatch(/row\.tags\s*=\s*tagStmt\.all\(row\.id\)/);
+    });
+
+    test('GET /api/transactions/:id includes tags in response', () => {
+      expect(backendIndex).toMatch(/tx\.tags\s*=\s*db\.prepare/);
+    });
+
+    test('Tag color palette exists for auto-assignment', () => {
+      expect(backendIndex).toMatch(/TAG_COLORS\s*=\s*\[/);
     });
 
     test('Tag validation checks for empty name', () => {
@@ -70,41 +95,115 @@ describe('Transaction Tags Feature', () => {
     test('Tag uniqueness constraint handled', () => {
       expect(backendIndex).toMatch(/UNIQUE constraint|Tag already exists/);
     });
+
+    test('GET /api/transactions supports tag_ids filter', () => {
+      expect(backendIndex).toMatch(/tag_ids/);
+    });
   });
 
-  // Frontend tag UI - SKIPPED: feature not yet implemented in modular frontend
-  // TODO(#86): Port transaction tags UI to templates/modals.html and js/features/transactions.js
-  describe.skip('Frontend tag UI [SKIPPED - feature not implemented in modular frontend]', () => {
-    test('Tag selector container exists in transaction modal', () => {});
-    test('Tag list container exists', () => {});
-    test('Tag input field exists', () => {});
-    test('Tag selector has proper CSS class', () => {});
-    test('Tag badge CSS class exists', () => {});
-    test('Add button for tags is present', () => {});
-    test('Remove tag function is referenced', () => {});
+  describe('Frontend tag UI', () => {
+    test('Tag selector container exists in transaction modal', () => {
+      expect(modalsHtml).toMatch(/tx-tag-selector/);
+    });
+
+    test('Tag chips container exists in modal', () => {
+      expect(modalsHtml).toMatch(/tx-tag-chips/);
+    });
+
+    test('Tag new input exists in modal', () => {
+      expect(modalsHtml).toMatch(/tx-tag-new-input/);
+    });
+
+    test('Tag input has Enter key handler', () => {
+      expect(modalsHtml).toMatch(/onkeydown.*Enter.*addTagFromInput/);
+    });
+
+    test('Tag CSS styles exist in components.css', () => {
+      expect(componentsCss).toMatch(/\.tx-tag-chip/);
+    });
+
+    test('Tag filter container exists in pages.html', () => {
+      expect(pagesHtml).toMatch(/tx-tag-filter-container/);
+    });
   });
 
-  describe.skip('Frontend tag integration [SKIPPED - feature not implemented in modular frontend]', () => {
-    test('transactions object has selectedTags property', () => {});
-    test('transactions object has renderTags method', () => {});
-    test('transactions object has loadTags method', () => {});
-    test('transactions object has addTagFromInput method', () => {});
-    test('transactions object has addTag method', () => {});
-    test('transactions object has removeTag method', () => {});
-    test('Tags are loaded when editing a transaction', () => {});
-    test('Tags are saved after transaction save', () => {});
-    test('Tag input has Enter key handler', () => {});
+  describe('Frontend JS implementation', () => {
+    test('transactions object has selectedTags property', () => {
+      expect(transactionsJs).toMatch(/selectedTags\s*:/);
+    });
+
+    test('transactions object has loadTags method', () => {
+      expect(transactionsJs).toMatch(/loadTags\s*\(\s*\)/);
+    });
+
+    test('transactions object has renderTagChips method', () => {
+      expect(transactionsJs).toMatch(/renderTagChips\s*\(\s*\)/);
+    });
+
+    test('transactions object has toggleTag method', () => {
+      expect(transactionsJs).toMatch(/toggleTag\s*\(\s*tagId\s*\)/);
+    });
+
+    test('transactions object has addTagFromInput method', () => {
+      expect(transactionsJs).toMatch(/addTagFromInput\s*\(\s*\)/);
+    });
+
+    test('openModal loads tags and renders chips', () => {
+      expect(transactionsJs).toMatch(/loadTags\(\)/);
+      expect(transactionsJs).toMatch(/renderTagChips\(\)/);
+    });
+
+    test('save() includes tag IDs in PUT /transactions/:id/tags', () => {
+      expect(transactionsJs).toMatch(/transactions\/\$\{txId\}\/tags/);
+      expect(transactionsJs).toMatch(/tagIds.*selectedTags/);
+    });
+
+    test('Tag filter dropdown methods exist in txFilters', () => {
+      expect(transactionsJs).toMatch(/initTagFilter\s*\(\s*\)/);
+      expect(transactionsJs).toMatch(/onTagChange\s*\(\s*\)/);
+      expect(transactionsJs).toMatch(/clearTagFilter\s*\(\s*\)/);
+    });
+
+    test('Tag IDs are included in buildFilterParams', () => {
+      expect(transactionsJs).toMatch(/selectedTagIds/);
+      expect(transactionsJs).toMatch(/tag_ids.*tagIds/);
+    });
+
+    test('renderTagPills helper exists', () => {
+      expect(transactionsJs).toMatch(/function renderTagPills/);
+    });
+
+    test('hexToRgba helper exists', () => {
+      expect(transactionsJs).toMatch(/function hexToRgba/);
+    });
+
+    test('Tag pills rendered in transaction list rows', () => {
+      expect(transactionsJs).toMatch(/renderTagPills\(t\.tags\)/);
+    });
   });
 
-  describe.skip('Tag styling [SKIPPED - feature not implemented in modular frontend]', () => {
-    test('Tag badge has color styling', () => {});
-    test('Tag has remove button', () => {});
-    test('Tag list has flexbox layout', () => {});
+  describe('Tag styling', () => {
+    test('Tag chip CSS class exists with styling', () => {
+      expect(componentsCss).toMatch(/\.tx-tag-chip\s*\{[^}]*display:\s*inline-flex/);
+    });
+
+    test('Tag pill styling exists', () => {
+      expect(componentsCss).toMatch(/\.tx-tag-pill/);
+    });
+
+    test('Tag filter dropdown styling exists', () => {
+      expect(componentsCss).toMatch(/\.tx-tag-filter-dropdown/);
+    });
   });
 
-  describe.skip('Tag API integration [SKIPPED - feature not implemented in modular frontend]', () => {
-    test('Tags are fetched from /api/tags', () => {});
-    test('New tags are created via POST /api/tags', () => {});
+  describe('Tag API integration', () => {
+    test('Tags are fetched from /api/tags', () => {
+      expect(transactionsJs).toMatch(/api\s*\(\s*['"]\/tags['"]/);
+    });
+
+    test('New tags are created via POST /api/tags', () => {
+      expect(transactionsJs).toMatch(/api\s*\(\s*['"]\/tags['"].*method:\s*['"]POST['"]/);
+    });
   });
 
   describe('Tag display in transaction list', () => {

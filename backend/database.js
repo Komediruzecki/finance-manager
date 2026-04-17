@@ -318,6 +318,17 @@ function migrate() {
     try { db.exec("ALTER TABLE transactions ADD COLUMN means_of_payment TEXT DEFAULT ''"); } catch(e) {}
   }
 
+  // Migration: Add rollover columns to budgets
+  if (!columnExists('budgets', 'rollover_enabled')) {
+    try { db.exec('ALTER TABLE budgets ADD COLUMN rollover_enabled INTEGER DEFAULT 0'); } catch(e) {}
+  }
+  if (!columnExists('budgets', 'rollover_amount')) {
+    try { db.exec('ALTER TABLE budgets ADD COLUMN rollover_amount REAL DEFAULT 0'); } catch(e) {}
+  }
+  if (!columnExists('budgets', 'rollover_used')) {
+    try { db.exec('ALTER TABLE budgets ADD COLUMN rollover_used REAL DEFAULT 0'); } catch(e) {}
+  }
+
   // Seed demo user if no users exist
   const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
   if (userCount.c === 0) {
