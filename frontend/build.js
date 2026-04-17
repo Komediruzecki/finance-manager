@@ -40,6 +40,7 @@ const jsScripts = `<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.mi
 <script src="js/features/loans.js?v=${CACHE_BUST}"></script>
 <script src="js/features/retirement.js?v=${CACHE_BUST}"></script>
 <script src="js/features/analytics.js?v=${CACHE_BUST}"></script>
+<script src="js/features/heatmap.js?v=${CACHE_BUST}"></script>
 <script src="js/features/categories-accounts.js?v=${CACHE_BUST}"></script>
 <script src="js/features/import.js?v=${CACHE_BUST}"></script>
 <script src="js/features/settings-reports.js?v=${CACHE_BUST}"></script>

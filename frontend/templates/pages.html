@@ -770,6 +770,29 @@
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Spending Heatmap</div><p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Daily spending intensity — click a day for details</p></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select class="form-control" id="heatmap-year-select" onchange="analytics.loadHeatmap()" style="width:auto;min-width:100px;">
+          </select>
+          <select class="form-control" id="heatmap-type-select" onchange="analytics.loadHeatmap()" style="width:auto;min-width:100px;">
+            <option value="expense">Expenses</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+      </div>
+      <div id="heatmap-container" style="overflow-x:auto;padding:8px 0;">
+        <svg id="heatmap-svg" style="width:100%;min-height:160px;"></svg>
+      </div>
+      <div id="heatmap-tooltip" class="heatmap-tooltip" style="display:none;position:fixed;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;pointer-events:none;z-index:9999;color:var(--text);"></div>
+      <div id="heatmap-legend" class="heatmap-legend" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--text-secondary);">
+        <span>Less</span>
+        <div class="heatmap-scale"></div>
+        <span>More</span>
+      </div>
+    </div>
+
     <div class="grid-2">
       <div class="card">
         <div class="card-header"><div><div class="card-title">Top Categories</div></div></div>
