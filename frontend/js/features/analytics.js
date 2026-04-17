@@ -29,9 +29,8 @@ const analytics = {
       }
       sankeyMonth.innerHTML = options;
 
-      // Now load analytics data and sankey for current month
+      // Now load analytics data (sankey loads on-demand when user selects a month)
       this.load();
-      this.loadSankey(); // Auto-load sankey for current month
     } catch (e) {
       console.error('Failed to load years:', e);
     }
@@ -91,7 +90,9 @@ const analytics = {
   currentCurrency: 'EUR',
   renderStackedChart(data, { year, month, week }) {
     const currency = this.currentCurrency;
-    const ctx = document.getElementById('analytics-stacked-chart').getContext('2d');
+    const canvas = document.getElementById('analytics-stacked-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (this.chart) this.chart.destroy();
     const cc = chartColors();
 
@@ -158,7 +159,9 @@ const analytics = {
     const currency = this.currentCurrency;
     const pageAnalytics = document.getElementById('page-analytics');
     if (!pageAnalytics || !pageAnalytics.classList.contains('active')) return;
-    const ctx = document.getElementById('analytics-pie-chart').getContext('2d');
+    const canvas = document.getElementById('analytics-pie-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (this.pieChart) this.pieChart.destroy();
     const cc = chartColors();
     const totalByCat = data.datasets
