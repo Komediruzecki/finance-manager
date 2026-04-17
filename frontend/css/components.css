@@ -376,3 +376,20 @@ th[data-sort].sorted .sort-arrow {
   cursor: pointer;
   accent-color: var(--primary);
 }
+
+/* Auto-map styles */
+.automap-item:last-child {
+  border-bottom: none !important;
+}
+.automap-item:hover {
+  background: var(--bg);
+}
+.automap-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+.confidence-badge {
+  font-weight: 600;
+}

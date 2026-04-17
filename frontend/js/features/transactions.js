@@ -646,4 +646,90 @@ const transactions = {
     this.load();
     if (typeof dashboard !== 'undefined') dashboard.load();
   },
+  pendingMappings: [],
+
+  async openAutoMapModal() {
+    document.getElementById('automap-status').textContent = 'Analyzing uncategorized transactions...';
+    document.getElementById('automap-list').innerHTML = '';
+    modal.open('automap-modal');
+
+    try {
+      const result = await api('/categories/auto-map', { method: 'POST', body: {} });
+      this.pendingMappings = result.mappings || [];
+
+      if (this.pendingMappings.length === 0) {
+        document.getElementById('automap-status').textContent = 'No uncategorized transactions found.';
+        return;
+      }
+
+      document.getElementById('automap-status').textContent =
+        `Found ${result.mapped} of ${result.total} transactions that can be auto-categorized.`;
+
+      const list = document.getElementById('automap-list');
+      list.innerHTML = this.pendingMappings.map((m, i) => `
+        <div class="automap-item" style="display:flex;align-items:center;gap:12px;padding:10px;border-bottom:1px solid var(--border);">
+          <input type="checkbox" class="automap-checkbox" data-index="${i}" checked style="flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(m.description)}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">
+              <span style="color:var(--text-muted);">Current:</span> ${escapeHtml(m.current_category || 'Uncategorized')}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            <span class="cat-dot" style="background:${m.proposed_category_color || '#6b7280'}"></span>
+            <span style="font-weight:500;">${escapeHtml(m.proposed_category_name)}</span>
+          </div>
+          <div style="flex-shrink:0;width:40px;text-align:right;">
+            <span class="confidence-badge" style="background:${m.confidence >= 0.8 ? 'var(--success)' : m.confidence >= 0.5 ? '#f59e0b' : 'var(--border)'};color:white;font-size:11px;padding:2px 6px;border-radius:10px;">
+              ${Math.round(m.confidence * 100)}%
+            </span>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      toast('Failed to analyze transactions: ' + e.message, 'error');
+      modal.close('automap-modal');
+    }
+  },
+
+  async applyAutoMappings() {
+    const checkboxes = document.querySelectorAll('.automap-checkbox:checked');
+    const selectedMappings = [];
+
+    checkboxes.forEach(cb => {
+      const idx = parseInt(cb.dataset.index);
+      const mapping = this.pendingMappings[idx];
+      if (mapping) {
+        selectedMappings.push({
+          transaction_id: mapping.transaction_id,
+          category_id: mapping.proposed_category_id,
+          pattern: mapping.description,
+        });
+      }
+    });
+
+    if (selectedMappings.length === 0) {
+      toast('No mappings selected', 'error');
+      return;
+    }
+
+    try {
+      const result = await api('/categories/apply-mappings', {
+        method: 'POST',
+        body: { mappings: selectedMappings }
+      });
+
+      if (result.ok) {
+        toast(`Updated ${result.updated} transactions`, 'success');
+        modal.close('automap-modal');
+        this.load();
+        if (typeof dashboard !== 'undefined') dashboard.load();
+      } else {
+        toast(result.error || 'Failed to apply mappings', 'error');
+      }
+    } catch (e) {
+      toast('Failed to apply mappings: ' + e.message, 'error');
+    }
+  },
 };

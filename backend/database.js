@@ -240,6 +240,23 @@ function migrate() {
   db.exec('CREATE INDEX IF NOT EXISTS idx_tx_tags_tx ON transaction_tags(transaction_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_tx_tags_tag ON transaction_tags(tag_id)');
 
+  // Create category_mappings table for auto-categorization
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS category_mappings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      pattern TEXT NOT NULL,
+      category_id INTEGER NOT NULL,
+      confidence REAL NOT NULL,
+      use_count INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (profile_id) REFERENCES profiles(id),
+      FOREIGN KEY (category_id) REFERENCES categories(id)
+    );
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_mappings_profile ON category_mappings(profile_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_mappings_pattern ON category_mappings(pattern)');
+
   // Migration: Add profile_id to existing tables (for upgrades)
   if (!columnExists('categories', 'profile_id')) {
     try { db.exec('ALTER TABLE categories ADD COLUMN profile_id INTEGER NOT NULL DEFAULT 1'); } catch(e) {}

@@ -635,3 +635,23 @@
   </div>
 </div>
 
+<!-- AUTO-MAP CATEGORIES MODAL -->
+<div class="modal-overlay" id="automap-modal">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header">
+      <div class="modal-title">Auto-categorize Transactions</div>
+      <button class="btn btn-ghost" onclick="modal.close('automap-modal')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+      <div id="automap-status" style="margin-bottom:16px;text-align:center;color:var(--text-secondary);">Analyzing transactions...</div>
+      <div id="automap-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="modal.close('automap-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="transactions.applyAutoMappings()">Apply Mappings</button>
+    </div>
+  </div>
+</div>
+
