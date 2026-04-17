@@ -10,6 +10,62 @@ beforeAll(async () => {
     .set('X-Skip-RateLimit', 'true');
 });
 
+describe('Analytics API — daily-heatmap', () => {
+  test('GET /api/analytics/daily-heatmap returns dates object for a year', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap?year=2026')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(200);
+    expect(resp.body).toHaveProperty('dates');
+    expect(resp.body).toHaveProperty('year');
+    expect(resp.body).toHaveProperty('type');
+    expect(typeof resp.body.dates).toBe('object');
+    expect(resp.body.year).toBe(2026);
+    expect(resp.body.type).toBe('expense');
+  });
+
+  test('returns dates object with date string keys and numeric values', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap?year=2025')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(200);
+    expect(typeof resp.body.dates).toBe('object');
+    // Verify dates have the expected format
+    const dates = resp.body.dates;
+    if (Object.keys(dates).length > 0) {
+      const firstKey = Object.keys(dates)[0];
+      expect(firstKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(typeof dates[firstKey]).toBe('number');
+    }
+  });
+
+  test('returns 400 when year is missing', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(400);
+    expect(resp.body).toHaveProperty('error');
+  });
+
+  test('type=income returns income data', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap?year=2026&type=income')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(200);
+    expect(resp.body.type).toBe('income');
+  });
+
+  test('type=expense is default type', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap?year=2026')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(200);
+    expect(resp.body.type).toBe('expense');
+  });
+
+  test('invalid type falls back to expense', async () => {
+    const resp = await request(BASE_URL).get('/api/analytics/daily-heatmap?year=2026&type=invalid')
+      .set('X-Skip-RateLimit', 'true');
+    expect(resp.status).toBe(200);
+    expect(resp.body.type).toBe('expense');
+  });
+});
+
 describe('Analytics API — distinct-years', () => {
   test('GET /api/analytics/distinct-years returns array of years', async () => {
     const resp = await request(BASE_URL).get('/api/analytics/distinct-years')

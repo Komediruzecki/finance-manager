@@ -3714,6 +3714,43 @@ app.get("/api/stats/monthly", apiRateLimiter, (req, res) => {
 });
 
 // ========================
+// ANALYTICS - Daily Heatmap
+// ========================
+app.get("/api/analytics/daily-heatmap", apiRateLimiter, (req, res) => {
+  try {
+    const year = parseInt(req.query.year);
+    if (!year) {
+      res.status(400).json({ error: "year query parameter is required" });
+      return;
+    }
+    const type = req.query.type === "income" ? "income" : "expense";
+
+    const pids = getProfileIds(req);
+    const inClause = pids.map(() => '?').join(',');
+
+    const rows = db
+      .prepare(
+        `SELECT date, SUM(amount) as total
+         FROM transactions
+         WHERE profile_id IN (${inClause})
+           AND substr(date, 1, 4) = ?
+           AND type = ?
+         GROUP BY date`,
+      )
+      .all(...pids, String(year), type);
+
+    const dates = {};
+    for (const r of rows) {
+      dates[r.date] = r.total;
+    }
+
+    res.json({ dates, year, type });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
 // ANALYTICS
 // ========================
 app.get("/api/analytics/distinct-years", apiRateLimiter, (req, res) => {

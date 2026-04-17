@@ -39,7 +39,7 @@ const nav = {
         if (page === 'budgets') budgets.load();
         if (page === 'loans') loans.load();
         if (page === 'categories') categories.load();
-        if (page === 'analytics') analytics.init();
+        if (page === 'analytics') { analytics.init(); heatmap.init(); }
         if (page === 'settings') settings.load();
         if (page === 'accounts') accounts.load();
         if (page === 'import') dataImport.reset();
