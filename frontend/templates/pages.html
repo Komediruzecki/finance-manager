@@ -485,6 +485,44 @@
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Budget vs Actual Flow</div><p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Expense flow from budgeted to actual by category</p></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select class="form-control" id="sankey-month-filter" onchange="analytics.loadSankey()" style="width:auto;min-width:120px;">
+            <option value="">Select Month</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="chartExport.exportSankey()" title="Export chart">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="sankey-chart-container" style="height:400px;position:relative;display:none;">
+        <svg id="sankey-chart"></svg>
+      </div>
+      <div id="sankey-empty" class="empty-state" style="padding:40px;text-align:center;">
+        <p>Select a month to view budget vs actual flow</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Top Categories</div></div></div>
+        <div id="analytics-top-categories"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Category Breakdown</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="chartExport.exportAnalyticsPie()" title="Export chart">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          </button>
+        </div>
+        <div style="height:300px;">
+          <canvas id="analytics-pie-chart"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- SETTINGS -->
