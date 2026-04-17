@@ -148,6 +148,9 @@ const dashboard = {
       currency
     );
 
+    // Budget alerts
+    this.loadBudgetAlerts();
+
     // Recent transactions
     const rt = document.getElementById('recent-transactions');
     if (!data.recent || data.recent.length === 0) {
@@ -367,6 +370,62 @@ const dashboard = {
     } catch (e) {
       const nwCard = document.getElementById('networth-chart-card');
       if (nwCard) nwCard.style.display = 'none';
+    }
+  },
+  async loadBudgetAlerts() {
+    const card = document.getElementById('budget-alerts-card');
+    if (!card) return;
+    try {
+      const data = await api('/budgets/alerts?threshold=80');
+      const alerts = data.alerts || [];
+      const list = document.getElementById('budget-alerts-list');
+      const currency = settings.local_currency || 'EUR';
+
+      if (alerts.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = 'block';
+      list.innerHTML = alerts
+        .map((a) => {
+          const color =
+            a.status === 'over'
+              ? 'var(--error)'
+              : a.status === 'warning'
+              ? '#f59e0b'
+              : 'var(--success)';
+          const bg =
+            a.status === 'over'
+              ? 'rgba(239,68,68,0.08)'
+              : a.status === 'warning'
+              ? 'rgba(245,158,11,0.08)'
+              : 'rgba(16,185,129,0.08)';
+          const label =
+            a.status === 'over'
+              ? 'Over Budget!'
+              : a.status === 'warning'
+              ? 'Near Limit'
+              : 'On Track';
+          return `<div style="background:${bg};border-left:3px solid ${color};padding:12px;border-radius:6px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="cat-dot" style="background:${a.categoryColor || '#6b7280'}"></span>
+              <span style="font-weight:600;">${escapeHtml(a.categoryName)}</span>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:${color};">${label}</span>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:4px;height:6px;overflow:hidden;margin-bottom:6px;">
+            <div style="width:${Math.min(100, a.percentage)}%;height:100%;background:${color};border-radius:4px;transition:width .3s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);">
+            <span>${formatCurrency(a.spent, currency)} / ${formatCurrency(a.budgetAmount, currency)}</span>
+            <span>${a.percentage}%</span>
+          </div>
+        </div>`;
+        })
+        .join('');
+    } catch (e) {
+      card.style.display = 'none';
     }
   },
 };
