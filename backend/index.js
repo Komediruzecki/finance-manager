@@ -1862,22 +1862,18 @@ app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
       0,
     );
 
-    // Get monthly net flow (income - expense) per month for last 24 months
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setMonth(twoYearsAgo.getMonth() - 24);
-    const startStr = twoYearsAgo.toISOString().split("T")[0];
-
+    // Get monthly net flow (income - expense) from earliest transaction to now
     const monthly = db
       .prepare(
         `
       SELECT strftime('%Y-%m', date) as month, type, SUM(COALESCE(amount_local, amount)) as total
       FROM transactions
-      WHERE profile_id IN (${inClause}) AND date >= ? AND type IN ('income', 'expense')
+      WHERE profile_id IN (${inClause}) AND type IN ('income', 'expense')
       GROUP BY month, type
       ORDER BY month
     `,
       )
-      .all(...pids, startStr);
+      .all(...pids);
 
     const monthlyMap = {};
     for (const r of monthly) {
@@ -1887,47 +1883,23 @@ app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
       if (r.type === "expense") monthlyMap[r.month].net -= r.total;
     }
 
-    // Build timeline starting from 24 months ago with running balance
+    // Build timeline from earliest transaction to now with running total
     const timeline = [];
-    let running = totalNetWorth;
-
-    // Go backwards from now to build historical balance
     const sortedMonths = Object.keys(monthlyMap).sort();
-    const balanceByMonth = {};
-    // First pass: accumulate running balance forward
-    let forward = 0;
-    for (const m of sortedMonths) {
-      forward += monthlyMap[m].net;
-      balanceByMonth[m] = forward;
-    }
-
-    // Build output: current balance minus future net flows = historical balance
-    // Actually simpler: show balance trend from 24 months ago to now
-    for (const m of sortedMonths) {
-      // The net change from 24mo ago perspective
-    }
-
-    // Simpler approach: show monthly net changes with running total
-    // Starting from oldest month with the total current balance minus total future net
-    const allMonths = sortedMonths;
-    if (allMonths.length > 0) {
+    if (sortedMonths.length > 0) {
       // Total net from all months in range
       const totalNet = Object.values(monthlyMap).reduce((s, m) => s + m.net, 0);
-      // Opening balance = current net worth - total net
+      // Opening balance = current net worth - total net accumulated
       const opening = totalNetWorth - totalNet;
 
       let balance = opening;
-      for (const m of allMonths) {
+      for (const m of sortedMonths) {
         balance += monthlyMap[m].net;
         timeline.push({
           month: m,
           balance: Math.round(balance * 100) / 100,
           netChange: Math.round(monthlyMap[m].net * 100) / 100,
         });
-      }
-      // Always end with current balance
-      if (timeline.length > 0) {
-        timeline[timeline.length - 1].balance = totalNetWorth;
       }
     }
 
