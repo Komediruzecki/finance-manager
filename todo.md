@@ -6,6 +6,7 @@
 - [x] **Net worth over time chart** — Line chart on dashboard showing net worth progression
 - [ ] **Comparison mode** — Overlay two periods on the same chart to compare spending
 - [ ] **Category heatmap** — Calendar heatmap of daily spending by category
+- [x] **Budget vs Actual Flow** — Sankey diagram showing budgeted vs actual spending by category
 
 ## Finance Calculations
 - [x] **Retirement calculator** — Model retirement readiness based on current savings, expenses, and withdrawal rate (consider different countries/cost of living)
@@ -46,6 +47,13 @@
 - [x] **Multi-account net worth** — Aggregate all account balances (giro, savings, investment) into net worth dashboard
 - [ ] **Account reconciliation** — Mark transactions as reconciled against bank statements
 - [x] **Account balance history** — Track and display balance changes over time per account
+
+## Additional Ideas
+- [ ] **Bill reminder / due date tracker** — Mark recurring transactions as bills with due dates, get reminders
+- [ ] **Savings rate goal** — Set a target savings rate % and track progress monthly
+- [x] **Month-over-month trends** — Automatic comparison with previous month/quarter on dashboard
+- [ ] **Recurring transaction insights** — Show upcoming recurring charges this month
+- [ ] **Loan amortization table** — Detailed month-by-month breakdown with export option
 
 ## Technical
 - [x] **Transaction search** — Full-text search across transaction descriptions and notes
