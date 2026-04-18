@@ -1,12 +1,12 @@
 {
   "version": "28b313dd",
-  "swVersion": "227538ee",
+  "swVersion": "9134b907",
   "hashes": {
     "core.js": "539b77e4",
     "features/features.js": "2059d080",
     "app.js": "bdc8dc23",
-    "css/base.css": "124ae12d",
-    "css/components.css": "0fa97373"
+    "css/base.css": "f8ba0f03",
+    "css/components.css": "6d942c38"
   },
   "pages": {
     "dashboard": [
@@ -50,5 +50,5 @@
       "settings-reports"
     ]
   },
-  "timestamp": 1776496927124
+  "timestamp": 1776497704250
 }
