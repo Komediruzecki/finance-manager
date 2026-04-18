@@ -339,6 +339,4 @@ const accounts = {
   },
 };
 
-// Register with FM singleton
-FM.registerModule('categories', categories);
-FM.registerModule('accounts', accounts);
+// Register with FM singleton (moved to app-singleton.js for better initialization order)
