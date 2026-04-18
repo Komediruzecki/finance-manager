@@ -59,3 +59,11 @@
 - [x] **Tags** — Add free-form tags to transactions for flexible categorization
 - [ ] **PWA support** — Add manifest and service worker for installable app on mobile
 - [x] **API rate limiting** — Add rate limiting to protect the API
+- [ ] **Batch import preview** — Show full preview with duplicate detection before committing import
+- [ ] **Budget forecasting** — Project spending patterns for remaining days of the month
+- [ ] **Receipt attachment** — Attach images/PDFs to transactions
+- [ ] **Webhook / bank feed** — Auto-import from bank CSV feeds on schedule
+- [ ] **Dark/light mode persistence** — Save theme preference to profile settings
+- [ ] **Keyboard navigation** — Full keyboard accessibility for power users
+- [ ] **Net worth goals** — Set a target net worth with a date and track progress
+- [ ] **Investment portfolio tracker** — Track stocks, crypto, funds with current values
