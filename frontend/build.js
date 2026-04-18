@@ -52,11 +52,10 @@ const PAGE_FEATURES = {
   goals: ['savingsGoals'],
   bills: ['bills'],
   import: ['import'],
-  accounts: ['categories-accounts'],
+  // Note: categories and accounts both use categories-accounts.js (merged feature)
   retirement: ['retirement'],
   housing: ['housingCalc'],
   analytics: ['analytics', 'heatmap'],
-  categories: ['categories-accounts'],
   settings: ['settings-reports'],
 };
 

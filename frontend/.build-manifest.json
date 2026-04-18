@@ -1,6 +1,6 @@
 {
   "version": "2c51dcd5",
-  "swVersion": "16b90bd0",
+  "swVersion": "c96d76b8",
   "hashes": {
     "core.js": "c80dd495",
     "features/features.js": "984b2950",
@@ -30,9 +30,6 @@
     "import": [
       "import"
     ],
-    "accounts": [
-      "categories-accounts"
-    ],
     "retirement": [
       "retirement"
     ],
@@ -43,12 +40,9 @@
       "analytics",
       "heatmap"
     ],
-    "categories": [
-      "categories-accounts"
-    ],
     "settings": [
       "settings-reports"
     ]
   },
-  "timestamp": 1776543073580
+  "timestamp": 1776543719569
 }
