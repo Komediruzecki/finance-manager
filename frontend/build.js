@@ -162,7 +162,8 @@ async function build(opts = {}) {
   fs.writeFileSync(BUILD_MANIFEST, JSON.stringify(manifest, null, 2));
   // Inject swVersion into sw.js so it auto-increments on every build
   let swCode = fs.readFileSync(path.join(FRONTEND, 'sw.js'), 'utf8');
-  swCode = swCode.replace('const CACHE_NAME = \'finance-manager-v1\';', `const CACHE_NAME = 'finance-manager-v${manifest.swVersion}';`);
+  // Replace the current cache name (any 'finance-manager-vXXXXXXXX' pattern)
+  swCode = swCode.replace(/const CACHE_NAME = 'finance-manager-v[a-f0-9]+';/, `const CACHE_NAME = 'finance-manager-v${manifest.swVersion}';`);
   fs.writeFileSync(path.join(FRONTEND, 'sw.js'), swCode);
   console.log(`  sw.js         cache=v${manifest.swVersion}`);
 
