@@ -18,7 +18,8 @@ describe('chartExport module', () => {
 
   describe('chartExport.js file exists', () => {
     test('chartExport.js is included in index.html', () => {
-      expect(htmlContent).toMatch(/<script\s+src\s*=\s*["']js\/features\/chartExport\.js(\?[^"']*)?["']\s*>/);
+      // Features are bundled into js/dist/features.js
+      expect(htmlContent).toMatch(/<script\s+src\s*=\s*["']js\/dist\/features\.js(\?[^"']*)?["']\s*>/);
     });
 
     test('chartExport.js contains const chartExport', () => {
@@ -203,27 +204,27 @@ describe('chartExport module', () => {
 
   describe('export buttons in HTML', () => {
     test('dashboard category chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportDashboardCategory\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportDashboardCategory["']/);
     });
 
     test('dashboard monthly chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportDashboardMonthly\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportDashboardMonthly["']/);
     });
 
     test('dashboard cashflow chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportDashboardCashflow\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportDashboardCashflow["']/);
     });
 
     test('analytics stacked chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportAnalyticsStacked\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportAnalyticsStacked["']/);
     });
 
     test('analytics pie chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportAnalyticsPie\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportAnalyticsPie["']/);
     });
 
     test('retirement chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportRetirement\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportRetirement["']/);
     });
 
     test('export buttons have title attribute', () => {
@@ -231,7 +232,7 @@ describe('chartExport module', () => {
     });
 
     test('net worth chart has export button', () => {
-      expect(htmlContent).toMatch(/onclick\s*=\s*["']chartExport\.exportNetWorth\(\)["']/);
+      expect(htmlContent).toMatch(/data-action\s*=\s*["']chartExport\.exportNetWorth["']/);
     });
 
     test('export buttons use ghost variant', () => {

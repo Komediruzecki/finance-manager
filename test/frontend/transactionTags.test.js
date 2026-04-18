@@ -115,7 +115,8 @@ describe('Transaction Tags Feature - Frontend', () => {
     });
 
     test('Tag input has Enter key handler', () => {
-      expect(modalsHtml).toMatch(/onkeydown.*Enter.*addTagFromInput/);
+      // Enter key on data-action inputs is handled by global delegation in app.js
+      expect(modalsHtml).toMatch(/data-action="transactions:addTagFromInput"/);
     });
 
     test('Tag CSS styles exist in components.css', () => {
