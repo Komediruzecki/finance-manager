@@ -1,8 +1,11 @@
-# Database
-db/
+# Database files (track structure only)
+db/*.db
+db/*.db-shm
+db/*.db-wal
+db/sessions.db
 
-# Uploaded files
-assets/
+# Uploaded files (track structure only)
+!/assets/.gitkeep
 
 # Build output
 frontend/dist/
