@@ -231,6 +231,23 @@ function migrate() {
   `);
   db.exec('CREATE INDEX IF NOT EXISTS idx_bills_profile ON bills(profile_id)');
 
+  // Create zero-based budgeting table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS budgets_zero_based (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      category_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      month TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (profile_id) REFERENCES profiles(id),
+      FOREIGN KEY (category_id) REFERENCES categories(id)
+    )
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_budgets_zero_based_profile ON budgets_zero_based(profile_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_budgets_zero_based_month ON budgets_zero_based(month)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_budgets_zero_based_category ON budgets_zero_based(category_id)');
+
   // Create tags table
   db.exec(`
     CREATE TABLE IF NOT EXISTS tags (
