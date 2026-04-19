@@ -1,9 +1,9 @@
 // Get version from package.json if available
 try {
   const pkg = require(`${import.meta.dirname || '.'}/package.json`);
-  const CACHE_NAME = `finance-manager-${pkg.version || '0.0.1'}`;
+  const CACHE_NAME = `finance-manager-v${pkg.version || '0.0.1'}`;
 } catch {
-  const CACHE_NAME = 'finance-manager-v1';
+  const CACHE_NAME = 'finance-manager-v2';
 }
 
 const STATIC_ASSETS = [
