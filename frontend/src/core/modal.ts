@@ -6,22 +6,22 @@
  * Modal store - manages modal state
  */
 export class ModalStore {
-  private isOpen = false;
-  private currentModal: string = '';
-  private data: any = null;
-  private closeCallback: (() => void) | null = null;
+  private isOpen = false
+  private currentModal: string = ''
+  private data: Record<string, unknown> | null = null
+  private closeCallback: (() => void) | null = null
 
   /**
    * Open a modal
    */
-  open(modalId: string, data?: any): void {
-    this.currentModal = modalId;
-    this.data = data || null;
-    this.isOpen = true;
+  open(modalId: string, data?: Record<string, unknown>): void {
+    this.currentModal = modalId
+    this.data = data || null
+    this.isOpen = true
 
-    const el = document.getElementById(modalId);
+    const el = document.getElementById(modalId)
     if (el) {
-      el.classList.add('show');
+      el.classList.add('show')
     }
   }
 
@@ -29,23 +29,23 @@ export class ModalStore {
    * Close current modal
    */
   close(): void {
-    if (!this.isOpen) return;
+    if (!this.isOpen) return
 
-    const el = document.getElementById(this.currentModal);
+    const el = document.getElementById(this.currentModal)
     if (el) {
-      el.classList.remove('show');
+      el.classList.remove('show')
     }
 
     // Reset state after animation
     setTimeout(() => {
-      this.currentModal = '';
-      this.data = null;
-      this.isOpen = false;
+      this.currentModal = ''
+      this.data = null
+      this.isOpen = false
       if (this.closeCallback) {
-        this.closeCallback();
-        this.closeCallback = null;
+        this.closeCallback()
+        this.closeCallback = null
       }
-    }, 300); // Wait for transition
+    }, 300) // Wait for transition
   }
 
   /**
@@ -53,7 +53,7 @@ export class ModalStore {
    */
   closeById(modalId: string): void {
     if (this.currentModal === modalId) {
-      this.close();
+      this.close()
     }
   }
 
@@ -61,36 +61,37 @@ export class ModalStore {
    * Check if modal is open
    */
   isModalOpen(): boolean {
-    return this.isOpen;
+    return this.isOpen
   }
 
   /**
    * Get current modal ID
    */
   getCurrentModal(): string {
-    return this.currentModal;
+    return this.currentModal
   }
 
   /**
    * Get modal data
    */
-  getData<T = any>(): T | null {
-    return this.data;
+  getData(): Record<string, unknown> | null {
+    return (this.data as Record<string, unknown> | null) || null
   }
 
   /**
    * Set close callback
    */
   onAfterClose(callback: () => void): void {
-    this.closeCallback = callback;
+    this.closeCallback = callback
   }
 }
 
 // Export singleton instance
-export const modal = new ModalStore();
+export const modal = new ModalStore()
 
-// Global access for HTML attributes
-(window as any).modal = {
+// Global access for HTML attributes - available on window for direct HTML attribute calls
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(window as any).modal = {
   open: modal.open.bind(modal),
   close: modal.close.bind(modal),
-};
+}

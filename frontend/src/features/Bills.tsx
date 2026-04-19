@@ -1,1 +1,10 @@
-export default function Bills() { return (<div class="page page-${f.toLowerCase()} page-enter"><div class="page-header"><h1>Bills</h1></div><div class="empty-state">Bills page - content to be implemented</div></div>); }
+export default function Bills() {
+  return (
+    <div class="page page-${f.toLowerCase()} page-enter">
+      <div class="page-header">
+        <h1>Bills</h1>
+      </div>
+      <div class="empty-state">Bills page - content to be implemented</div>
+    </div>
+  )
+}

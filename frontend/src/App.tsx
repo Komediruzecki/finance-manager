@@ -2,25 +2,53 @@
  * Main App Component - Root component for the application
  */
 
-import { createSignal, onMount } from 'solid-js';
-import { theme } from './core/theme';
-import Dashboard from './features/Dashboard';
-import Transactions from './features/Transactions';
-import Budgets from './features/Budgets';
-import Loans from './features/Loans';
-import Goals from './features/Goals';
-import Bills from './features/Bills';
-import Import from './features/Import';
-import Accounts from './features/Accounts';
-import Categories from './features/Categories';
-import Settings from './features/Settings';
-import Retirement from './features/Retirement';
-import Housing from './features/Housing';
-import Analytics from './features/Analytics';
+import { createSignal, onMount } from 'solid-js'
+import { theme } from './core/theme'
+import Accounts from './features/Accounts'
+import Analytics from './features/Analytics'
+import Bills from './features/Bills'
+import Budgets from './features/Budgets'
+import Categories from './features/Categories'
+import Dashboard from './features/Dashboard'
+import Goals from './features/Goals'
+import Housing from './features/Housing'
+import Import from './features/Import'
+import Loans from './features/Loans'
+import Retirement from './features/Retirement'
+import Settings from './features/Settings'
+import Transactions from './features/Transactions'
 
-type PageName = 'dashboard' | 'transactions' | 'budgets' | 'loans' | 'goals' | 'bills' | 'import' | 'accounts' | 'categories' | 'settings' | 'retirement' | 'housing' | 'analytics';
+type PageName =
+  | 'dashboard'
+  | 'transactions'
+  | 'budgets'
+  | 'loans'
+  | 'goals'
+  | 'bills'
+  | 'import'
+  | 'accounts'
+  | 'categories'
+  | 'settings'
+  | 'retirement'
+  | 'housing'
+  | 'analytics'
 
-const pages: Record<PageName, any> = {
+type PageComponent =
+  | typeof Dashboard
+  | typeof Transactions
+  | typeof Budgets
+  | typeof Loans
+  | typeof Goals
+  | typeof Bills
+  | typeof Import
+  | typeof Accounts
+  | typeof Categories
+  | typeof Settings
+  | typeof Retirement
+  | typeof Housing
+  | typeof Analytics
+
+const pages: Record<PageName, PageComponent> = {
   dashboard: Dashboard,
   transactions: Transactions,
   budgets: Budgets,
@@ -34,28 +62,26 @@ const pages: Record<PageName, any> = {
   retirement: Retirement,
   housing: Housing,
   analytics: Analytics,
-};
+}
 
 export default function App() {
-  const [currentPage, setCurrentPage] = createSignal<PageName>('dashboard');
+  const [currentPage, setCurrentPage] = createSignal<PageName>('dashboard')
 
   onMount(() => {
-    theme.init();
+    theme.init()
 
     // Handle hash changes for routing
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1) || 'dashboard';
-      const page = hash as PageName;
+      const hash = window.location.hash.slice(1) || 'dashboard'
+      const page = hash as PageName
       if (page in pages) {
-        setCurrentPage(page);
+        setCurrentPage(page)
       }
-    };
+    }
 
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
-  });
-
-  const PageComponent = pages[currentPage()] || Dashboard;
+    window.addEventListener('hashchange', handleHashChange)
+    handleHashChange()
+  })
 
   return (
     <div class="app-root">
@@ -123,23 +149,37 @@ export default function App() {
 
       {/* Main Content Area */}
       <main class="app-main">
-        <PageComponent />
+        <div id="page-content" class="page">
+          <div class="page-inner">
+            <div class="page-content">
+              {(() => {
+                const page = currentPage()
+                return <div>{pages[page] ? pages[page]() : Dashboard()}</div>
+              })()}
+            </div>
+          </div>
+        </div>
       </main>
 
       {/* Modals */}
-      <div id="modals"></div>
+      <div id="modals" />
 
       {/* Toasts */}
-      <div id="toast-container"></div>
+      <div id="toast-container" />
 
       {/* Mobile Sidebar */}
-      <div id="mobile-overlay" class="mobile-overlay"></div>
+      <div id="mobile-overlay" class="mobile-overlay" />
       <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
           <h2>Menu</h2>
           <button id="sidebar-close" class="sidebar-close">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -174,5 +214,5 @@ export default function App() {
         </nav>
       </aside>
     </div>
-  );
+  )
 }
