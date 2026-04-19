@@ -1,6 +1,6 @@
 <!-- CREATE PROFILE MODAL -->
 <div class="modal-overlay" id="profile-modal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title">Create Profile</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="profile-modal">
@@ -123,7 +123,7 @@
 
 <!-- QUICK-ADD TRANSACTION MODAL -->
 <div class="modal-overlay" id="quickadd-modal">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title">Quick Add</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="quickadd-modal">
@@ -185,30 +185,30 @@
         <div class="form-group">
           <label class="form-label">Color</label>
           <div class="color-palette" id="cat-color-palette">
-            <button type="button" class="color-swatch" style="background:#ef4444" data-color="#ef4444" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#f97316" data-color="#f97316" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#f59e0b" data-color="#f59e0b" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#eab308" data-color="#eab308" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#84cc16" data-color="#84cc16" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#22c55e" data-color="#22c55e" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#14b8a6" data-color="#14b8a6" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#06b6d4" data-color="#06b6d4" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#0ea5e9" data-color="#0ea5e9" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#3b82f6" data-color="#3b82f6" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#6366f1" data-color="#6366f1" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#8b5cf6" data-color="#8b5cf6" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#a855f7" data-color="#a855f7" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#d946ef" data-color="#d946ef" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#ec4899" data-color="#ec4899" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#f43f5e" data-color="#f43f5e" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#64748b" data-color="#64748b" data-action="categories:selectColor"></button>
-            <button type="button" class="color-swatch" style="background:#78716c" data-color="#78716c" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-red-500" data-color="#ef4444" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-orange-500" data-color="#f97316" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-amber-500" data-color="#f59e0b" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-yellow-500" data-color="#eab308" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-lime-500" data-color="#84cc16" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-green-500" data-color="#22c55e" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-teal-500" data-color="#14b8a6" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-cyan-500" data-color="#06b6d4" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-sky-500" data-color="#0ea5e9" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-blue-500" data-color="#3b82f6" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-indigo-500" data-color="#6366f1" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-violet-500" data-color="#8b5cf6" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-purple-500" data-color="#a855f7" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-fuchsia-500" data-color="#d946ef" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-pink-500" data-color="#ec4899" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-rose-500" data-color="#f43f5e" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-slate-500" data-color="#64748b" data-action="categories:selectColor"></button>
+            <button type="button" class="color-swatch bg-stone-500" data-color="#78716c" data-action="categories:selectColor"></button>
           </div>
           <input type="hidden" id="cat-color" value="#6b7280">
         </div>
         <div class="form-group">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <input type="checkbox" id="cat-tax" style="width:16px;height:16px;">
+            <input type="checkbox" id="cat-tax" class="checkbox-input">
             <div>
               <div style="font-size:14px;font-weight:500;">Tax-Deductible</div>
               <div style="font-size:12px;color:var(--text-secondary);">Mark this category as tax-deductible for year-end reports</div>
@@ -264,7 +264,7 @@
         </div>
         <div class="form-group">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <input type="checkbox" id="budget-rollover-enabled" style="width:16px;height:16px;">
+            <input type="checkbox" id="budget-rollover-enabled" class="checkbox-input">
             <div>
               <div style="font-size:14px;font-weight:500;">Enable Rollover</div>
               <div style="font-size:12px;color:var(--text-secondary);">Carry unused budget to next month</div>
@@ -287,7 +287,7 @@
 
 <!-- LOAN MODAL -->
 <div class="modal-overlay" id="loan-modal">
-  <div class="modal" style="max-width:640px;">
+  <div class="modal modal-lg">
     <div class="modal-header">
       <div class="modal-title" id="loan-modal-title">New Loan</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="loan-modal">
@@ -341,7 +341,7 @@
 
 <!-- SAVINGS GOAL MODAL -->
 <div class="modal-overlay" id="goal-modal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal modal-md">
     <div class="modal-header">
       <div class="modal-title" id="goal-modal-title">New Savings Goal</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="goal-modal">
@@ -380,7 +380,7 @@
 
 <!-- PREPAYMENT MODAL -->
 <div class='modal-overlay' id='prepay-modal'>
-  <div class='modal' style='max-width:440px;'>
+  <div class="modal modal-md">
     <div class='modal-header'>
       <div class='modal-title' id='prepay-modal-title'>Add Prepayment</div>
       <button class='btn btn-ghost' data-action="modal:close" data-arg="prepay-modal">
@@ -413,7 +413,7 @@
 
 <!-- RECURRING TRANSACTION MODAL -->
 <div class="modal-overlay" id="recurring-modal">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal modal-md">
     <div class="modal-header">
       <div class="modal-title" id="recurring-modal-title">Add Recurring</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="recurring-modal">
@@ -479,7 +479,7 @@
 
 <!-- LOGIN MODAL -->
 <div class="modal-overlay" id="login-modal">
-  <div class="modal" style="max-width:380px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title">Sign In</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="login-modal" style="padding:4px;">
@@ -506,7 +506,7 @@
 
 <!-- ACCOUNT MODAL -->
 <div class="modal-overlay" id="account-modal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title" id="account-modal-title">Add Account</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="account-modal" style="padding:4px;">
@@ -549,7 +549,7 @@
 
 <!-- RATE PERIOD MODAL -->
 <div class="modal-overlay" id="rate-period-modal">
-  <div class="modal" style="max-width:440px;">
+  <div class="modal modal-md">
     <div class="modal-header">
       <div class="modal-title" id="rate-period-modal-title">Add Rate Period</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="rate-period-modal">
@@ -582,7 +582,7 @@
 
 <!-- BULK EDIT CATEGORY MODAL -->
 <div class="modal-overlay" id="bulk-category-modal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title">Change Category</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="bulk-category-modal">
@@ -609,7 +609,7 @@
 
 <!-- BULK EDIT TYPE MODAL -->
 <div class="modal-overlay" id="bulk-type-modal">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <div class="modal-title">Change Type</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="bulk-type-modal">
@@ -639,7 +639,7 @@
 
 <!-- ACCOUNT BALANCE HISTORY MODAL -->
 <div class="modal-overlay" id="balance-history-modal">
-  <div class="modal" style="max-width:560px;">
+  <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Balance History — <span id="bh-account-name"></span></div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="balance-history-modal">
@@ -659,7 +659,7 @@
 
 <!-- AUTO-MAP CATEGORIES MODAL -->
 <div class="modal-overlay" id="automap-modal">
-  <div class="modal" style="max-width:700px;">
+  <div class="modal modal-xl">
     <div class="modal-header">
       <div class="modal-title">Auto-categorize Transactions</div>
       <button class="btn btn-ghost" data-action="modal:close" data-arg="automap-modal">
