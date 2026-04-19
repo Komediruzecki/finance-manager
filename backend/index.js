@@ -2139,6 +2139,236 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
 });
 
 // ========================
+// ZERO-BASED BUDGETING
+// ========================
+
+// Get budget allocation form - categories with remaining allocation
+app.get("/api/budgets/zero-based", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    const startOfMonth = `${month}-01`;
+    const nextMonth = new Date(new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1));
+    const endOfMonth = nextMonth.toISOString().slice(0, 10);
+
+    // Get all expense categories for this profile
+    const categories = db.prepare(
+      `SELECT id, name, color, icon FROM categories WHERE profile_id = ? AND type = 'expense' ORDER BY name`
+    ).all(pid);
+
+    // Get existing budgets for this month
+    const budgets = db.prepare(
+      `SELECT * FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ? AND period = 'monthly'`
+    ).all(pid, startOfMonth, endOfMonth);
+
+    const budgetMap = {};
+    budgets.forEach(b => budgetMap[b.category_id] = b);
+
+    // Get actual spending for this month
+    const spent = db.prepare(
+      `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
+       FROM transactions
+       WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
+       GROUP BY category_id`
+    ).all(pid, startOfMonth, endOfMonth);
+
+    const spentMap = {};
+    spent.forEach(s => spentMap[s.category_id] = Math.abs(s.total));
+
+    // Calculate remaining amount for zero-based budgeting
+    const remaining = db.prepare(
+      `SELECT SUM(COALESCE(amount_local, amount)) as total
+       FROM transactions
+       WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'income'
+    `).all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
+
+    // Calculate already budgeted amounts
+    const alreadyBudgeted = db.prepare(
+      `SELECT SUM(amount) as total FROM budgets
+       WHERE profile_id = ? AND start_date >= ? AND start_date < ?
+    `).all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
+
+    // Calculate unassigned budget for this month
+    const unassignedBudget = Math.max(0, remaining - alreadyBudgeted);
+
+    // Build category allocation details
+    const allocations = categories.map(cat => {
+      const budget = budgetMap[cat.id];
+      const spentAmt = spentMap[cat.id] || 0;
+      const remainingBudget = budget ? budget.amount - spentAmt : 0;
+      const percentUsed = budget && budget.amount > 0 ? (spentAmt / budget.amount) * 100 : 0;
+
+      return {
+        category_id: cat.id,
+        category_name: cat.name,
+        category_color: cat.color,
+        category_icon: cat.icon,
+        amount: budget?.amount || 0,
+        spent: spentAmt,
+        remaining_budget: remainingBudget,
+        percent_used: Math.min(100, Math.round(percentUsed)),
+        is_budgeted: !!budget,
+        can_allocate: unassignedBudget > 0,
+      };
+    });
+
+    res.json({
+      categories,
+      allocations,
+      remaining_income: remaining,
+      already_budgeted,
+      unassigned_budget: unassignedBudget,
+      period: month,
+      can_allocate: unassignedBudget > 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Allocate budget to a category (zero-based budgeting)
+app.post("/api/budgets/allocate", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const { category_id, amount, period } = req.body;
+
+    if (!category_id || amount == null) {
+      return res.status(400).json({ error: "Category ID and amount are required" });
+    }
+
+    const period = period || "monthly";
+
+    // Get month for this budget (default to current month)
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    const start_date = `${month}-01`;
+
+    // Check if budget already exists for this category and month
+    const existing = db.prepare(
+      `SELECT * FROM budgets WHERE category_id = ? AND profile_id = ? AND start_date = ? AND period = ?`
+    ).get(category_id, pid, start_date, period);
+
+    if (existing) {
+      return res.status(400).json({
+        error: `Budget already exists for ${month}. Use PUT /api/budgets/:id to update it.`
+      });
+    }
+
+    const info = db.prepare(
+      "INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)"
+    ).run(category_id, amount, period, start_date, pid);
+
+    res.json({
+      id: info.lastInsertRowid,
+      category_id,
+      amount,
+      period,
+      start_date,
+      profile_id: pid,
+      message: "Budget allocated successfully"
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get zero-based budget summary - view allocations and spending
+app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    const startOfMonth = `${month}-01`;
+    const nextMonth = new Date(new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1));
+    const endOfMonth = nextMonth.toISOString().slice(0, 10);
+
+    // Get allocations (budgets for this month)
+    const budgets = db.prepare(
+      `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon
+       FROM budgets b
+       JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
+       WHERE b.profile_id = ? AND b.start_date >= ? AND b.start_date < ? AND b.period = 'monthly'`
+    ).all(pid, startOfMonth, endOfMonth);
+
+    // Get actual spending by category
+    const spent = db.prepare(
+      `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
+       FROM transactions
+       WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
+       GROUP BY category_id`
+    ).all(pid, startOfMonth, endOfMonth);
+
+    const spentMap = {};
+    spent.forEach(s => spentMap[s.category_id] = Math.abs(s.total));
+
+    // Get total income for this month
+    const income = db.prepare(
+      `SELECT SUM(COALESCE(amount_local, amount)) as total
+       FROM transactions
+       WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'income'
+    `).all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
+
+    // Calculate summary
+    const totalBudget = budgets.reduce((sum, b) => sum + b.amount, 0);
+    const totalSpent = Object.values(spentMap).reduce((sum, val) => sum + val, 0);
+    const remaining = totalBudget - totalSpent;
+    const zero_based_remaining = income - totalBudget;
+
+    const summary = budgets.map(b => ({
+      category_id: b.category_id,
+      category_name: b.category_name,
+      category_color: b.category_color,
+      category_icon: b.category_icon,
+      allocated: b.amount,
+      spent: spentMap[b.category_id] || 0,
+      remaining: b.amount - (spentMap[b.category_id] || 0),
+      percent_used: b.amount > 0 ? ((spentMap[b.category_id] || 0) / b.amount) * 100 : 0,
+      status: (spentMap[b.category_id] || 0) > b.amount ? 'over' : 'ok',
+      is_fully_allocated: b.amount > 0 && (spentMap[b.category_id] || 0) <= b.amount,
+      alerts: []
+    }));
+
+    // Add remaining unallocated alerts
+    if (zero_based_remaining > 0) {
+      summary.push({
+        category_id: 0,
+        category_name: "Unallocated / Future",
+        category_color: "#9ca3af",
+        category_icon: "wallet",
+        allocated: 0,
+        spent: 0,
+        remaining: zero_based_remaining,
+        percent_used: 0,
+        status: 'ok',
+        is_fully_allocated: true,
+        alerts: ['You have unallocated income. Consider adding a savings allocation or increase existing budgets.'],
+        is_unallocated: true,
+      });
+    }
+
+    // Over-budget alerts
+    summary.forEach(item => {
+      if (item.percent_used >= 90) {
+        item.alerts.push(`Approaching limit: ${Math.round(item.percent_used)}% used`);
+      }
+      if (item.percent_used >= 100) {
+        item.alerts.push(`Over budget by $${item.remaining.toFixed(2)}`);
+      }
+    });
+
+    res.json({
+      allocations: summary,
+      total_budget: totalBudget,
+      total_spent: totalSpent,
+      remaining: remaining,
+      zero_based_remaining,
+      income,
+      period: month,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
 // SAVINGS GOALS
 // ========================
 app.get("/api/savings-goals", apiRateLimiter, (req, res) => {
