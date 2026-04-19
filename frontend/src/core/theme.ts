@@ -2,64 +2,64 @@
  * Theme module - handles light/dark theme switching
  */
 
-const THEME_STORAGE_KEY = 'finance-theme';
+const THEME_STORAGE_KEY = 'finance-theme'
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark'
 
 /**
  * Theme store - handles theme state and CSS variable updates
  */
 export class ThemeStore {
-  private currentTheme: Theme = 'light';
+  private currentTheme: Theme = 'light'
 
   /**
    * Check if dark theme is active
    */
   isDark(): boolean {
-    return document.documentElement.getAttribute('data-theme') === 'dark';
+    return document.documentElement.getAttribute('data-theme') === 'dark'
   }
 
   /**
    * Get current theme
    */
   getTheme(): Theme {
-    return this.currentTheme;
+    return this.currentTheme
   }
 
   /**
    * Set theme
    */
   setTheme(theme: Theme): void {
-    this.currentTheme = theme;
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    this.currentTheme = theme
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
     // Trigger chart refreshes
-    this.refreshCharts();
+    this.refreshCharts()
   }
 
   /**
    * Toggle between light and dark theme
    */
   toggle(): void {
-    const newTheme = this.isDark() ? 'light' : 'dark';
-    this.setTheme(newTheme);
+    const newTheme = this.isDark() ? 'light' : 'dark'
+    this.setTheme(newTheme)
   }
 
   /**
    * Initialize theme from localStorage
    */
   init(): void {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    const themeToUse = saved || 'light';
-    this.currentTheme = themeToUse;
-    document.documentElement.setAttribute('data-theme', themeToUse);
+    const saved = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
+    const themeToUse = saved || 'light'
+    this.currentTheme = themeToUse
+    document.documentElement.setAttribute('data-theme', themeToUse)
   }
 
   /**
    * Get chart colors based on current theme
    */
   getChartColors() {
-    const isDark = this.isDark();
+    const isDark = this.isDark()
     return {
       income: '#22c55e',
       expense: '#ef4444',
@@ -71,7 +71,7 @@ export class ThemeStore {
       grid: isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)',
       text: isDark ? '#94a3b8' : '#64748b',
       legend: isDark ? '#f1f5f9' : '#1e293b',
-    };
+    }
   }
 
   /**
@@ -85,13 +85,13 @@ export class ThemeStore {
 }
 
 // Export singleton instance
-export const theme = new ThemeStore();
+export const theme = new ThemeStore()
 
 // Initialize theme on load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    theme.init();
-  });
+    theme.init()
+  })
 } else {
-  theme.init();
+  theme.init()
 }

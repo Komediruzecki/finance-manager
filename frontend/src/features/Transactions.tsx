@@ -10,5 +10,5 @@ export default function Transactions() {
       </div>
       <div class="empty-state">Transactions page - content to be implemented</div>
     </div>
-  );
+  )
 }

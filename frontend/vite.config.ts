@@ -1,25 +1,20 @@
+import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
-import { resolve } from 'path';
 
 export default defineConfig({
-  base: '/dist/',
+  base: './',
   build: {
     emptyOutDir: false,
     outDir: 'dist',
     sourcemap: true,
     minify: 'esbuild',
     rollupOptions: {
-      input: resolve(__dirname, 'index.html'),
+      input: resolve(__dirname, 'src/main.ts'),
       output: {
         entryFileNames: 'assets/index.js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-        },
       },
     },
   },
@@ -44,5 +39,4 @@ export default defineConfig({
   server: {
     port: 3800,
   },
-  publicDir: '../public',
 });

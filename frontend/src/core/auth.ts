@@ -2,26 +2,26 @@
  * Authentication module - handles login/logout and auth state
  */
 
-import { api } from './api.js';
+import { api } from './api.js'
 
 /**
  * Auth store - handles authentication state
  */
 export class AuthStore {
-  private isAuthenticated = false;
-  private currentUser: any = null;
+  private isAuthenticated = false
+  private currentUser: { username?: string; profile_id?: number } | null = null
 
   /**
    * Check if user is logged in
    */
   async checkLogin(): Promise<boolean> {
     try {
-      await api.checkLogin();
-      this.isAuthenticated = true;
-      return true;
+      await api.checkLogin()
+      this.isAuthenticated = true
+      return true
     } catch {
-      this.isAuthenticated = false;
-      return false;
+      this.isAuthenticated = false
+      return false
     }
   }
 
@@ -30,12 +30,12 @@ export class AuthStore {
    */
   async login(username: string, password: string): Promise<void> {
     try {
-      await api.login(username, password);
-      this.isAuthenticated = true;
-      await this.checkLogin();
+      await api.login(username, password)
+      this.isAuthenticated = true
+      await this.checkLogin()
     } catch (error) {
-      this.isAuthenticated = false;
-      throw error;
+      this.isAuthenticated = false
+      throw error
     }
   }
 
@@ -44,36 +44,36 @@ export class AuthStore {
    */
   async logout(): Promise<void> {
     try {
-      await api.logout();
+      await api.logout()
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout error:', error)
     } finally {
-      this.isAuthenticated = false;
-      this.currentUser = null;
+      this.isAuthenticated = false
+      this.currentUser = null
     }
   }
 
   /**
    * Get current user info
    */
-  getCurrentUser(): any {
-    return this.currentUser;
+  getCurrentUser(): { username?: string; profile_id?: number } | null {
+    return this.currentUser
   }
 
   /**
    * Get auth status
    */
   isLoggedIn(): boolean {
-    return this.isAuthenticated;
+    return this.isAuthenticated
   }
 }
 
 // Export singleton instance
-export const auth = new AuthStore();
+export const auth = new AuthStore()
 
 // Initialize auth on load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', async () => {
-    await auth.checkLogin();
-  });
+    await auth.checkLogin()
+  })
 }
