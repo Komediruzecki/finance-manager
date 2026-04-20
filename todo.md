@@ -18,11 +18,11 @@
 ## Budgeting
 - [x] **Budget alerts** — Notify when a category is nearing its monthly budget limit
 - [x] **Budget rollover** — Allow unused budget to carry forward to next month
-- [ ] **Zero-based budgeting** — Envelope-style where every dollar gets assigned to a category
+- [x] **Zero-based budgeting** — Envelope-style where every dollar gets assigned to a category
 - [x] **Budget vs actual report** — Side-by-side comparison of budgeted vs spent per category
 
 ## Data & Import
-- [ ] **Live currency conversion** — Fetch real-time exchange rates for multi-currency tracking
+- [x] **Live currency conversion** — Fetch real-time exchange rates for multi-currency tracking
 - [x] **Recurring transactions** — Mark transactions as recurring, auto-populate future entries
 - [x] **Data export** — Full CSV/JSON backup export of all transactions and categories
 - [x] **Improved CSV import** — Smart detection of column types, duplicate detection
@@ -63,7 +63,7 @@
 - [ ] **Budget forecasting** — Project spending patterns for remaining days of the month
 - [ ] **Receipt attachment** — Attach images/PDFs to transactions
 - [ ] **Webhook / bank feed** — Auto-import from bank CSV feeds on schedule
-- [ ] **Dark/light mode persistence** — Save theme preference to profile settings
+- [x] **Dark/light mode persistence** — Save theme preference to profile settings (localStorage)
 - [ ] **Keyboard navigation** — Full keyboard accessibility for power users
 - [ ] **Net worth goals** — Set a target net worth with a date and track progress
 - [ ] **Investment portfolio tracker** — Track stocks, crypto, funds with current values
