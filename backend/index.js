@@ -5767,6 +5767,88 @@ app.post("/api/import", apiRateLimiter, (req, res) => {
   }
 });
 
+// ========================
+// IMPORT PREVIEW
+// ========================
+app.post("/api/import/preview", apiRateLimiter, (req, res) => {
+  try {
+    const data = req.body;
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+
+    const pid = getProfileId(req);
+
+    // Get existing data for duplicate detection
+    const existingTransactions = db.prepare('SELECT id, date, description, amount FROM transactions WHERE profile_id = ?').all(pid);
+    const existingCategories = db.prepare('SELECT name FROM categories WHERE profile_id = ?').all(pid);
+
+    // Build lookup maps for duplicates
+    const existingTransactionMap = new Map();
+    existingTransactions.forEach(tx => {
+      const key = `${tx.date}|${tx.description.toLowerCase().trim()}|${tx.amount}`;
+      if (!existingTransactionMap.has(key)) {
+        existingTransactionMap.set(key, []);
+      }
+      existingTransactionMap.get(key).push(tx);
+    });
+
+    // Track duplicates by key
+    const duplicateMap = new Map();
+    let totalNew = 0;
+    let totalDuplicates = 0;
+    let totalEstimatedImport = 0;
+
+    // Check transactions for duplicates
+    if (data.transactions && data.transactions.length > 0) {
+      data.transactions.forEach(tx => {
+        const key = `${tx.date}|${(tx.description || tx.category_name || '').toLowerCase().trim()}|${parseFloat(tx.amount) || 0}`;
+        const existing = existingTransactionMap.get(key);
+
+        if (existing && existing.length > 0) {
+          duplicateMap.set(key, existing);
+          totalDuplicates++;
+        } else {
+          totalNew++;
+        }
+        totalEstimatedImport++;
+      });
+    }
+
+    // Check categories (count as duplicates if name exists)
+    let newCategories = 0;
+    let duplicateCategories = 0;
+    if (data.categories && data.categories.length > 0) {
+      data.categories.forEach(cat => {
+        const catName = (cat.name || cat.category_name || '').toLowerCase().trim();
+        const exists = existingCategories.find(c => c.name.toLowerCase() === catName);
+        if (exists) {
+          duplicateCategories++;
+        } else {
+          newCategories++;
+        }
+      });
+    }
+
+    // Build preview data
+    const previewData = {
+      totalTransactions: data.transactions?.length || 0,
+      newTransactions: totalNew,
+      duplicateTransactions: totalDuplicates,
+      totalCategories: data.categories?.length || 0,
+      newCategories: newCategories,
+      duplicateCategories: duplicateCategories,
+      totalEstimatedImport,
+      duplicateCountByDate: duplicateMap,
+    };
+
+    res.json(previewData);
+  } catch (err) {
+    console.error('Import preview error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Clear all data (dangerous!)
 app.delete("/api/clear-all", apiRateLimiter, (req, res) => {
   try {
