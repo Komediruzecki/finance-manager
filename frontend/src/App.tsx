@@ -359,6 +359,7 @@ export default function App() {
     }
 
     setupKeyboardNavigation()
+    setupDataActionDelegation()
 
     // Keyboard navigation shortcuts
     const handleKeyboardShortcuts = (event: KeyboardEvent) => {
@@ -437,6 +438,33 @@ export default function App() {
       const amount = parseFloat(amountInput.value) || 0
       const targetCurrency = currencySelect ? currencySelect.value : 'USD'
       localAmountInput.value = (amount / rate).toFixed(2)
+    }
+
+    // Event delegation for data-action attributes (handles receipt buttons and other dynamic UI)
+    const handleDataActionClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      const actionTrigger = target.closest('[data-action]') as HTMLElement
+      if (!actionTrigger) return
+
+      const action = actionTrigger.dataset.action
+      const arg = actionTrigger.dataset.arg
+
+      if (!action) return
+
+      const [module, method] = action.split(':')
+      const moduleObj = (window as any)[module]
+
+      if (moduleObj?.[method]) {
+        if (arg) {
+          moduleObj[method](arg)
+        } else {
+          moduleObj[method]()
+        }
+      }
+    }
+
+    const setupDataActionDelegation = () => {
+      document.addEventListener('click', handleDataActionClick)
     }
 
     const handleExchangeRateChange = (event: Event) => {

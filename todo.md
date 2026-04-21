@@ -26,6 +26,7 @@
 - [x] **Recurring transactions** — Mark transactions as recurring, auto-populate future entries
 - [x] **Data export** — Full CSV/JSON backup export of all transactions and categories
 - [x] **Improved CSV import** — Smart detection of column types, duplicate detection
+- [x] **Batch import preview** — Show full preview with duplicate detection before committing import
 
 ## Reports
 - [x] **Monthly PDF report** — Generate a downloadable monthly summary report
@@ -59,9 +60,9 @@
 - [x] **Tags** — Add free-form tags to transactions for flexible categorization
 - [ ] **PWA support** — Add manifest and service worker for installable app on mobile
 - [x] **API rate limiting** — Add rate limiting to protect the API
-- [ ] **Batch import preview** — Show full preview with duplicate detection before committing import
-- [ ] **Budget forecasting** — Project spending patterns for remaining days of the month
-- [ ] **Receipt attachment** — Attach images/PDFs to transactions
+- [x] **Batch import preview** — Show full preview with duplicate detection before committing import
+- [x] **Budget forecasting** — Project spending patterns for remaining days of the month
+- [x] **Receipt attachment** — Attach images/PDFs to transactions
 - [ ] **Webhook / bank feed** — Auto-import from bank CSV feeds on schedule
 - [x] **Dark/light mode persistence** — Save theme preference to profile settings (localStorage)
 - [ ] **Keyboard navigation** — Full keyboard accessibility for power users
