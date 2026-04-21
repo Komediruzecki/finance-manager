@@ -73,9 +73,6 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
     }
   }
 
-  const _handleExport = async () => {
-  }
-
   // Set storage mode
   const handleSetMode = async (mode: StorageMode) => {
     try {

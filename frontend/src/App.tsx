@@ -18,36 +18,7 @@ import Loans from './features/Loans'
 import Retirement from './features/Retirement'
 import Settings from './features/Settings'
 import Transactions from './features/Transactions'
-
-type PageName =
-  | 'dashboard'
-  | 'transactions'
-  | 'budgets'
-  | 'loans'
-  | 'goals'
-  | 'bills'
-  | 'import'
-  | 'accounts'
-  | 'categories'
-  | 'settings'
-  | 'retirement'
-  | 'housing'
-  | 'analytics'
-
-type PageComponent =
-  | typeof Dashboard
-  | typeof Transactions
-  | typeof Budgets
-  | typeof Loans
-  | typeof Goals
-  | typeof Bills
-  | typeof Import
-  | typeof Accounts
-  | typeof Categories
-  | typeof Settings
-  | typeof Retirement
-  | typeof Housing
-  | typeof Analytics
+import type { PageName, PageComponent } from './types/models.js'
 
 const pages: Record<PageName, PageComponent> = {
   dashboard: Dashboard,
@@ -99,7 +70,7 @@ window.receipts = {
       }
     }
   },
-  removeReceipt: () => {
+  remove: () => {
     const receiptInput = document.getElementById('tx-receipt') as HTMLInputElement
     const preview = document.getElementById('receipt-thumbnail') as HTMLImageElement
     const placeholder = document.getElementById('receipt-placeholder') as HTMLElement
@@ -166,36 +137,6 @@ window.transactions = {
       if (actions) {
         actions.style.display = 'flex'
       }
-    }
-  },
-  removeReceipt: () => {
-    const receiptInput = document.getElementById('tx-receipt') as HTMLInputElement
-    const preview = document.getElementById('receipt-thumbnail') as HTMLImageElement
-    const placeholder = document.getElementById('receipt-placeholder') as HTMLElement
-    const actions = document.getElementById('receipt-actions') as HTMLElement
-
-    if (receiptInput) {
-      receiptInput.value = ''
-    }
-    if (preview) {
-      preview.src = ''
-      preview.style.display = 'none'
-    }
-    if (placeholder) {
-      placeholder.style.display = 'flex'
-    }
-    if (actions) {
-      actions.style.display = 'none'
-    }
-  },
-  openModal: () => {
-    const modal = document.getElementById('tx-modal') as HTMLElement
-    const title = document.getElementById('tx-modal-title') as HTMLElement
-    if (modal) {
-      modal.classList.add('show')
-    }
-    if (title) {
-      title.textContent = 'Add Transaction'
     }
   },
   openEditModal: (transactionId: number) => {
@@ -270,10 +211,10 @@ window.handlers = {
     const setType =
       typeof window.transactionsSetType === 'function'
         ? window.transactionsSetType
-        : (newType: string) => {
+        : (_newType: string) => {
             const txComponent = document.querySelector('[data-page="transactions"]') as any
             if (txComponent?.setType) {
-              txComponent.setType(newType)
+              txComponent.setType(_newType)
             }
           }
     setType(arg)
@@ -326,6 +267,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = createSignal<PageName>('dashboard')
 
   // Currency exchange rate cache - unused, keeping for future feature
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _exchangeRates = new Map<string, { rate: number; timestamp: number }>()
 
   onMount(() => {
@@ -346,303 +288,76 @@ export default function App() {
       })
 
       navLinks.forEach((link) => {
-        link.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            link.click()
-          }
-        })
-      })
-
-      // Handle Tab navigation between sidebar and nav
-      navLinks.forEach((link, index) => {
-        link.addEventListener('keydown', (event) => {
-          if (event.key === 'Tab') {
-            if (event.shiftKey && index === 0) {
-              event.preventDefault()
-              lastLink?.focus()
-            } else if (!event.shiftKey && index === navLinks.length - 1) {
-              event.preventDefault()
-              firstLink?.focus()
+        const currentLink = link as HTMLElement
+        currentLink.addEventListener('keydown', (e: Event) => {
+          const key = (e as KeyboardEvent).key
+          if (key === 'ArrowDown' || key === 'ArrowRight') {
+            const currentIndex = Array.from(navLinks).indexOf(currentLink)
+            const nextIndex = Math.min(currentIndex + 1, navLinks.length - 1)
+            if (nextIndex !== currentIndex) {
+              const nextLink = navLinks[nextIndex] as HTMLElement
+              nextLink.focus()
             }
+          } else if (key === 'ArrowUp' || key === 'ArrowLeft') {
+            const currentIndex = Array.from(navLinks).indexOf(currentLink)
+            const prevIndex = Math.max(currentIndex - 1, 0)
+            if (prevIndex !== currentIndex) {
+              const prevLink = navLinks[prevIndex] as HTMLElement
+              prevLink.focus()
+            }
+          } else if (key === 'Enter' || key === ' ') {
+            (e as KeyboardEvent).preventDefault()
+            currentLink.click()
           }
         })
       })
-    }
 
-    const _setupDataActionDelegation = () => {
-      document.addEventListener('click', _handleDataActionClick)
+      if (firstLink && lastLink) {
+        firstLink.setAttribute('tabindex', '0')
+        firstLink.addEventListener('keydown', (e: Event) => {
+          if ((e as KeyboardEvent).key === 'ArrowUp') {
+            (e as KeyboardEvent).preventDefault()
+            lastLink.focus()
+          }
+        })
+
+        lastLink.setAttribute('tabindex', '0')
+        lastLink.addEventListener('keydown', (e: Event) => {
+          if ((e as KeyboardEvent).key === 'ArrowDown') {
+            (e as KeyboardEvent).preventDefault()
+            firstLink.focus()
+          }
+        })
+      }
     }
 
     setupKeyboardNavigation()
 
-    // Keyboard navigation shortcuts
-    const handleKeyboardShortcuts = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs or textareas
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement
-      ) {
-        // Allow Escape to close modals even when typing
-        if (event.key === 'Escape') {
-          const closeBtn = document.querySelector('.modal-close')
-          closeBtn?.click()
-        }
-        return
-      }
-
-      // Ctrl/Cmd + K: Open quick search (placeholder for future)
-      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault()
-        toast('Quick search coming soon', 'info')
-      }
-
-      // Ctrl/Cmd + B: Toggle sidebar (mobile)
-      if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
-        event.preventDefault()
-        const sidebar = document.getElementById('sidebar')
-        const overlay = document.getElementById('mobile-overlay')
-        if (sidebar && overlay) {
-          const isOpen = sidebar.classList.contains('collapsed')
-          if (isOpen) {
-            sidebar.classList.remove('collapsed')
-            overlay.classList.remove('show')
-          } else {
-            sidebar.classList.add('collapsed')
-            overlay.classList.add('show')
-          }
+    // Handle modal clicks for closing
+    document.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement
+      const clickHandler = target.closest('[data-action]') as HTMLElement
+      if (!clickHandler) return
+      const action = clickHandler.dataset.action
+      if (action === 'modal:close') {
+        const modal = document.getElementById('tx-modal') as HTMLElement
+        if (modal) {
+          modal.classList.remove('show')
         }
       }
-
-      // Escape: Close modals
-      if (event.key === 'Escape') {
-        const closeBtn = document.querySelector('.modal-close')
-        const modalOverlays = document.querySelectorAll('.modal-overlay')
-        modalOverlays.forEach((overlay) => {
-          if (overlay.style.display !== 'none') {
-            closeBtn?.click()
-          }
-        })
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyboardShortcuts)
-
-    // Currency conversion functions for transaction modal
-    const _handleCurrencyChange = (event: Event) => {
-      const target = event.target as HTMLSelectElement
-      const rate = parseFloat(target.value) || 1
-
-      const amountInput = document.getElementById('tx-amount') as HTMLInputElement
-      const localAmountInput = document.getElementById('tx-amount-local') as HTMLInputElement
-
-      if (!amountInput || !localAmountInput) return
-
-      const amount = parseFloat(amountInput.value) || 0
-      localAmountInput.value = (amount * rate).toFixed(2)
-    }
-
-    const _handleLocalAmountChange = (event: Event) => {
-      const target = event.target as HTMLInputElement
-      const rate = parseFloat(target.value) || 1
-
-      const amountInput = document.getElementById('tx-amount') as HTMLInputElement
-      const currencySelect = document.getElementById('tx-currency') as HTMLSelectElement
-      const localAmountInput = document.getElementById('tx-amount-local') as HTMLInputElement
-
-      if (!amountInput) return
-
-      const amount = parseFloat(amountInput.value) || 0
-      const _targetCurrency = currencySelect ? currencySelect.value : 'USD'
-      localAmountInput.value = (amount / rate).toFixed(2)
-    }
-
-    // Event delegation for data-action attributes (handles receipt buttons and other dynamic UI)
-    const _handleDataActionClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      const actionTrigger = target.closest('[data-action]') as HTMLElement
-      if (!actionTrigger) return
-
-      const action = actionTrigger.dataset.action
-      const arg = actionTrigger.dataset.arg
-
-      if (!action) return
-
-      const [module, method] = action.split(':')
-      const moduleObj = (window as any)[module]
-
-      if (moduleObj?.[method]) {
-        if (arg) {
-          moduleObj[method](arg)
-        } else {
-          moduleObj[method]()
-        }
-      }
-    }
-
-    const _handleExchangeRateChange = (event: Event) => {
-      const target = event.target as HTMLInputElement
-      const rate = parseFloat(target.value) || 1
-
-      const amountInput = document.getElementById('tx-amount') as HTMLInputElement
-      const localAmountInput = document.getElementById('tx-amount-local') as HTMLInputElement
-
-      if (!amountInput || !localAmountInput) return
-
-      const amount = parseFloat(amountInput.value) || 0
-      localAmountInput.value = (amount * rate).toFixed(2)
-    }
-
-    const _setupTransactionModalListeners = () => {
-      const currencySelect = document.getElementById('tx-currency') as HTMLSelectElement
-      const localAmountInput = document.getElementById('tx-amount-local') as HTMLInputElement
-      const exchangeRateInput = document.getElementById('tx-exchange-rate') as HTMLInputElement
-
-      if (currencySelect) {
-        currencySelect.addEventListener('change', _handleCurrencyChange)
-      }
-      if (localAmountInput) {
-        localAmountInput.addEventListener('input', _handleLocalAmountChange)
-      }
-      if (exchangeRateInput) {
-        exchangeRateInput.addEventListener('input', _handleExchangeRateChange)
-      }
-    }
-
-    // Receipt event handlers - already exported to window.receipts
-    const _handleTransactionSave = async () => {
-      const _formData = new FormData()
-      const _idInput = document.getElementById('tx-id') as HTMLInputElement
-      const descInput = document.getElementById('tx-description') as HTMLInputElement
-      const amountInput = document.getElementById('tx-amount') as HTMLInputElement
-      const dateInput = document.getElementById('tx-date') as HTMLInputElement
-      const typeSelector = document.getElementById('tx-type-selector') as HTMLElement
-      const categoryInput = document.getElementById('tx-category') as HTMLSelectElement
-      const meansInput = document.getElementById('tx-means') as HTMLSelectElement
-      const notesInput = document.getElementById('tx-notes') as HTMLTextAreaElement
-      const receiptInput = document.getElementById('tx-receipt') as HTMLInputElement
-
-      if (!descInput || !amountInput || !dateInput || !categoryInput || !typeSelector) return
-
-      const desc = descInput.value.trim()
-      const amount = parseFloat(amountInput.value)
-      const date = dateInput.value
-      const category = parseInt(categoryInput.value)
-      const type = typeSelector.dataset.selectedType || 'expense'
-
-      if (!desc || amount <= 0 || !date || !category) {
-        alert('Please fill in all required fields')
-        return
-      }
-
-      try {
-        if (_idInput.value) {
-          await api.updateTransaction(parseInt(_idInput.value), {
-            description: desc,
-            amount: amount,
-            date: date,
-            category_id: category,
-            type: type,
-            means: meansInput.value || undefined,
-            notes: notesInput.value || undefined,
-          })
-        } else {
-          await api.createTransaction({
-            description: desc,
-            amount: amount,
-            date: date,
-            category_id: category,
-            type: type,
-            means: meansInput.value || undefined,
-            notes: notesInput.value || undefined,
-          })
-        }
-
-        // Handle receipt upload
-        const txId = _idInput.value ? parseInt(_idInput.value) : null
-        if (txId && receiptInput.files?.[0]) {
-          await api.uploadReceipt(txId, receiptInput.files[0])
-        }
-
-        closeAllModals()
-        _loadTransactions()
-      } catch (error) {
-        console.error('Failed to save transaction:', error)
-        alert('Failed to save transaction. Please try again.')
-      }
-    }
-
-    const _loadTransactions = async () => {
-      try {
-        const data = await api.getTransactions()
-        console.log('Loaded transactions:', data.length)
-      } catch (error) {
-        console.error('Failed to load transactions:', error)
-      }
-    }
-
-    const _openReceiptModal = (receipt: any) => {
-      // This would be populated when the Transactions component is fully implemented
-      console.log('Opening receipt modal for:', receipt)
-    }
-
-    const _deleteReceipt = async (receiptId: number) => {
-      try {
-        await api.deleteReceipt(receiptId)
-        console.log('Receipt deleted:', receiptId)
-      } catch (error) {
-        console.error('Failed to delete receipt:', error)
-      }
-    }
-
-    const _downloadReceipt = async (receiptId: number) => {
-      try {
-        const blob = await api.getReceiptFile(receiptId)
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `receipt-${receiptId}.bin`
-        link.click()
-        URL.revokeObjectURL(url)
-      } catch (error) {
-        console.error('Failed to download receipt:', error)
-      }
-    }
-
-    const _setLoading = (_loading: boolean) => {
-      // Would update loading state in Transactions component
-    }
-
-    const _setTransactions = (_transactions: any[]) => {
-      // Would update transactions in Transactions component
-    }
-
-    const _loadTransactionReceipt = async () => {
-      // Load receipt logic for view modal
-    }
-
-    const closeAllModals = () => {
-      const modal = document.getElementById('tx-modal') as HTMLElement
-      const modal2 = document.getElementById('quickadd-modal') as HTMLElement
-      if (modal) modal.classList.remove('show')
-      if (modal2) modal2.classList.remove('show')
-    }
-
-    // Setup mutation observer to catch dynamically added modals
-    const _observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node instanceof HTMLElement && node.id === 'transaction-modal') {
-            _setupTransactionModalListeners()
-          }
-        })
-      })
     })
 
-    _observer.observe(document.getElementById('modals') || document.body, {
-      childList: true,
-      subtree: true,
+    // Handle file input change
+    document.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLInputElement
+      const changeHandler = target.closest('[data-action]') as HTMLElement
+      if (!changeHandler) return
+      const action = changeHandler.dataset.action
+      if (action === 'transaction:receiptFile') {
+        if (target.id === 'tx-receipt' && window.receipts) {
+          window.receipts.handleFileSelect(e)
+        }
+      }
     })
 
     // Handle hash changes for routing
@@ -659,135 +374,263 @@ export default function App() {
   })
 
   return (
-    <div class="app-root">
-      {/* Top Navigation */}
+    <div class="app">
+      {/* Header */}
       <header class="app-header">
-        <nav class="nav">
-          <div class="nav-brand">
-            <h1>Finance Manager</h1>
-          </div>
-          <ul class="nav-links">
-            <li class="nav-item" data-page="dashboard">
-              <a href="#dashboard">Dashboard</a>
-            </li>
-            <li class="nav-item" data-page="transactions">
-              <a href="#transactions">Transactions</a>
-            </li>
-            <li class="nav-item" data-page="budgets">
-              <a href="#budgets">Budgets</a>
-            </li>
-            <li class="nav-item" data-page="loans">
-              <a href="#loans">Loans</a>
-            </li>
-            <li class="nav-item" data-page="goals">
-              <a href="#goals">Goals</a>
-            </li>
-            <li class="nav-item" data-page="bills">
-              <a href="#bills">Bills</a>
-            </li>
-            <li class="nav-item" data-page="import">
-              <a href="#import">Import</a>
-            </li>
-            <li class="nav-item" data-page="analytics">
-              <a href="#analytics">Analytics</a>
-            </li>
-            <li class="nav-item" data-page="settings">
-              <a href="#settings">Settings</a>
-            </li>
-          </ul>
-        </nav>
-
-        {/* Header Actions */}
-        <div class="app-actions">
-          {/* Theme Toggle */}
-          <button
-            class="btn btn-ghost theme-toggle"
-            data-action="theme:toggle"
-            aria-label="Toggle theme"
-          >
+        <div class="header-left">
+          <h1 class="app-title">
+            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Finance Manager
+          </h1>
+        </div>
+        <div class="header-right">
+          <button class="btn-icon" data-action="app:settings" aria-label="Settings">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-          </button>
-
-          {/* Profile Dropdown */}
-          <button id="profile-btn" class="btn btn-ghost" data-action="profile:toggle">
-            <span id="profile-btn-name">Profile</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main class="app-main">
-        <div id="page-content" class="page">
-          <div class="page-inner">
-            <div class="page-content">
-              {(() => {
-                const page = currentPage()
-                return <div>{pages[page]()}</div>
-              })()}
-            </div>
+      <div class="app-body">
+        {/* Sidebar */}
+        <aside class="sidebar">
+          <nav class="sidebar-nav">
+            <a
+              class={`sidebar-link ${currentPage() === 'dashboard' ? 'active' : ''}`}
+              href="#dashboard"
+              data-page="dashboard"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+              Dashboard
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'transactions' ? 'active' : ''}`}
+              href="#transactions"
+              data-page="transactions"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
+              </svg>
+              Transactions
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'accounts' ? 'active' : ''}`}
+              href="#accounts"
+              data-page="accounts"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              Accounts
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'categories' ? 'active' : ''}`}
+              href="#categories"
+              data-page="categories"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              Categories
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'budgets' ? 'active' : ''}`}
+              href="#budgets"
+              data-page="budgets"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+                />
+              </svg>
+              Budgets
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'goals' ? 'active' : ''}`}
+              href="#goals"
+              data-page="goals"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                />
+              </svg>
+              Goals
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'loans' ? 'active' : ''}`}
+              href="#loans"
+              data-page="loans"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Loans
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'bills' ? 'active' : ''}`}
+              href="#bills"
+              data-page="bills"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
+              </svg>
+              Bills
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'retirement' ? 'active' : ''}`}
+              href="#retirement"
+              data-page="retirement"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Retirement
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'housing' ? 'active' : ''}`}
+              href="#housing"
+              data-page="housing"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+              Housing
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'analytics' ? 'active' : ''}`}
+              href="#analytics"
+              data-page="analytics"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              Analytics
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'import' ? 'active' : ''}`}
+              href="#import"
+              data-page="import"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              Import
+            </a>
+            <a
+              class={`sidebar-link ${currentPage() === 'settings' ? 'active' : ''}`}
+              href="#settings"
+              data-page="settings"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              Settings
+            </a>
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main class="main-content">
+          <div id="page-content">
+            {pages[currentPage()]}
           </div>
-        </div>
-      </main>
-
-      {/* Modals */}
-      <div id="modals" />
-
-      {/* Toasts */}
-      <div id="toast-container" />
-
-      {/* Mobile Sidebar */}
-      <div id="mobile-overlay" class="mobile-overlay" />
-      <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-          <h2>Menu</h2>
-          <button id="sidebar-close" class="sidebar-close">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <nav class="sidebar-nav">
-          <a class="nav-item" href="#dashboard">
-            <span>Dashboard</span>
-          </a>
-          <a class="nav-item" href="#transactions">
-            <span>Transactions</span>
-          </a>
-          <a class="nav-item" href="#budgets">
-            <span>Budgets</span>
-          </a>
-          <a class="nav-item" href="#loans">
-            <span>Loans</span>
-          </a>
-          <a class="nav-item" href="#goals">
-            <span>Goals</span>
-          </a>
-          <a class="nav-item" href="#bills">
-            <span>Bills</span>
-          </a>
-          <a class="nav-item" href="#import">
-            <span>Import</span>
-          </a>
-          <a class="nav-item" href="#analytics">
-            <span>Analytics</span>
-          </a>
-          <a class="nav-item" href="#settings">
-            <span>Settings</span>
-          </a>
-        </nav>
-      </aside>
+        </main>
+      </div>
     </div>
   )
 }

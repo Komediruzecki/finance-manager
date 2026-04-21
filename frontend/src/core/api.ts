@@ -789,7 +789,7 @@ export class ApiClient {
   /**
    * Upload a receipt for a transaction
    */
-  async uploadReceipt(transactionId: number, file: File): Promise<Models.Receipt> {
+  async uploadReceipt(_transactionId: number, file: File): Promise<Models.Receipt> {
     const formData = new FormData()
     formData.append('file', file)
 
