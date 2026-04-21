@@ -5,27 +5,8 @@
 
 import type {
   StorageAdapter,
-  Transaction,
   TransactionFilters,
-  Category,
-  Account,
-  Budget,
-  Goal,
-  Loan,
-  BalanceEntry,
-  Settings,
-  ExportData,
-  ProfileData,
-  CategoryData,
-  TransactionData,
-  AccountData,
-  BudgetData,
-  GoalData,
-  LoanData,
-  BalanceEntryData,
-  SettingsData,
-  DataStore,
-} from '../types/storage'
+} from '@/types/storage'
 import type {
   ProfileData as _StoreProfile,
   CategoryData as _StoreCategory,
@@ -36,7 +17,30 @@ import type {
   LoanData as _StoreLoan,
   BalanceEntryData as _StoreBalance,
   SettingsData as _StoreSettings,
-} from '../types/data'
+} from '@/types/data'
+import type {
+  Transaction,
+  Category,
+  Account,
+  Budget,
+  Goal,
+  Loan,
+  BalanceEntry,
+  Settings,
+  ExportData,
+} from '@/types/storage'
+import type {
+  ProfileData,
+  CategoryData,
+  TransactionData,
+  AccountData,
+  BudgetData,
+  GoalData,
+  LoanData,
+  BalanceEntryData,
+  SettingsData,
+  DataStore,
+} from '@/types/data'
 
 const STORAGE_KEY = 'finance_data'
 const PROFILE_ID_KEY = 'finance_profile_id'
@@ -431,7 +435,6 @@ function getTransactions(
 function createTransactionData(tx: TransactionData): TransactionData {
   const id = counters.transactions++
   const transaction: TransactionData = {
-    id,
     ...tx,
     tags: tx.tags || [],
   }

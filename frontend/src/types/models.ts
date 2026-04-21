@@ -314,3 +314,6 @@ export interface Receipt {
   profile_id: ProfileId
   transaction?: Transaction
 }
+
+// ============ COMPONENT TYPES ============
+export type PageComponent = any
