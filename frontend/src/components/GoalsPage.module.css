@@ -17,3 +17,99 @@
 .goalsPage .progressStats { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
 .goalsPage .progressPercent { font-weight: 600; }
 .goalsPage .progressCurrent { color: var(--text-secondary); }
+
+
+/* Legacy class mappings for Goals page */
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.goal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.goal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.goal-icon {
+  font-size: 32px;
+}
+
+.goal-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.goal-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.goal-date {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.goal-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.goal-progress {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.progress-percent {
+  font-weight: 600;
+}
+
+.progress-current {
+  color: var(--text-secondary);
+}
+
+.goals-chart-section {
+  margin-top: 24px;
+}
+
+.chart-wrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 16px;
+}
