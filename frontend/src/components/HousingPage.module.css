@@ -57,3 +57,205 @@
   justify-content: space-between;
   align-items: center;
 }
+
+/* Page subtitle */
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Housing summary */
+.housing-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Summary card */
+.summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.summary-card.highlighted {
+  border-color: var(--primary);
+}
+
+/* Summary label */
+.summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* Summary value */
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* Housing list */
+.housing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Housing card */
+.housing-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+/* Housing header */
+.housing-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.housing-icon {
+  font-size: 32px;
+}
+
+.housing-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.housing-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.housing-type {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.housing-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Housing amount */
+.housing-amount {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+.amount-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.amount-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Housing details */
+.housing-details {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.detail-value {
+  font-weight: 500;
+}
+
+/* Form */
+.housingPage .formGroup {
+  margin-bottom: 16px;
+}
+
+.housingPage .formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.housingPage .formControl {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.housingPage .formControl:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.housingPage .formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.housingPage .toggleSwitch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.housingPage .toggleSlider {
+  width: 44px;
+  height: 24px;
+  background: var(--bg);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
+  border: 2px solid var(--border);
+}
+
+.housingPage .toggleSlider::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: var(--text);
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.housingPage .toggleSwitch input:checked + .toggleSlider {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.housingPage .toggleSwitch input:checked + .toggleSlider::before {
+  transform: translateX(20px);
+}

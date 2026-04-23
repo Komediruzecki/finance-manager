@@ -128,7 +128,7 @@ export default function HousingForm() {
   return (
     <div class={`page page-housing page-enter ${styles.housingPage}`}>
       <div class={styles.pageHeader}>
-        <div class="header-top">
+        <div class={styles.headerTop}>
           <h1>Housing</h1>
           <button class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,22 +137,22 @@ export default function HousingForm() {
             Add Expense
           </button>
         </div>
-        <p class="page-subtitle">Track all your housing-related expenses</p>
+        <p class={styles.pageSubtitle}>Track all your housing-related expenses</p>
       </div>
 
       {/* Summary Cards */}
-      <div class="housing-summary">
+      <div class={styles.housingSummary}>
         <div class="summary-card highlighted">
-          <div class="summary-label">Monthly Total</div>
-          <div class="summary-value">{formatAmount(totalMonthlyCost())}</div>
+          <div class={styles.summaryLabel}>Monthly Total</div>
+          <div class={styles.summaryValue}>{formatAmount(totalMonthlyCost())}</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Active Expenses</div>
-          <div class="summary-value">{housings().length}</div>
+        <div class={styles.summaryCard}>
+          <div class={styles.summaryLabel}>Active Expenses</div>
+          <div class={styles.summaryValue}>{housings().length}</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Autopay Enabled</div>
-          <div class="summary-value">
+        <div class={styles.summaryCard}>
+          <div class={styles.summaryLabel}>Autopay Enabled</div>
+          <div class={styles.summaryValue}>
             {housings().filter(h => h.autopay).length}
           </div>
         </div>
@@ -169,16 +169,16 @@ export default function HousingForm() {
           </button>
         </div>
       ) : (
-        <div class="housing-list">
+        <div class={styles.housingList}>
           {Array.isArray(housings()) && housings().map((housing) => (
-            <div class="housing-card">
-              <div class="housing-header">
-                <div class="housing-icon">{getTypeIcon(housing.type)}</div>
-                <div class="housing-info">
-                  <h3 class="housing-name">{housing.property_name}</h3>
-                  <p class="housing-type">{getTypeLabel(housing.type)}</p>
+            <div class={styles.housingCard}>
+              <div class={styles.housingHeader}>
+                <div class={styles.housingIcon}>{getTypeIcon(housing.type)}</div>
+                <div class={styles.housingInfo}>
+                  <h3 class={styles.housingName}>{housing.property_name}</h3>
+                  <p class={styles.housingType}>{getTypeLabel(housing.type)}</p>
                 </div>
-                <div class="housing-actions">
+                <div class={styles.housingActions}>
                   <span class={`badge ${housing.autopay ? 'badge-success' : 'badge-default'}`}>
                     {housing.autopay ? '🔄 Autopay' : 'Manual'}
                   </span>
@@ -189,21 +189,21 @@ export default function HousingForm() {
                   </button>
                 </div>
               </div>
-              <div class="housing-amount">
-                <div class="amount-label">Monthly Cost</div>
-                <div class="amount-value">{formatAmount(housing.monthly_amount)}</div>
+              <div class={styles.housingAmount}>
+                <div class={styles.amountLabel}>Monthly Cost</div>
+                <div class={styles.amountValue}>{formatAmount(housing.monthly_amount)}</div>
               </div>
-              <div class="housing-details">
-                <div class="detail-item">
-                  <span class="detail-label">Due</span>
-                  <span class="detail-value">
+              <div class={styles.housingDetails}>
+                <div class={styles.detailItem}>
+                  <span class={styles.detailLabel}>Due</span>
+                  <span class={styles.detailValue}>
                     {housing.due_month} / {housing.due_day}
                   </span>
                 </div>
                 {housing.notes && (
-                  <div class="detail-item">
-                    <span class="detail-label">Notes</span>
-                    <span class="detail-value">{housing.notes}</span>
+                  <div class={styles.detailItem}>
+                    <span class={styles.detailLabel}>Notes</span>
+                    <span class={styles.detailValue}>{housing.notes}</span>
                   </div>
                 )}
               </div>
@@ -225,10 +225,10 @@ export default function HousingForm() {
               </button>
             </div>
             <form class={styles.modalBody} onSubmit={handleSubmit}>
-              <div class="form-group">
-                <label class="form-label">Expense Type</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Expense Type</label>
                 <select
-                  class="form-control"
+                  class={styles.formControl}
                   value={formData().type}
                   oninput={(e) => setFormData({ ...formData(), type: e.target.value as Housing['type'] })}
                 >
@@ -240,34 +240,34 @@ export default function HousingForm() {
                   <option value="other">Other</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label class="form-label">Property / Description</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Property / Description</label>
                 <input
                   type="text"
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="e.g., Main Apartment, Monthly Payment"
                   value={formData().property_name}
                   oninput={(e) => setFormData({ ...formData(), property_name: e.target.value })}
                   required
                 />
               </div>
-              <div class="form-group">
-                <label class="form-label">Monthly Amount</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Monthly Amount</label>
                 <input
                   type="number"
                   step="0.01"
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="1200.00"
                   value={formData().monthly_amount}
                   oninput={(e) => setFormData({ ...formData(), monthly_amount: e.target.value })}
                   required
                 />
               </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Due Month</label>
+              <div class={styles.formRow}>
+                <div class={styles.formGroup}>
+                  <label class={styles.formLabel}>Due Month</label>
                   <select
-                    class="form-control"
+                    class={styles.formControl}
                     value={formData().due_month}
                     oninput={(e) => setFormData({ ...formData(), due_month: parseInt(e.target.value) })}
                   >
@@ -276,39 +276,39 @@ export default function HousingForm() {
                     ))}
                   </select>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Due Day</label>
+                <div class={styles.formGroup}>
+                  <label class={styles.formLabel}>Due Day</label>
                   <input
                     type="number"
                     min="1"
                     max="31"
-                    class="form-control"
+                    class={styles.formControl}
                     placeholder="1"
                     value={formData().due_day}
                     oninput={(e) => setFormData({ ...formData(), due_day: parseInt(e.target.value) || 1 })}
                   />
                 </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>
                   <span>🔄 Autopay</span>
                   <span style="font-size: 14px; color: var(--text-secondary)">
                     Automatically pay this expense
                   </span>
                 </label>
-                <label class="toggle-switch">
+                <label class={styles.toggleSwitch}>
                   <input
                     type="checkbox"
                     checked={formData().autopay}
                     oninput={(e) => setFormData({ ...formData(), autopay: e.target.checked })}
                   />
-                  <span class="toggle-slider"></span>
+                  <span class={styles.toggleSlider}></span>
                 </label>
               </div>
-              <div class="form-group">
-                <label class="form-label">Notes (optional)</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Notes (optional)</label>
                 <textarea
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="Additional details..."
                   value={formData().notes}
                   oninput={(e) => setFormData({ ...formData(), notes: e.target.value })}
