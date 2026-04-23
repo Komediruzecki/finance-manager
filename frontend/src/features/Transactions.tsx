@@ -8,6 +8,7 @@ import { api } from '../core/api.js'
 import TransactionTable from '../components/TransactionTable'
 import FilterBar from '../components/FilterBar'
 import Pagination from '../components/Pagination'
+import type * as Models from '../types/models'
 
 type TransactionType = 'income' | 'expense' | 'transfer'
 
@@ -292,7 +293,7 @@ export default function Transactions() {
 
   return (
     <div class={`page page-transactions page-enter ${styles.transactionsPage}`}>
-      <div class="page-header">
+      <div class={styles.pageHeader}>
         <h1>Transactions</h1>
       </div>
 
@@ -371,8 +372,8 @@ export default function Transactions() {
         }}
       >
         <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title" id="tx-modal-title">
+          <div class={styles.modalHeader}>
+            <div class={styles.modalTitle} id="tx-modal-title">
               Add Transaction
             </div>
             <button class="btn btn-ghost" onclick={_closeModals as any} aria-label="Close modal">
