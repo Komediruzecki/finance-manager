@@ -191,7 +191,7 @@ export default function Goals() {
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div class={styles.progressStats}
+                  <div class={styles.progressStats}>
                     <span class={styles.progressPercent}>{progress}%</span>
                     <span class={styles.progressCurrent}>{formatCurrency(goal.current_amount)} of {formatCurrency(goal.target_amount)}</span>
                   </div>
