@@ -3,9 +3,9 @@
  * Handles savings goals with progress tracking
  */
 import { createSignal, onMount } from 'solid-js'
+import Chart from '../components/Chart'
 import styles from '../components/GoalsPage.module.css'
 import { formatCurrency } from '../core/api'
-import Chart from '../components/Chart'
 
 interface Goal {
   id: number
@@ -137,7 +137,7 @@ export default function Goals() {
   return (
     <div class={`page page-goals page-enter ${styles.goalsPage}`}>
       <div class={styles.pageHeader}>
-        <div class="header-top">
+        <div class={styles.headerTop}>
           <h1>Savings Goals</h1>
           <button class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,18 +160,18 @@ export default function Goals() {
           </button>
         </div>
       ) : (
-        <div class="goals-grid">
+        <div class={styles.goalsGrid}>
             {goals().map((goal) => {
               const progress = getProgress(goal)
               return (
-              <div class="goal-card">
-                <div class="goal-header">
-                  <div class="goal-icon">🎯</div>
-                  <div class="goal-info">
-                    <h3 class="goal-name">{goal.name}</h3>
-                    <p class="goal-date">{formatDate(goal.target_date)} • {daysUntil(goal.target_date)}</p>
+              <div class={styles.goalCard}>
+                <div class={styles.goalHeader}>
+                  <div class={styles.goalIcon}>🎯</div>
+                  <div class={styles.goalInfo}>
+                    <h3 class={styles.goalName}>{goal.name}</h3>
+                    <p class={styles.goalDate}>{formatDate(goal.target_date)} • {daysUntil(goal.target_date)}</p>
                   </div>
-                  <div class="goal-actions">
+                  <div class={styles.goalActions}>
                     <button class="btn btn-sm btn-ghost" onClick={() => { editGoal(goal); }}>
                       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -184,16 +184,16 @@ export default function Goals() {
                     </button>
                   </div>
                 </div>
-                <div class="goal-progress">
-                  <div class="progress-bar">
+                <div class={styles.goalProgress}>
+                  <div class={styles.progressBar}>
                     <div
-                      class="progress-fill"
+                      class={styles.progressFill}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div class="progress-stats">
-                    <span class="progress-percent">{progress}%</span>
-                    <span class="progress-current">{formatCurrency(goal.current_amount)} of {formatCurrency(goal.target_amount)}</span>
+                  <div class={styles.progressStats}
+                    <span class={styles.progressPercent}>{progress}%</span>
+                    <span class={styles.progressCurrent}>{formatCurrency(goal.current_amount)} of {formatCurrency(goal.target_amount)}</span>
                   </div>
                 </div>
               </div>
