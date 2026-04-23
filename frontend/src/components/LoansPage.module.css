@@ -28,3 +28,141 @@
 .loansPage .progressStats { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 4px; }
 .loansPage .progressPercent { font-weight: 600; }
 .loansPage .progressCurrent { color: var(--text-secondary); }
+.loansPage .loanAmortizationSection { margin-top: 24px; }
+.loansPage .loanAmortizationSection h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.loansPage .amortizationChartWrapper { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+
+/* Legacy class mappings for Loans page */
+.loans-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.loans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.loan-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.loan-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.loan-icon {
+  font-size: 32px;
+}
+
+.loan-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.loan-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.loan-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.loan-balance {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+.balance-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.balance-amount {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.loan-details {
+  padding-top: 12px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.detail-label {
+  color: var(--text-secondary);
+}
+
+.detail-value {
+  font-weight: 500;
+}
+
+.loan-progress {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.progressBar {
+  display: flex;
+  align-items: center;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+
+.progressStats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-top: 4px;
+}

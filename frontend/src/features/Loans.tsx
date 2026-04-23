@@ -193,22 +193,22 @@ export default function Loans() {
       </div>
 
       {/* Summary Cards */}
-      <div class="loans-summary">
-        <div class="summary-card highlighted">
+      <div class={styles.loansSummary}>
+        <div class={styles.summaryCard} style={{ borderColor: 'var(--primary)' }}>
           <div class="summary-label">Total Borrowed</div>
           <div class="summary-value">{formatAmount(totalPrincipal())}</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Remaining Balance</div>
-          <div class="summary-value">{formatAmount(totalRemaining())}</div>
+        <div class={styles.summaryCard}>
+          <div class={styles.summaryLabel}>Remaining Balance</div>
+          <div class={styles.summaryValue}>{formatAmount(totalRemaining())}</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Active Loans</div>
-          <div class="summary-value">{loans().filter(l => l.status === 'active').length}</div>
+        <div class={styles.summaryCard}>
+          <div class={styles.summaryLabel}>Active Loans</div>
+          <div class={styles.summaryValue}>{loans().filter(l => l.status === 'active').length}</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Paid Off</div>
-          <div class="summary-value">{loans().filter(l => l.status === 'paid').length}</div>
+        <div class={styles.summaryCard}>
+          <div class={styles.summaryLabel}>Paid Off</div>
+          <div class={styles.summaryValue}>{loans().filter(l => l.status === 'paid').length}</div>
         </div>
       </div>
 
@@ -223,21 +223,21 @@ export default function Loans() {
           </button>
         </div>
       ) : (
-        <div class="loans-grid">
+        <div class={styles.loansGrid}>
           {loans().map((loan) => {
             const remaining = calculateRemaining(loan)
             const monthly = loan.monthly_payment || calculateMonthlyPayment(loan.principal, loan.interest_rate, loan.term_months)
             const progress = getProgress(loan)
 
             return (
-              <div class="loan-card">
-                <div class="loan-header">
+              <div class={styles.loanCard}>
+                <div class={styles.loanHeader}>
                   <div class="loan-icon">🏦</div>
-                  <div class="loan-info">
-                    <h3 class="loan-name">{loan.name}</h3>
+                  <div class={styles.loanInfo}>
+                    <h3 class={styles.loanName}>{loan.name}</h3>
                     <span class={`badge ${getStatusBadge(loan.status)}`}>{getStatusLabel(loan.status)}</span>
                   </div>
-                  <div class="loan-actions">
+                  <div class={styles.loanActions}>
                     <button class="btn btn-sm btn-ghost" onClick={() => { editLoan(loan); }}>
                       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -250,11 +250,11 @@ export default function Loans() {
                     </button>
                   </div>
                 </div>
-                <div class="loan-balance">
-                  <div class="balance-label">Remaining Balance</div>
-                  <div class="balance-amount">{formatAmount(remaining)}</div>
+                <div class={styles.loanBalance}>
+                  <div class={styles.balanceLabel}>Remaining Balance</div>
+                  <div class={styles.balanceAmount}>{formatAmount(remaining)}</div>
                 </div>
-                <div class="loan-details">
+                <div class={styles.loanDetails}>
                   <div class="detail-row">
                     <span class="detail-label">Principal</span>
                     <span class="detail-value">{formatAmount(loan.principal)}</span>
@@ -274,16 +274,16 @@ export default function Loans() {
                     </span>
                   </div>
                 </div>
-                <div class="loan-progress">
-                  <div class="progress-bar">
+                <div class={styles.loanProgress}>
+                  <div class={styles.progressBar}>
                     <div
-                      class="progress-fill"
+                      class={styles.progressFill}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div class="progress-stats">
-                    <span class="progress-percent">{progress}% paid</span>
-                    <span class="progress-current">{formatAmount(loan.total_paid)} paid</span>
+                  <div class={styles.progressStats}>
+                    <span class={styles.progressPercent}>{progress}% paid</span>
+                    <span class={styles.progressCurrent}>{formatAmount(loan.total_paid)} paid</span>
                   </div>
                 </div>
               </div>
