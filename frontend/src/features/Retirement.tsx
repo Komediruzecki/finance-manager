@@ -5,6 +5,7 @@
 import { createSignal, onMount } from 'solid-js'
 import styles from '../components/RetirementPage.module.css'
 import { formatCurrency } from '../core/api'
+import Chart from '../components/Chart'
 
 interface RetirementGoal {
   id: number
@@ -249,47 +250,47 @@ export default function Retirement() {
       </div>
 
       {/* Projection Cards */}
-      <div class="retirement-projection">
+      <div class={styles.retirementProjection}>
         {projection() && (
           <>
-            <div class="projection-row">
-              <div class="projection-card primary">
+            <div class={styles.projectionRow}>
+              <div class={`${styles.projectionCard} ${styles.primary}`}>
                 <div class="card-label">Projected Total</div>
                 <div class="card-value">{formatAmount(projection()!.projected_total)}</div>
                 <div class="card-sub">At age {projection()!.retirement_age}</div>
               </div>
-              <div class="projection-card">
-                <div class="card-label">Years to Retire</div>
-                <div class="card-value">{yearsUntil()} years</div>
-                <div class="card-sub">{monthsUntil()} months</div>
+              <div class={styles.projectionCard}>
+                <div class={styles.cardLabel}>Years to Retire</div>
+                <div class={styles.cardValue}>{yearsUntil()} years</div>
+                <div class={styles.cardSub}>{monthsUntil()} months</div>
               </div>
-              <div class="projection-card">
-                <div class="card-label">Monthly Contribution</div>
-                <div class="card-value">{formatAmount(projection()!.annual_contribution / 12)}</div>
-                <div class="card-sub">${projection()!.annual_contribution}/year</div>
+              <div class={styles.projectionCard}>
+                <div class={styles.cardLabel}>Monthly Contribution</div>
+                <div class={styles.cardValue}>{formatAmount(projection()!.annual_contribution / 12)}</div>
+                <div class={styles.cardSub}>${projection()!.annual_contribution}/year</div>
               </div>
-              <div class="projection-card">
-                <div class="card-label">Expected Return</div>
-                <div class="card-value">{projection()!.expected_return}%</div>
-                <div class="card-sub">Annual average</div>
+              <div class={styles.projectionCard}>
+                <div class={styles.cardLabel}>Expected Return</div>
+                <div class={styles.cardValue}>{projection()!.expected_return}%</div>
+                <div class={styles.cardSub}>Annual average</div>
               </div>
             </div>
-            <div class="projection-details">
-              <div class="detail-row">
-                <span class="detail-label">Current Savings</span>
-                <span class="detail-value">{formatAmount((projection() as any).current_amount)}</span>
+            <div class={styles.projectionDetails}>
+              <div class={styles.detailRow}>
+                <span class={styles.detailLabel}>Current Savings</span>
+                <span class={styles.detailValue}>{formatAmount((projection() as any).current_amount)}</span>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">Total Contributions</span>
-                <span class="detail-value">{formatAmount(totalContributed())}</span>
+              <div class={styles.detailRow}>
+                <span class={styles.detailLabel}>Total Contributions</span>
+                <span class={styles.detailValue}>{formatAmount(totalContributed())}</span>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">Investment Growth</span>
-                <span class="detail-value positive">{formatAmount(calculateGrowth())}</span>
+              <div class={styles.detailRow}>
+                <span class={styles.detailLabel}>Investment Growth</span>
+                <span class={`${styles.detailValue} ${styles.positive}`}>{formatAmount(calculateGrowth())}</span>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">Remaining to Save</span>
-                <span class={`detail-value ${remainingToSave() > 0 ? 'positive' : ''}`}>
+              <div class={styles.detailRow}>
+                <span class={styles.detailLabel}>Remaining to Save</span>
+                <span class={`${styles.detailValue} ${remainingToSave() > 0 ? 'positive' : ''}`}>
                   {formatAmount(remainingToSave())}
                 </span>
               </div>
@@ -299,8 +300,8 @@ export default function Retirement() {
       </div>
 
       {/* Goals Section */}
-      <div class="retirement-goals">
-        <h2 class="section-title">Retirement Goals</h2>
+      <div class={styles.retirementGoals}>
+        <h2 class={styles.sectionTitle}>Retirement Goals</h2>
         {loading() ? (
           <div class={styles.emptyState}>Loading goals...</div>
         ) : goals().length === 0 ? (
@@ -312,18 +313,18 @@ export default function Retirement() {
             </button>
           </div>
         ) : (
-          <div class="goals-grid">
+          <div class={styles.goalsGrid}>
             {Array.isArray(goals()) && goals().map((goal) => {
               const progress = getProgress(goal)
               return (
-                <div class="goal-card">
-                  <div class="goal-header">
-                    <div class="goal-icon">🎯</div>
-                    <div class="goal-info">
-                      <h3 class="goal-name">{goal.name}</h3>
+                <div class={styles.goalCard}>
+                  <div class={styles.goalHeader}>
+                    <div class={styles.goalIcon}>🎯</div>
+                    <div class={styles.goalInfo}>
+                      <h3 class={styles.goalName}>{goal.name}</h3>
                       <span class={`badge ${getRetirementStatus(goal.retirement_age)}`}>Retire at {formatAge(goal.retirement_age)}</span>
                     </div>
-                    <div class="goal-actions">
+                    <div class={styles.goalActions}>
                       <button class="btn btn-sm btn-ghost" onClick={() => { editGoal(goal); }}>
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -336,23 +337,23 @@ export default function Retirement() {
                       </button>
                     </div>
                   </div>
-                  <div class="goal-balance">
-                    <div class="balance-label">Current Amount</div>
-                    <div class="balance-value">{formatAmount(goal.current_amount)}</div>
+                  <div class={styles.goalBalance}>
+                    <div class={styles.balanceLabel}>Current Amount</div>
+                    <div class={styles.balanceValue}>{formatAmount(goal.current_amount)}</div>
                   </div>
-                  <div class="goal-progress">
-                    <div class="progress-bar">
+                  <div class={styles.goalProgress}>
+                    <div class={styles.progressBar}>
                       <div
-                        class="progress-fill"
+                        class={styles.progressFill}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <div class="progress-stats">
-                      <span class="progress-percent">{progress}%</span>
-                      <span class="progress-target">{formatAmount(goal.target_amount)} target</span>
+                    <div class={styles.progressStats}>
+                      <span class={styles.progressPercent}>{progress}%</span>
+                      <span class={styles.progressTarget}>{formatAmount(goal.target_amount)} target</span>
                     </div>
                   </div>
-                  <div class="goal-details">
+                  <div class={styles.goalDetails}>
                     <div class="detail-item">
                       <span class="detail-label">Monthly</span>
                       <span class="detail-value">{formatAmount(goal.monthly_contribution)}</span>
@@ -377,39 +378,67 @@ export default function Retirement() {
       <div class="retirement-projections">
         <h2 class="section-title">Projected Balances Over Time</h2>
         {projection() ? (
-          <div class="projection-chart">
-            <div class="projection-bars">
-              {projectedBalances().slice(0, -1).map((pb) => {
-                const projectedTotal = projection()!.projected_total
-                const barWidth = (pb.balance / projectedTotal) * 100
-                const isStartAge = pb.age === projection()!.current_age
-                const isRetirement = pb.age === projection()!.retirement_age
-
-                return (
-                  <div class="projection-bar-item">
-                    <div class="bar-label">{pb.age}</div>
-                    <div class="bar-track">
-                      <div
-                        class={`bar-fill ${isStartAge ? 'start' : ''} ${isRetirement ? 'retirement' : ''}`}
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                    <div class="bar-value">{formatAmount(pb.balance)}</div>
-                  </div>
-                )
-              })}
-            </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-dot current"></span>
-                <span>Starting Age</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot retirement"></span>
-                <span>Retirement Age</span>
-              </div>
-            </div>
-          </div>
+          <Chart
+            id="retirement-projection-chart"
+            type="line"
+            data={{
+              labels: projectedBalances().map((pb) => pb.age.toString()),
+              datasets: [{
+                label: 'Projected Balance',
+                data: projectedBalances().map((pb) => pb.balance),
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+              }]
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Age'
+                  },
+                  ticks: {
+                    stepSize: 5
+                  }
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    callback: (value: any) => formatAmount(value)
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  display: true,
+                  labels: {
+                    usePointStyle: true,
+                    padding: 15,
+                    font: { size: 12 }
+                  }
+                },
+                tooltip: {
+                  mode: 'index',
+                  intersect: false,
+                  callbacks: {
+                    label: (context: any) => {
+                      const age = context.label
+                      const balance = formatAmount(context.raw)
+                      return `${age} years: ${balance}`
+                    }
+                  }
+                }
+              }
+            }}
+            height={250}
+            width="100%"
+          />
         ) : (
           <div class={styles.emptyState}>Loading projection...</div>
         )}
