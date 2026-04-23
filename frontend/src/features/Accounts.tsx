@@ -130,36 +130,36 @@ export default function Accounts() {
       <div class={styles.pageHeader}>
         <div class={styles.headerTop}>
           <h1>Accounts</h1>
-          <button class={`${styles.btn  } ${  styles.btnPrimary}`} onClick={() => setShowAddModal(true)}>
+          <button data-test-id="add-account-btn" class={`${styles.btn  } ${  styles.btnPrimary}`} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Add Account
           </button>
         </div>
-        <p class={styles.pageSubtitle}>Manage your bank accounts and track balances</p>
+        <p data-test-id="accounts-subtitle" class={styles.pageSubtitle}>Manage your bank accounts and track balances</p>
       </div>
 
       {/* Summary Cards */}
-      <div class={styles.accountsSummary}>
-        <div class={styles.summaryCard}>
+      <div data-test-id="accounts-summary" class={styles.accountsSummary}>
+        <div data-test-id="summary-total-balance" class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Total Balance</div>
-          <div class={styles.summaryValue}>{formatAmount(totalBalance())}</div>
+          <div data-test-id="summary-balance-value" class={styles.summaryValue}>{formatAmount(totalBalance())}</div>
         </div>
-        <div class={styles.summaryCard}>
+        <div data-test-id="summary-accounts-count" class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Accounts</div>
-          <div class={styles.summaryValue}>{accounts().length}</div>
+          <div data-test-id="summary-accounts-value" class={styles.summaryValue}>{accounts().length}</div>
         </div>
-        <div class={styles.summaryCard}>
+        <div data-test-id="summary-income" class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Income (this month)</div>
-          <div class={`${styles.summaryValue  } ${  styles.positive}`}>+{formatAmount(accounts().reduce((s, a) => {
+          <div data-test-id="summary-income-value" class={`${styles.summaryValue  } ${  styles.positive}`}>+{formatAmount(accounts().reduce((s, a) => {
             const accTxs = getAccountTransactions(a.id).filter((t: any) => t.type === 'income')
             return s + accTxs.reduce((ts, tx) => ts + tx.amount, 0)
           }, 0))}</div>
         </div>
-        <div class={styles.summaryCard}>
+        <div data-test-id="summary-expenses" class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Expenses (this month)</div>
-          <div class={`${styles.summaryValue  } ${  styles.negative}`}>-{formatAmount(accounts().reduce((s, a) => {
+          <div data-test-id="summary-expenses-value" class={`${styles.summaryValue  } ${  styles.negative}`}>-{formatAmount(accounts().reduce((s, a) => {
             const accTxs = getAccountTransactions(a.id).filter((t: any) => t.type === 'expense')
             return s + accTxs.reduce((ts, tx) => ts + tx.amount, 0)
           }, 0))}</div>
@@ -177,17 +177,17 @@ export default function Accounts() {
           </button>
         </div>
       ) : (
-        <div class={styles.accountsGrid}>
+        <div data-test-id="accounts-grid" class={styles.accountsGrid}>
           {accounts().map((account) => (
-            <div class={styles.accountCard}>
+            <div data-test-id="account-card" class={styles.accountCard}>
               <div class={styles.accountHeader}>
-                <div class={styles.accountIcon}>{getTypeIcon(account.type)}</div>
+                <div data-test-id="account-icon" class={styles.accountIcon}>{getTypeIcon(account.type)}</div>
                 <div class={styles.accountInfo}>
-                  <h3 class={styles.accountName}>{account.name}</h3>
-                  <p class={styles.accountBank}>{account.bank_name || 'No bank listed'}</p>
+                  <h3 data-test-id="account-name" class={styles.accountName}>{account.name}</h3>
+                  <p data-test-id="account-bank" class={styles.accountBank}>{account.bank_name || 'No bank listed'}</p>
                 </div>
                 <div class={styles.accountActions}>
-                  <span class={`${styles.badge} ${getTypeBadge(account.type)}`}>{account.type}</span>
+                  <span data-test-id="account-type" class={`${styles.badge} ${getTypeBadge(account.type)}`}>{account.type}</span>
                   <button class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`} onClick={() => deleteAccount(account.id)}>
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -197,21 +197,21 @@ export default function Accounts() {
               </div>
               <div class={styles.accountBalance}>
                 <div class={styles.balanceLabel}>Current Balance</div>
-                <div class={styles.balanceAmount}>{formatAmount(account.balance)}</div>
+                <div data-test-id="account-balance" class={styles.balanceAmount}>{formatAmount(account.balance)}</div>
               </div>
-              <div class={styles.accountActivity}>
+              <div data-test-id="activity-section" class={styles.accountActivity}>
                 <div class={styles.activityHeader}>
                   <span class={styles.activityLabel}>Recent Activity</span>
                   <a href="#transactions" class={styles.btnLink}>View All →</a>
                 </div>
-                <div class={styles.activityList}>
+                <div data-test-id="activity-list" class={styles.activityList}>
                   {getAccountTransactions(account.id).slice(0, 3).map((tx: any) => (
-                    <div class={styles.activityItem}>
-                      <div class={styles.activityContent}>
-                        <div class={styles.activityDesc}>{tx.description}</div>
-                        <div class={styles.activityDate}>{new Date(tx.date).toLocaleDateString()}</div>
+                    <div data-test-id="activity-item" class={styles.activityItem}>
+                      <div data-test-id="activity-description" class={styles.activityContent}>
+                        <div data-test-id="activity-desc" class={styles.activityDesc}>{tx.description}</div>
+                        <div data-test-id="activity-date" class={styles.activityDate}>{new Date(tx.date).toLocaleDateString()}</div>
                       </div>
-                      <div class={`${styles.activityAmount} ${tx.type === 'expense' ? styles.expense : styles.income}`}>
+                      <div data-test-id="activity-amount" class={`${styles.activityAmount} ${tx.type === 'expense' ? styles.expense : styles.income}`}>
                         {tx.type === 'expense' ? '-' : '+'}{formatAmount(tx.amount)}
                       </div>
                     </div>
