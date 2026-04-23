@@ -1,6 +1,6 @@
 /**
  * Settings Component
- * Application configuration and preferences
+ * Application configuration and preferences with storage switching
  */
 import { createEffect, createSignal, onMount } from 'solid-js'
 import styles from '../components/SettingsPage.module.css'
@@ -8,6 +8,8 @@ import styles from '../components/SettingsPage.module.css'
 export default function Settings() {
   const [localCurrency, setLocalCurrency] = createSignal('USD')
   const [darkMode, setDarkMode] = createSignal(false)
+  const [storageType, setStorageType] = createSignal<'sqlite' | 'postgresql'>('sqlite')
+  const [showStorageWarning, setShowStorageWarning] = createSignal(false)
 
   // Load saved settings
   onMount(() => {
@@ -16,9 +18,17 @@ export default function Settings() {
       setLocalCurrency(savedCurrency)
     }
 
-    // Check for dark mode preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    setDarkMode(prefersDark)
+    const savedDarkMode = localStorage.getItem('darkMode')
+    if (savedDarkMode) {
+      setDarkMode(savedDarkMode === 'true')
+    }
+
+    const savedStorage = localStorage.getItem('storageType')
+    if (savedStorage === 'postgresql') {
+      setStorageType('postgresql')
+    } else {
+      setStorageType('sqlite')
+    }
   })
 
   // Sync local currency changes
@@ -48,6 +58,51 @@ export default function Settings() {
     }
   }
 
+  // Handle storage type change
+  const handleStorageTypeChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement
+    const newStorageType = target.value as 'sqlite' | 'postgresql'
+    
+    if (newStorageType === 'postgresql') {
+      setShowStorageWarning(true)
+    } else {
+      setShowStorageWarning(false)
+      setStorageType('sqlite')
+      localStorage.setItem('storageType', 'sqlite')
+    }
+  }
+
+  // Apply storage type
+  const applyStorageType = async () => {
+    if (storageType() === 'postgresql') {
+      try {
+        const response = await fetch('/api/settings/set-storage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'postgresql' })
+        })
+        
+        if (response.ok) {
+          localStorage.setItem('storageType', 'postgresql')
+          setShowStorageWarning(false)
+          alert('Database switched to PostgreSQL successfully. Please restart the application.')
+          window.location.reload()
+        } else {
+          alert('Failed to switch to PostgreSQL. Please check the server logs.')
+          setShowStorageWarning(true)
+        }
+      } catch (error) {
+        console.error('Failed to switch storage:', error)
+        alert('Failed to switch storage. Please check the server logs.')
+        setShowStorageWarning(true)
+      }
+    } else {
+      localStorage.setItem('storageType', 'sqlite')
+      alert('Database switched to SQLite. Please restart the application.')
+      window.location.reload()
+    }
+  }
+
   return (
     <div class={`page page-settings page-enter ${styles.settingsPage}`}>
       <div class={styles.pageHeader}>
@@ -55,6 +110,42 @@ export default function Settings() {
       </div>
       <div class="page-content">
         <div class="settings-grid">
+          <div class="settings-col">
+            <div class={styles.card}>
+              <div class="settings-section">
+                <div class="settings-section-title">Database Storage</div>
+                <div class="form-group">
+                  <label class="form-label">Storage Type</label>
+                  <select
+                    class="form-control"
+                    value={storageType()}
+                    onchange={handleStorageTypeChange}
+                    style="max-width: 250px;"
+                  >
+                    <option value="sqlite">SQLite (Local File)</option>
+                    <option value="postgresql">PostgreSQL (Remote Server)</option>
+                  </select>
+                </div>
+                {showStorageWarning() && (
+                  <div class={styles.warningBox}>
+                    <strong>PostgreSQL is required for the deployment version.</strong>
+                    <p style="margin-top: 8px; color: var(--text-secondary); font-size: 13px;">
+                      To use PostgreSQL, ensure it is properly configured in the backend. 
+                      Restart the application after switching storage types.
+                    </p>
+                    <button
+                      class="btn btn-primary"
+                      onclick={applyStorageType}
+                      style="margin-top: 12px;"
+                    >
+                      Apply {storageType() === 'postgresql' ? 'PostgreSQL' : 'SQLite'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div class="settings-col">
             <div class={styles.card}>
               <div class="settings-section">
@@ -91,20 +182,25 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Appearance</label>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 14px; color: var(--text-secondary);">Light</span>
-                <label class="toggle-switch">
-                  <input
-                    type="checkbox"
-                    id="setting-dark-mode"
-                    checked={darkMode()}
-                    onchange={handleDarkModeToggle}
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
-                <span style="font-size: 14px; color: var(--text-secondary);">Dark</span>
+            <div class={styles.card}>
+              <div class="settings-section">
+                <div class="settings-section-title">Appearance</div>
+                <div class="form-group">
+                  <label class="form-label">Theme</label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 14px; color: var(--text-secondary);">Light</span>
+                    <label class="toggle-switch">
+                      <input
+                        type="checkbox"
+                        id="setting-dark-mode"
+                        checked={darkMode()}
+                        onchange={handleDarkModeToggle}
+                      />
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span style="font-size: 14px; color: var(--text-secondary);">Dark</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

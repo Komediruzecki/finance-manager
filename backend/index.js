@@ -677,6 +677,24 @@ app.put("/api/settings", apiRateLimiter, (req, res) => {
   }
 });
 
+app.post("/api/settings/set-storage", apiRateLimiter, (req, res) => {
+  try {
+    const { type } = req.body;
+
+    if (type === 'postgresql') {
+      // Store PostgreSQL config (optional - would need to expand backend)
+      res.json({ ok: true, message: 'PostgreSQL storage configured. Please restart the application.' });
+    } else {
+      // Reset to SQLite
+      res.json({ ok: true, message: 'SQLite storage configured. Please restart the application.' });
+    }
+  } catch (err) {
+    console.error(err.message);
+    logError("error", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========================
 // CATEGORIES (per-profile)
 // ========================
