@@ -6,6 +6,7 @@ import { createSignal, onMount } from 'solid-js'
 import styles from '../components/RetirementPage.module.css'
 import { formatCurrency } from '../core/api'
 import Chart from '../components/Chart'
+import { apiGet, apiPost, apiPut, apiDelete, showToast } from '../utils/api'
 
 interface RetirementGoal {
   id: number
@@ -60,11 +61,11 @@ export default function Retirement() {
   const loadGoals = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/retirement-goals')
-      const data = await response.json()
+      const data = await apiGet<RetirementGoal[]>('/api/retirement-goals')
       setGoals(data)
-    } catch {
-      console.error('Failed to load retirement goals')
+    } catch (err) {
+      console.error('Failed to load retirement goals', err)
+      showToast('Failed to load retirement goals', 'error')
     } finally {
       setLoading(false)
     }
@@ -73,7 +74,7 @@ export default function Retirement() {
   // Load projection
   const loadProjection = async () => {
     try {
-      const res = await fetch('/api/retirement/projection').then((r) => r.json())
+      const res = await apiGet<RetirementProjection & { current_amount: number }>('/api/retirement/projection')
       setProjection(res)
 
       // Calculate detailed projection
@@ -94,8 +95,9 @@ export default function Retirement() {
         }
         setProjectedBalances(balances)
       }
-    } catch {
-      console.error('Failed to load projection')
+    } catch (err) {
+      console.error('Failed to load projection', err)
+      showToast('Failed to load retirement projection', 'error')
     }
   }
 
@@ -114,11 +116,12 @@ export default function Retirement() {
     }
 
     try {
-      await fetch('/api/retirement-goals', {
-        method: editingGoal() ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      if (editingGoal()) {
+        await apiPut(`/api/retirement-goals/${editingGoal()!.id}`, data)
+      } else {
+        await apiPost('/api/retirement-goals', data)
+      }
+      showToast(editingGoal() ? 'Goal updated successfully' : 'Goal created successfully', 'success')
       setShowAddModal(false)
       setEditingGoal(null)
       setFormData({
@@ -133,8 +136,9 @@ export default function Retirement() {
       })
       loadGoals()
       loadProjection()
-    } catch (error) {
-      console.error('Failed to save retirement goal', error)
+    } catch (err) {
+      console.error('Failed to save retirement goal', err)
+      showToast('Failed to save retirement goal', 'error')
     }
   }
 
@@ -142,11 +146,13 @@ export default function Retirement() {
   const deleteGoal = async (id: number) => {
     if (!confirm('Are you sure you want to delete this retirement goal?')) return
     try {
-      await fetch(`/api/retirement-goals/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/retirement-goals/${id}`)
+      showToast('Goal deleted successfully', 'success')
       loadGoals()
       loadProjection()
-    } catch (error) {
-      console.error('Failed to delete retirement goal', error)
+    } catch (err) {
+      console.error('Failed to delete retirement goal', err)
+      showToast('Failed to delete retirement goal', 'error')
     }
   }
 
