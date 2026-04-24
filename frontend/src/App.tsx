@@ -2,12 +2,39 @@
  * Main App Component - Root component for the application
  */
 
-import { createSignal, onMount } from 'solid-js'
+import { createSignal, onMount, Suspense } from 'solid-js'
 import { handlers, receipts, transactions } from './core/handlers.js'
 import { theme } from './core/theme.js'
 import { pages } from './router.tsx'
 import type { PageName } from './router.tsx'
 import { sidebar } from './styles/AppSidebar.module.css'
+
+// Loading spinner for lazy-loaded pages
+function PageLoader() {
+  return (
+    <div class="page-loader" style={{
+      display: 'flex',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'min-height': '400px',
+    }}>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid #f3f3f3',
+        'border-top': '3px solid #007bff',
+        'border-radius': '50%',
+        animation: 'spin 1s linear infinite',
+      }} />
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  )
+}
 
 // Mount handlers to window for legacy code compatibility
 window.receipts = receipts
@@ -382,7 +409,9 @@ export function App() {
         {/* Main Content */}
         <main class={sidebar.main}>
           <div id="page-content" class="page page-content">
-            {pages[currentPage()]}
+            <Suspense fallback={<PageLoader />}>
+              {pages[currentPage()]}
+            </Suspense>
           </div>
         </main>
       </div>
