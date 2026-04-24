@@ -319,4 +319,5 @@ export interface Receipt {
 }
 
 // ============ COMPONENT TYPES ============
-export type PageComponent = any
+import type { Component } from 'solid-js'
+export type PageComponent = Component
