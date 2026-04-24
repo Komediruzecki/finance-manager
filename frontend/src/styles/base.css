@@ -258,17 +258,45 @@ body {
   margin: 0 auto;
 }
 
-/* Base page styling - hidden by default */
+/* Page visibility - default hidden */
 .page {
   display: none;
 }
 
-/* Page visibility - only pages with .active class are visible */
+/* Page content is visible by default */
+.page.page-content {
+  display: block;
+}
+
+/* All page-specific classes are visible */
+.page-dashboard,
+.page-transactions,
+.page-accounts,
+.page-categories,
+.page-budgets,
+.page-goals,
+.page-loans,
+.page-bills,
+.page-retirement,
+.page-analytics,
+.page-import,
+.page-settings,
+.page-housing {
+  display: block;
+}
+
+/* Import page needs specific class since no CSS module */
+.page-import {
+  display: block;
+}
+
+/* Page active state for specific pages */
 .page.active {
   display: block;
 }
 
-.page-enter {
+/* Page enter animation */
+.page.page-enter {
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -283,11 +311,7 @@ body {
   }
 }
 
-.page.page-enter {
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Individual pages */
+/* Individual pages with animation */
 .page-accounts,
 .page-transactions,
 .page-budgets,
@@ -299,7 +323,6 @@ body {
 .page-retirement,
 .page-housing {
   animation: fadeIn 0.2s ease-out;
-  display: block;
 }
 
 /* Legacy page structure (for backward compatibility) */
@@ -1492,15 +1515,6 @@ th[data-sort].sorted .sortArrow {
 .typeSelector button.active.transfer {
   background: var(--type-transfer-bg);
   color: var(--transfer);
-}
-
-/* Page visibility */
-.page {
-  display: none;
-}
-
-.page.active {
-  display: block;
 }
 
 /* Compound layout */

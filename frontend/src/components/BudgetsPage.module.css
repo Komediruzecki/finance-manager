@@ -208,3 +208,7 @@
   background: var(--bg);
   color: var(--text);
 }
+
+.page-budgets {
+  display: block;
+}

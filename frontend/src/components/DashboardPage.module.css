@@ -2,11 +2,6 @@
  * DashboardPage CSS Module
  */
 
-.page {
-  display: none;
-  animation: fadeIn 0.2s ease-out;
-}
-
 .page-header {
   display: flex;
   justify-content: space-between;

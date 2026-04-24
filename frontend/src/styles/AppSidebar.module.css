@@ -131,11 +131,6 @@
   background: var(--btn-ghost-hover, rgba(255, 255, 255, 0.05));
 }
 
-/* Page Content */
-.page {
-  animation: fadeIn 0.2s ease-out;
-}
-
 @media (max-width: 1024px) {
   .main {
     margin-left: 0;

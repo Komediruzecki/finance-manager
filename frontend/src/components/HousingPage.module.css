@@ -506,3 +506,7 @@
 .housingPage .toggleSwitch input:checked + .toggleSlider::before {
   transform: translateX(20px);
 }
+
+.page-housing {
+  display: block;
+}
