@@ -493,6 +493,16 @@
   color: var(--text);
 }
 
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

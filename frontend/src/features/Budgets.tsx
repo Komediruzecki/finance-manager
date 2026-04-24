@@ -3,24 +3,9 @@
  * Includes traditional budgeting view, zero-based budgeting (envelope-style), and forecasting
  */
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import {
-  headerTop,
-  monthSelector,
-  monthDisplay,
-  pageSubtitle,
-  budgetSummary,
-  summaryCard,
-  summaryLabel,
-  summaryValue,
-  categoryChartSection,
-  chartWrapper,
-  forecastToggleSection,
-  budgetForecast,
-  forecastHeader,
-  forecastTitle,
-  btnOutline,
-  btnLarge,
-} from '../components/BudgetsPage.module.css'
+import styles from '../components/BudgetsPage.module.css'
+import Badge from '../components/Badge'
+import Button from '../components/Button'
 import Chart from '../components/Chart'
 import type * as Models from '../types/models'
 
@@ -338,9 +323,9 @@ export default function Budgets() {
               </svg>
               <span>Budget Forecast</span>
             </div>
-            <button class="btn btn-ghost btn-sm" onClick={toggleForecast}>
+            <Button variant="ghost" size="sm" onClick={toggleForecast}>
               Hide
-            </button>
+            </Button>
           </div>
 
           {forecastData() ? (
@@ -391,9 +376,9 @@ export default function Budgets() {
               </div>
 
               {/* Refresh Forecast Button */}
-              <button class="btn btn-outline" onClick={loadData}>
+              <Button variant="outline" onClick={loadData}>
                 Refresh Forecast
-              </button>
+              </Button>
             </>
           ) : (
             <div class={styles.emptyState}>Loading forecast...</div>
@@ -493,26 +478,21 @@ export default function Budgets() {
                       </td>
                       <td class="status-col">
                         {item.status === 'over' && (
-                          <span class="badge badge-over">Over Budget</span>
+                          <Badge status="over">Over Budget</Badge>
                         )}
                         {item.status === 'warning' && (
-                          <span class="badge badge-warning">Near Limit</span>
+                          <Badge status="warning">Near Limit</Badge>
                         )}
-                        {item.status === 'ok' && <span class="badge badge-ok">On Track</span>}
+                        {item.status === 'ok' && <Badge status="ok">On Track</Badge>}
                         {item.is_fully_allocated && (
                           <span class="badge badge-ok">Fully Allocated</span>
                         )}
                       </td>
                       <td class="actions-col">
                         {item.can_allocate && !item.is_budgeted ? (
-                          <button
-                            class="btn btn-sm btn-ghost"
-                            onClick={() => {
-                              openAllocateModal(item)
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => openAllocateModal(item)}>
                             Allocate
-                          </button>
+                          </Button>
                         ) : (
                           <span class="budget-message">{budgetMessage()}</span>
                         )}
@@ -543,7 +523,7 @@ export default function Budgets() {
             <div class={styles.modalHeader}>
               <h3>Allocate Budget</h3>
               <button
-                class="btn-close"
+                class={styles.modalClose}
                 onClick={() => setShowAllocateModal(false)}
                 aria-label="Close modal"
               >
@@ -564,7 +544,7 @@ export default function Budgets() {
               <label class="form-label">Amount</label>
               <input
                 type="number"
-                class="form-input"
+                class={styles.formInput}
                 step="0.01"
                 min="0.01"
                 value={allocateAmount()}
