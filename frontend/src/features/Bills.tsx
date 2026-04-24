@@ -172,8 +172,8 @@ export default function Bills() {
             {upcoming().map((bill) => (
               <div
                 data-test-id="bill-card"
-                class={`${styles.billCard} ${isOverdue(bill.due_date) ? styles.overdue : ''}`
-              }>
+                class={`${styles.billCard} ${isOverdue(bill.due_date) ? styles.overdue : ''}`}
+              >
                 <div class={styles.billMain}>
                   <div class={styles.billIcon}>{bill.autopay ? '🤖' : '📝'}</div>
                   <div class={styles.billInfo}>

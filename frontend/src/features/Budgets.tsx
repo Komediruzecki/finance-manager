@@ -477,12 +477,8 @@ export default function Budgets() {
                         <span class="percent-value">{Math.round(item.percent_used)}%</span>
                       </td>
                       <td class="status-col">
-                        {item.status === 'over' && (
-                          <Badge status="over">Over Budget</Badge>
-                        )}
-                        {item.status === 'warning' && (
-                          <Badge status="warning">Near Limit</Badge>
-                        )}
+                        {item.status === 'over' && <Badge status="over">Over Budget</Badge>}
+                        {item.status === 'warning' && <Badge status="warning">Near Limit</Badge>}
                         {item.status === 'ok' && <Badge status="ok">On Track</Badge>}
                         {item.is_fully_allocated && (
                           <span class="badge badge-ok">Fully Allocated</span>
