@@ -845,3 +845,7 @@
 .over {
   color: var(--danger);
 }
+
+.page-categories {
+  display: block;
+}

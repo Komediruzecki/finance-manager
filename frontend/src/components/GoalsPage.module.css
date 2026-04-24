@@ -392,3 +392,7 @@
   color: var(--text-secondary);
   font-size: 14px;
 }
+
+.page-goals {
+  display: block;
+}

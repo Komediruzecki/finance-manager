@@ -452,3 +452,7 @@
 .toggle-switch input:checked + .toggle-slider::before {
   transform: translateX(20px);
 }
+
+.page-bills {
+  display: block;
+}

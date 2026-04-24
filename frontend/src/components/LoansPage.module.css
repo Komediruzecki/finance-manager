@@ -383,3 +383,7 @@
   outline: none;
   border-color: var(--primary);
 }
+
+.page-loans {
+  display: block;
+}

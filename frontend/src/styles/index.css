@@ -132,10 +132,6 @@ RouterOutlet {
 }
 
 /* Page layout */
-.page {
-  animation: fadeIn 0.2s ease-out;
-}
-
 .page-inner {
   padding: 1rem 0;
 }

@@ -1,6 +1,11 @@
 .analyticsPage {
   padding: 24px;
 }
+
+.page-analytics {
+  display: block;
+}
+
 .analyticsPage .pageHeader {
   display: flex;
   justify-content: space-between;
