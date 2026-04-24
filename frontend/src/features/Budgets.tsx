@@ -8,6 +8,7 @@ import Badge from '../components/Badge'
 import Button from '../components/Button'
 import Chart from '../components/Chart'
 import type * as Models from '../types/models'
+import { apiGet, apiPost, showToast } from '../utils/api'
 
 type AllocationStatus = 'ok' | 'warning' | 'over'
 
@@ -70,7 +71,6 @@ export default function Budgets() {
   const [budgetMessage, setBudgetMessage] = createSignal<string>('')
   const [forecastData, setForecastData] = createSignal<ForecastData | null>(null)
   const [showForecast, setShowForecast] = createSignal(false)
-  const [toastMessage, setToastMessage] = createSignal<string | null>(null)
 
   // Get current allocations and summary
   const loadData = async () => {
@@ -78,18 +78,12 @@ export default function Budgets() {
     setError(null)
 
     try {
-      const [allocationsRes, summaryRes, forecastRes] = await Promise.all([
-        fetch(`/api/budgets/zero-based?month=${month()}`),
-        fetch(`/api/budgets/zero-based/summary?month=${month()}`),
-        fetch(`/api/budgets/forecast?month=${month()}`).catch(() => null),
+      const [allocationsData, summaryData, forecastDataRaw] = await Promise.all([
+        apiGet<CategoryAllocation[]>(`/api/budgets/zero-based?month=${month()}`),
+        apiGet<ZeroBasedSummary>(`/api/budgets/zero-based/summary?month=${month()}`),
+        apiGet<ForecastData>(`/api/budgets/forecast?month=${month()}`).catch(() => null),
       ])
 
-      if (!allocationsRes.ok || !summaryRes.ok) {
-        throw new Error('Failed to load budget data')
-      }
-
-      const allocationsData: CategoryAllocation[] = await allocationsRes.json()
-      const summaryData: ZeroBasedSummary = await summaryRes.json()
       setAllocations(allocationsData)
       setSummary(summaryData)
       setBudgetMessage(
@@ -98,11 +92,12 @@ export default function Budgets() {
           : `All income allocated!`
       )
 
-      if (forecastRes?.ok) {
-        setForecastData(await forecastRes.json())
+      if (forecastDataRaw) {
+        setForecastData(forecastDataRaw)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load budget data')
+      showToast('Failed to load budget data', 'error')
     } finally {
       setLoading(false)
     }
@@ -123,28 +118,19 @@ export default function Budgets() {
     }
 
     try {
-      const res = await fetch('/api/budgets/allocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category_id: selectedCategory()!.category_id,
-          amount: allocateAmount(),
-          period: 'monthly',
-        }),
+      await apiPost('/api/budgets/allocate', {
+        category_id: selectedCategory()!.category_id,
+        amount: allocateAmount(),
+        period: 'monthly',
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to allocate budget')
-      }
-
+      showToast('Budget allocated successfully!', 'success')
       setShowAllocateModal(false)
       setAllocateAmount(0)
-      setToastMessage('Budget allocated successfully!')
-      setTimeout(() => setToastMessage(null), 3000)
       loadData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to allocate budget')
+      showToast('Failed to allocate budget', 'error')
     }
   }
 
@@ -385,9 +371,6 @@ export default function Budgets() {
           )}
         </div>
       )}
-
-      {/* Toast */}
-      {toastMessage() && <div class="toast toast-success">{toastMessage()}</div>}
 
       {/* Error */}
       {error() && <div class="toast toast-error">{error()}</div>}

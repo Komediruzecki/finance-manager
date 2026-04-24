@@ -6,6 +6,7 @@ import { createSignal, onMount } from 'solid-js'
 import styles from '../components/AnalyticsPage.module.css'
 import { formatCurrency } from '../core/api'
 import Chart from '../components/Chart'
+import { apiGet, showToast } from '../utils/api'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
@@ -26,9 +27,9 @@ export default function Analytics() {
     setLoading(true)
     try {
       const [categoryRes, heatmapRes, transactionsRes] = await Promise.all([
-        fetch('/api/analytics/category-trends').then((r) => r.json()),
-        fetch('/api/analytics/daily-heatmap?year=2026').then((r) => r.json()),
-        fetch('/api/transactions/summary').then((r) => r.json()),
+        apiGet<any>('/api/analytics/category-trends'),
+        apiGet<any>('/api/analytics/daily-heatmap?year=2026'),
+        apiGet<any>('/api/transactions/summary'),
       ])
 
       // Transform category-trends response
@@ -84,8 +85,9 @@ export default function Analytics() {
             100
           : 0,
       })
-    } catch {
-      console.error('Failed to load analytics')
+    } catch (err) {
+      console.error('Failed to load analytics', err)
+      showToast('Failed to load analytics data', 'error')
     } finally {
       setLoading(false)
     }

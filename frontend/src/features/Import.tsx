@@ -5,6 +5,7 @@
 
 import { createSignal } from 'solid-js'
 import styles from '../components/ImportPage.module.css'
+import { apiPost, showToast } from '../utils/api'
 
 type ImportResult = {
   status: 'idle' | 'uploading' | 'previewing' | 'importing' | 'success' | 'error'
@@ -158,13 +159,7 @@ export default function Import() {
       }
 
       // Check duplicates first
-      const previewRes = await fetch('/api/import/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiData),
-      })
-
-      const preview = await previewRes.json()
+      const preview = await apiPost<{ duplicateTransactions: number; newTransactions: number }>('/api/import/preview', apiData)
       if (preview.duplicateTransactions > 0) {
         if (
           !confirm(
@@ -177,34 +172,24 @@ export default function Import() {
       }
 
       // Execute import
-      const importRes = await fetch('/api/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiData),
+      const result = await apiPost<{ imported: number }>('/api/import', apiData)
+      showToast(`Successfully imported ${result.imported || apiData.transactions.length} transactions`, 'success')
+      setImportResult({
+        status: 'success',
+        message: `Successfully imported ${result.imported || apiData.transactions.length} transactions`,
       })
-
-      const result = await importRes.json()
-
-      if (importRes.ok) {
-        setImportResult({
-          status: 'success',
-          message: `Successfully imported ${result.imported || apiData.transactions.length} transactions`,
-        })
-        // Clear file after successful import
-        setFileContent([])
-        setHeaders([])
-        setSelectedRows(new Set<number>())
-        setCurrentPage(1)
-        setFormData({
-          date: new Date().toISOString().split('T')[0],
-          description: '',
-          amount: '',
-          type: 'expense',
-          category: '',
-        })
-      } else {
-        setImportResult({ status: 'error', message: result.error || 'Import failed' })
-      }
+      // Clear file after successful import
+      setFileContent([])
+      setHeaders([])
+      setSelectedRows(new Set<number>())
+      setCurrentPage(1)
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: '',
+        type: 'expense',
+        category: '',
+      })
     } catch (err) {
       setImportResult({
         status: 'error',
