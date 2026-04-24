@@ -13,6 +13,21 @@
   font-weight: 500;
 }
 
+.badge-over {
+  background: var(--expense);
+  color: white;
+}
+
+.badge-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.badge-ok {
+  background: var(--success);
+  color: white;
+}
+
 .badgeIncome {
   background: var(--badge-income-bg);
   color: var(--badge-income-text);
