@@ -6,6 +6,7 @@ import { createSignal, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import styles from '../components/GoalsPage.module.css'
 import { formatCurrency } from '../core/api'
+import { apiGet, apiPost, apiPut, apiDelete, showToast } from '../utils/api'
 
 interface Goal {
   id: number
@@ -33,11 +34,10 @@ export default function Goals() {
   const loadGoals = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/savings-goals')
-      const data = await response.json()
+      const data = await apiGet<any[]>('/api/savings-goals')
       // Convert SavingsGoal (deadline) to Goal (target_date)
       setGoals(
-        data.map((s: any) => ({
+        data.map((s) => ({
           id: s.id,
           name: s.name,
           target_amount: s.current_amount,
@@ -48,8 +48,9 @@ export default function Goals() {
           created_at: s.created_at,
         }))
       )
-    } catch {
-      console.error('Failed to load goals')
+    } catch (err) {
+      console.error('Failed to load goals:', err)
+      showToast('Failed to load goals', 'error')
     } finally {
       setLoading(false)
     }
@@ -69,24 +70,19 @@ export default function Goals() {
 
     try {
       if (editingGoal()) {
-        await fetch(`/api/savings-goals/${editingGoal()!.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        })
+        await apiPut(`/api/savings-goals/${editingGoal()!.id}`, data)
+        showToast('Goal updated successfully', 'success')
       } else {
-        await fetch('/api/savings-goals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        })
+        await apiPost('/api/savings-goals', data)
+        showToast('Goal created successfully', 'success')
       }
       setShowAddModal(false)
       setEditingGoal(null)
       setFormData({ name: '', target_amount: '', target_date: '', monthly_contribution: '' })
       loadGoals()
-    } catch (error) {
-      console.error('Failed to save goal', error)
+    } catch (err) {
+      console.error('Failed to save goal:', err)
+      showToast('Failed to save goal', 'error')
     }
   }
 
@@ -94,10 +90,12 @@ export default function Goals() {
   const deleteGoal = async (id: number) => {
     if (!confirm('Are you sure you want to delete this goal?')) return
     try {
-      await fetch(`/api/savings-goals/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/savings-goals/${id}`)
+      showToast('Goal deleted successfully', 'success')
       loadGoals()
-    } catch (error) {
-      console.error('Failed to delete goal', error)
+    } catch (err) {
+      console.error('Failed to delete goal:', err)
+      showToast('Failed to delete goal', 'error')
     }
   }
 
