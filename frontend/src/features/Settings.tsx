@@ -4,6 +4,7 @@
  */
 import { createEffect, createSignal, onMount } from 'solid-js'
 import styles from '../components/SettingsPage.module.css'
+import { apiPost } from '../utils/api'
 
 export default function Settings() {
   const [localCurrency, setLocalCurrency] = createSignal('USD')
@@ -76,21 +77,11 @@ export default function Settings() {
   const applyStorageType = async () => {
     if (storageType() === 'postgresql') {
       try {
-        const response = await fetch('/api/settings/set-storage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'postgresql' }),
-        })
-
-        if (response.ok) {
-          localStorage.setItem('storageType', 'postgresql')
-          setShowStorageWarning(false)
-          alert('Database switched to PostgreSQL successfully. Please restart the application.')
-          window.location.reload()
-        } else {
-          alert('Failed to switch to PostgreSQL. Please check the server logs.')
-          setShowStorageWarning(true)
-        }
+        await apiPost('/api/settings/set-storage', { type: 'postgresql' })
+        localStorage.setItem('storageType', 'postgresql')
+        setShowStorageWarning(false)
+        alert('Database switched to PostgreSQL successfully. Please restart the application.')
+        window.location.reload()
       } catch (error) {
         console.error('Failed to switch storage:', error)
         alert('Failed to switch storage. Please check the server logs.')

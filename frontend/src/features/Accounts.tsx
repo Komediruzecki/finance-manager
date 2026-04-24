@@ -6,6 +6,7 @@
 import { createSignal, onMount } from 'solid-js'
 import styles from '../components/AccountsPage.module.css'
 import { formatCurrency } from '../core/api'
+import { apiGet, apiPost, apiDelete, showToast } from '../utils/api'
 
 interface Account {
   id: number
@@ -36,13 +37,14 @@ export default function Accounts() {
     setLoading(true)
     try {
       const [accountsRes, txRes] = await Promise.all([
-        fetch('/api/accounts').then((r) => r.json()),
-        fetch('/api/transactions/summary').then((r) => r.json()),
+        apiGet<Account[]>('/api/accounts'),
+        apiGet<any>('/api/transactions/summary'),
       ])
       setAccounts(accountsRes)
       setTransactions(txRes?.transactions || [])
-    } catch {
-      console.error('Failed to load accounts')
+    } catch (err) {
+      console.error('Failed to load accounts', err)
+      showToast('Failed to load accounts', 'error')
     } finally {
       setLoading(false)
     }
@@ -60,16 +62,14 @@ export default function Accounts() {
     }
 
     try {
-      await fetch('/api/accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      await apiPost('/api/accounts', data)
+      showToast('Account created successfully', 'success')
       setShowAddModal(false)
       setFormData({ name: '', type: 'checking', bank_name: '', balance: '', currency: 'USD' })
       loadData()
-    } catch (error) {
-      console.error('Failed to save account', error)
+    } catch (err) {
+      console.error('Failed to save account', err)
+      showToast('Failed to create account', 'error')
     }
   }
 
@@ -82,10 +82,12 @@ export default function Accounts() {
     )
       return
     try {
-      await fetch(`/api/accounts/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/accounts/${id}`)
+      showToast('Account deleted successfully', 'success')
       loadData()
-    } catch (error) {
-      console.error('Failed to delete account', error)
+    } catch (err) {
+      console.error('Failed to delete account', err)
+      showToast('Failed to delete account', 'error')
     }
   }
 
