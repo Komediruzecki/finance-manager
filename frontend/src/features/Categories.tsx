@@ -102,7 +102,6 @@ export default function Categories() {
     } catch (err) {
       console.error('Failed to update color:', err)
       showToast('Failed to update color', 'error')
-      console.error('Failed to update category color', error)
     }
   }
 
@@ -128,20 +127,18 @@ export default function Categories() {
   const updateBudget = async (amount: number) => {
     if (!selectedCategory()) return
     try {
-      await fetch('/api/budgets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category_id: selectedCategory()!.id,
-          amount,
-          period: 'monthly',
-        }),
+      await apiPost('/api/budgets', {
+        category_id: selectedCategory()!.id,
+        amount,
+        period: 'monthly',
       })
+      showToast('Budget set successfully', 'success')
       setShowBudgetModal(false)
       setSelectedCategory(null)
       loadCategories()
-    } catch (error) {
-      console.error('Failed to set budget', error)
+    } catch (err) {
+      console.error('Failed to set budget', err)
+      showToast('Failed to set budget', 'error')
     }
   }
 
