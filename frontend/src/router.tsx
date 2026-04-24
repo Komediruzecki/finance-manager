@@ -1,37 +1,27 @@
 /**
- * Router - Simplified routing for SolidJS
+ * Router - Simplified routing for SolidJS with lazy loading
  */
-
-// Page components
-import Accounts from './features/Accounts.js'
-import Analytics from './features/Analytics.js'
-import Bills from './features/Bills.js'
-import Budgets from './features/Budgets.js'
-import Categories from './features/Categories.js'
-import Dashboard from './features/Dashboard.js'
-import Goals from './features/Goals.js'
-import Housing from './features/Housing.js'
-import Import from './features/Import.js'
-import Loans from './features/Loans.js'
-import Retirement from './features/Retirement.js'
-import Settings from './features/Settings.js'
-import Transactions from './features/Transactions.js'
+import { lazy } from 'solid-js'
 import type { PageComponent, PageName } from './types/models.js'
 
 export type { PageName, PageComponent }
 
+// Lazy-loaded page components for code-splitting
+// Dashboard is kept as eager load since it's the landing page
+const Dashboard = lazy(() => import('./features/Dashboard.js'))
+
 export const pages: Record<PageName, PageComponent> = {
   dashboard: Dashboard,
-  transactions: Transactions,
-  budgets: Budgets,
-  loans: Loans,
-  goals: Goals,
-  bills: Bills,
-  import: Import,
-  accounts: Accounts,
-  categories: Categories,
-  settings: Settings,
-  retirement: Retirement,
-  housing: Housing,
-  analytics: Analytics,
+  transactions: lazy(() => import('./features/Transactions.js')),
+  budgets: lazy(() => import('./features/Budgets.js')),
+  loans: lazy(() => import('./features/Loans.js')),
+  goals: lazy(() => import('./features/Goals.js')),
+  bills: lazy(() => import('./features/Bills.js')),
+  import: lazy(() => import('./features/Import.js')),
+  accounts: lazy(() => import('./features/Accounts.js')),
+  categories: lazy(() => import('./features/Categories.js')),
+  settings: lazy(() => import('./features/Settings.js')),
+  retirement: lazy(() => import('./features/Retirement.js')),
+  housing: lazy(() => import('./features/Housing.js')),
+  analytics: lazy(() => import('./features/Analytics.js')),
 }
