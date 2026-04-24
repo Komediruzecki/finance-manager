@@ -5,6 +5,7 @@
 import { createSignal, onMount } from 'solid-js'
 import styles from '../components/CategoriesPage.module.css'
 import { formatCurrency } from '../core/api'
+import { apiGet, apiPost, apiPut, apiDelete, showToast } from '../utils/api'
 
 interface Category {
   id: number
@@ -40,13 +41,13 @@ export default function Categories() {
   const loadCategories = async () => {
     setLoading(true)
     try {
-      const [allRes, _expenseRes] = await Promise.all([
-        fetch('/api/categories').then((r) => r.json()),
-        fetch('/api/categories?type=expense').then((r) => r.json()),
+      const [allRes] = await Promise.all([
+        apiGet<Category[]>('/api/categories'),
       ])
       setCategories(allRes)
-    } catch {
-      console.error('Failed to load categories')
+    } catch (err) {
+      console.error('Failed to load categories:', err)
+      showToast('Failed to load categories', 'error')
     } finally {
       setLoading(false)
     }
@@ -63,17 +64,20 @@ export default function Categories() {
     }
 
     try {
-      await fetch('/api/categories', {
-        method: editingCategory() ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      if (editingCategory()) {
+        await apiPut(`/api/categories/${editingCategory()!.id}`, data)
+        showToast('Category updated successfully', 'success')
+      } else {
+        await apiPost('/api/categories', data)
+        showToast('Category created successfully', 'success')
+      }
       setShowAddModal(false)
       setEditingCategory(null)
       setFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
       loadCategories()
-    } catch (error) {
-      console.error('Failed to save category', error)
+    } catch (err) {
+      console.error('Failed to save category:', err)
+      showToast('Failed to save category', 'error')
     }
   }
 
@@ -81,23 +85,23 @@ export default function Categories() {
   const deleteCategory = async (id: number) => {
     if (!confirm('Are you sure you want to delete this category?')) return
     try {
-      await fetch(`/api/categories/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/categories/${id}`)
+      showToast('Category deleted successfully', 'success')
       loadCategories()
-    } catch (error) {
-      console.error('Failed to delete category', error)
+    } catch (err) {
+      console.error('Failed to delete category:', err)
+      showToast('Failed to delete category', 'error')
     }
   }
 
   // Update category color
   const updateColor = async (id: number, color: string) => {
     try {
-      await fetch(`/api/categories/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color }),
-      })
+      await apiPut(`/api/categories/${id}`, { color })
       loadCategories()
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to update color:', err)
+      showToast('Failed to update color', 'error')
       console.error('Failed to update category color', error)
     }
   }

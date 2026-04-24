@@ -5,6 +5,7 @@
 import { createSignal, onMount } from 'solid-js'
 import styles from '../components/BillsPage.module.css'
 import { formatCurrency } from '../core/api'
+import { apiGet, apiPost, apiDelete, showToast } from '../utils/api'
 
 interface Bill {
   id: number
@@ -39,21 +40,22 @@ export default function Bills() {
     setLoading(true)
     try {
       const [allRes, upcomingRes, paidRes] = await Promise.all([
-        fetch('/api/bills').then((r) => r.json()),
-        fetch('/api/bills/upcoming').then((r) => r.json()),
-        fetch('/api/bills?paid=true').then((r) => r.json()),
+        apiGet<Bill[]>('/api/bills'),
+        apiGet<Bill[]>('/api/bills/upcoming'),
+        apiGet<Bill[]>('/api/bills?paid=true'),
       ])
       setBills(allRes)
       // Handle upcoming bills which have next_due_date instead of due_date
       setUpcoming(
-        upcomingRes.map((b: any) => ({
+        upcomingRes.map((b) => ({
           ...b,
-          due_date: b.due_date || b.next_due_date || '2026-05-01',
+          due_date: b.due_date || (b as any).next_due_date || '2026-05-01',
         }))
       )
       setPaid(paidRes)
-    } catch {
-      console.error('Failed to load bills')
+    } catch (err) {
+      console.error('Failed to load bills:', err)
+      showToast('Failed to load bills', 'error')
     } finally {
       setLoading(false)
     }
@@ -71,26 +73,26 @@ export default function Bills() {
     }
 
     try {
-      await fetch('/api/bills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      await apiPost('/api/bills', data)
+      showToast('Bill saved successfully', 'success')
       setShowAddModal(false)
       setFormData({ name: '', amount: '', due_date: '', frequency: 'monthly', autopay: false })
       loadBills()
-    } catch (error) {
-      console.error('Failed to save bill', error)
+    } catch (err) {
+      console.error('Failed to save bill:', err)
+      showToast('Failed to save bill', 'error')
     }
   }
 
   // Mark bill as paid
   const markPaid = async (id: number) => {
     try {
-      await fetch(`/api/bills/${id}/mark-paid`, { method: 'POST' })
+      await apiPost(`/api/bills/${id}/mark-paid`, {})
+      showToast('Bill marked as paid', 'success')
       loadBills()
-    } catch (error) {
-      console.error('Failed to mark bill as paid', error)
+    } catch (err) {
+      console.error('Failed to mark bill as paid:', err)
+      showToast('Failed to mark bill as paid', 'error')
     }
   }
 
@@ -98,10 +100,12 @@ export default function Bills() {
   const deleteBill = async (id: number) => {
     if (!confirm('Are you sure you want to delete this bill?')) return
     try {
-      await fetch(`/api/bills/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/bills/${id}`)
+      showToast('Bill deleted successfully', 'success')
       loadBills()
-    } catch (error) {
-      console.error('Failed to delete bill', error)
+    } catch (err) {
+      console.error('Failed to delete bill:', err)
+      showToast('Failed to delete bill', 'error')
     }
   }
 

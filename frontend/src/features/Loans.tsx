@@ -7,6 +7,7 @@ import styles from '../components/LoansPage.module.css'
 import { api as _api, formatCurrency } from '../core/api'
 import Chart from '../components/Chart'
 import type * as Models from '../types/models'
+import { apiGet, apiPost, apiDelete, showToast } from '../utils/api'
 
 interface Loan {
   id: number
@@ -41,11 +42,10 @@ export default function Loans() {
   const loadLoans = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/loans')
-      const data = await response.json()
+      const data = await apiGet<any[]>('/api/loans')
       // Transform Loan data to include missing fields
       setLoans(
-        data.map((l: any) => ({
+        data.map((l) => ({
           id: l.id,
           name: l.name,
           principal: l.principal,
@@ -57,8 +57,9 @@ export default function Loans() {
           total_paid: 0,
         }))
       )
-    } catch {
-      console.error('Failed to load loans')
+    } catch (err) {
+      console.error('Failed to load loans:', err)
+      showToast('Failed to load loans', 'error')
     } finally {
       setLoading(false)
     }
@@ -77,11 +78,13 @@ export default function Loans() {
     }
 
     try {
-      await fetch('/api/loans', {
-        method: editingLoan() ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      if (editingLoan()) {
+        await apiPost(`/api/loans/${editingLoan()!.id}`, data)
+        showToast('Loan updated successfully', 'success')
+      } else {
+        await apiPost('/api/loans', data)
+        showToast('Loan created successfully', 'success')
+      }
       setShowAddModal(false)
       setEditingLoan(null)
       setFormData({
@@ -93,8 +96,9 @@ export default function Loans() {
         status: 'active',
       })
       loadLoans()
-    } catch (error) {
-      console.error('Failed to save loan', error)
+    } catch (err) {
+      console.error('Failed to save loan:', err)
+      showToast('Failed to save loan', 'error')
     }
   }
 
@@ -102,10 +106,12 @@ export default function Loans() {
   const deleteLoan = async (id: number) => {
     if (!confirm('Are you sure you want to delete this loan?')) return
     try {
-      await fetch(`/api/loans/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/loans/${id}`)
+      showToast('Loan deleted successfully', 'success')
       loadLoans()
-    } catch (error) {
-      console.error('Failed to delete loan', error)
+    } catch (err) {
+      console.error('Failed to delete loan:', err)
+      showToast('Failed to delete loan', 'error')
     }
   }
 

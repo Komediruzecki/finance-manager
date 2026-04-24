@@ -5,6 +5,7 @@
 import { createSignal, onMount } from 'solid-js'
 import styles from '../components/HousingPage.module.css'
 import { formatCurrency } from '../core/api'
+import { apiGet, apiPost, apiDelete, showToast } from '../utils/api'
 
 interface Housing {
   id: number
@@ -37,11 +38,11 @@ export default function HousingForm() {
   const loadHousings = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/housing')
-      const result: any = await response.json()
+      const result = await apiGet<{ housings: Housing[] }>('/api/housing')
       setHousings(result.housings || [])
-    } catch {
-      console.error('Failed to load housing expenses')
+    } catch (err) {
+      console.error('Failed to load housing expenses:', err)
+      showToast('Failed to load housing expenses', 'error')
     } finally {
       setLoading(false)
     }
@@ -61,11 +62,8 @@ export default function HousingForm() {
     }
 
     try {
-      await fetch('/api/housing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      await apiPost('/api/housing', data)
+      showToast('Housing expense saved', 'success')
       setShowAddModal(false)
       setFormData({
         type: 'rent',
@@ -77,8 +75,9 @@ export default function HousingForm() {
         notes: '',
       })
       loadHousings()
-    } catch (error) {
-      console.error('Failed to save housing expense', error)
+    } catch (err) {
+      console.error('Failed to save housing expense:', err)
+      showToast('Failed to save housing expense', 'error')
     }
   }
 
@@ -86,10 +85,12 @@ export default function HousingForm() {
   const deleteHousing = async (id: number) => {
     if (!confirm('Are you sure you want to delete this expense?')) return
     try {
-      await fetch(`/api/housing/${id}`, { method: 'DELETE' })
+      await apiDelete(`/api/housing/${id}`)
+      showToast('Housing expense deleted', 'success')
       loadHousings()
-    } catch (error) {
-      console.error('Failed to delete housing expense', error)
+    } catch (err) {
+      console.error('Failed to delete housing expense:', err)
+      showToast('Failed to delete housing expense', 'error')
     }
   }
 
