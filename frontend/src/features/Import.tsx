@@ -313,7 +313,7 @@ export default function Import() {
       ) : (
         <>
           {/* Preview Section */}
-          <div class="import-preview-section">
+          <div class={styles.importPreviewSection}>
             <div class={styles.previewHeader}>
               <div class={styles.previewStats}>
                 <div class={styles.statItem}>
