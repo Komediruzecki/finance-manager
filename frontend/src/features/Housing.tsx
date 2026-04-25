@@ -151,7 +151,7 @@ export default function HousingForm() {
 
       {/* Summary Cards */}
       <div class={styles.housingSummary}>
-        <div class="summary-card highlighted">
+        <div class={`${styles.summaryCard} ${styles.highlighted}`}>
           <div class={styles.summaryLabel}>Monthly Total</div>
           <div class={styles.summaryValue}>{formatAmount(totalMonthlyCost())}</div>
         </div>
@@ -190,7 +190,7 @@ export default function HousingForm() {
                     <span class={`badge ${housing.autopay ? 'badge-success' : 'badge-default'}`}>
                       {housing.autopay ? '🔄 Autopay' : 'Manual'}
                     </span>
-                    <button class="btn btn-sm btn-ghost" onClick={() => deleteHousing(housing.id)}>
+                    <button class={`${styles.btnSm} ${styles.btnGhost}`} onClick={() => deleteHousing(housing.id)}>
                       <svg
                         width="16"
                         height="16"

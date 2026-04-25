@@ -181,7 +181,7 @@ export default function Goals() {
                   </div>
                   <div class={styles.goalActions}>
                     <button
-                      class="btn btn-sm btn-ghost"
+                      class={styles.btnSm}
                       onClick={() => {
                         editGoal(goal)
                       }}
@@ -196,7 +196,7 @@ export default function Goals() {
                         <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button class="btn btn-sm btn-ghost" onClick={() => deleteGoal(goal.id)}>
+                    <button class={styles.btnSm} onClick={() => deleteGoal(goal.id)}>
                       <svg
                         width="16"
                         height="16"
@@ -228,9 +228,9 @@ export default function Goals() {
 
       {/* Goals Progress Chart */}
       {goals().length > 0 && (
-        <div class="goals-chart-section">
+        <div class={styles.goalsChartSection}>
           <h3>Goals Progress</h3>
-          <div class="chart-wrapper">
+          <div class={styles.chartWrapper}>
             <Chart
               id="goals-progress-chart"
               type="doughnut"
@@ -312,45 +312,45 @@ export default function Goals() {
               </button>
             </div>
             <form class={styles.modalBody} onSubmit={handleSubmit}>
-              <div class="form-group">
-                <label class="form-label">Goal Name</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Goal Name</label>
                 <input
                   type="text"
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="e.g., Emergency Fund, Vacation"
                   value={formData().name}
                   oninput={(e) => setFormData({ ...formData(), name: e.target.value })}
                   required
                 />
               </div>
-              <div class="form-group">
-                <label class="form-label">Target Amount</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Target Amount</label>
                 <input
                   type="number"
                   step="0.01"
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="5000.00"
                   value={formData().target_amount}
                   oninput={(e) => setFormData({ ...formData(), target_amount: e.target.value })}
                   required
                 />
               </div>
-              <div class="form-group">
-                <label class="form-label">Target Date</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Target Date</label>
                 <input
                   type="date"
-                  class="form-control"
+                  class={styles.formControl}
                   value={formData().target_date}
                   oninput={(e) => setFormData({ ...formData(), target_date: e.target.value })}
                   required
                 />
               </div>
-              <div class="form-group">
-                <label class="form-label">Monthly Contribution</label>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Monthly Contribution</label>
                 <input
                   type="number"
                   step="0.01"
-                  class="form-control"
+                  class={styles.formControl}
                   placeholder="e.g., 500.00"
                   value={formData().monthly_contribution}
                   oninput={(e) =>

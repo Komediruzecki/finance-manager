@@ -48,7 +48,7 @@ export default function Dashboard() {
           <p>Your financial overview</p>
         </div>
         <div class={styles.pageHeaderActions}>
-          <button class="btn btn-secondary" onClick={showSettings}>
+          <button class={styles.btnSecondary} onClick={showSettings}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
@@ -60,7 +60,7 @@ export default function Dashboard() {
             </svg>
             Settings
           </button>
-          <button class="btn btn-primary" onClick={loadDashboard}>
+          <button class={styles.btnPrimary} onClick={loadDashboard}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"

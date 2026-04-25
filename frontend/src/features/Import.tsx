@@ -316,13 +316,13 @@ export default function Import() {
           <div class="import-preview-section">
             <div class={styles.previewHeader}>
               <div class={styles.previewStats}>
-                <div class="stat-item">
-                  <span class="stat-label">Total Rows</span>
-                  <span class="stat-value">{fileContent().length}</span>
+                <div class={styles.statItem}>
+                  <span class={styles.statLabel}>Total Rows</span>
+                  <span class={styles.statValue}>{fileContent().length}</span>
                 </div>
-                <div class="stat-item">
-                  <span class="stat-label">Selected</span>
-                  <span class="stat-value">{selectedRows().size}</span>
+                <div class={styles.statItem}>
+                  <span class={styles.statLabel}>Selected</span>
+                  <span class={styles.statValue}>{selectedRows().size}</span>
                 </div>
               </div>
               <div class={styles.previewActions}>
@@ -410,7 +410,7 @@ export default function Import() {
                   Next
                 </button>
                 <select
-                  class="form-control page-size"
+                  class={`${styles.formControl} ${styles.pageSize}`}
                   value={rowsPerPage()}
                   oninput={(e) => {
                     setRowsPerPage(Number(e.target.value))

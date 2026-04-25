@@ -466,7 +466,7 @@ export default function Transactions() {
                   <select class={styles.formControl} id="tx-category"></select>
                 </div>
               </div>
-              <div class="form-group tx-tag-selector">
+              <div class={`${styles.formGroup} ${styles.txTagSelector}`}>
                 <label class={styles.formLabel}>Tags</label>
                 <div class="tx-tag-chips" id="tx-tag-chips"></div>
                 <div class={styles.txTagInputRow}>
@@ -592,7 +592,7 @@ export default function Transactions() {
                       <div class="receipt-actions">
                         <button
                           type="button"
-                          class="btn btn-ghost btn-sm"
+                          class={`${styles.btnGhost} ${styles.btnSm}`}
                           data-action="transactions:removeReceipt"
                           title="Remove receipt"
                         >
@@ -618,11 +618,11 @@ export default function Transactions() {
               </div>
             </form>
           </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" onclick={_closeModals}>
+          <div class={styles.modalFooter}>
+            <button class={styles.btnSecondary} onclick={_closeModals}>
               Cancel
             </button>
-            <button class="btn btn-primary" id="tx-save-btn" data-action="transactions:save">
+            <button class={styles.btnPrimary} id="tx-save-btn" data-action="transactions:save">
               Save Transaction
             </button>
           </div>
@@ -640,9 +640,9 @@ export default function Transactions() {
             }
           }}
         >
-          <div class="modal modal-lg">
-            <div class="modal-header">
-              <div class="modal-title">Receipt</div>
+          <div class={`${styles.modal} ${styles.modalLg}`}>
+            <div class={styles.modalHeader}>
+              <div class={styles.modalTitle}>Receipt</div>
               <button class={styles.btnGhost} onclick={closeReceiptModal} aria-label="Close modal">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M6 18L18 6M6 6l12 12" />
@@ -661,30 +661,30 @@ export default function Transactions() {
                   'border-radius': '8px',
                 }}
               />
-              <div class="receipt-meta">
-                <div class="receipt-meta-item">
-                  <span class="receipt-meta-label">File Name</span>
+              <div class={styles.receiptMeta}>
+                <div class={styles.receiptMetaItem}>
+                  <span class={styles.receiptMetaLabel}>File Name</span>
                   <span>{selectedReceipt()!.original_name}</span>
                 </div>
-                <div class="receipt-meta-item">
-                  <span class="receipt-meta-label">File Type</span>
+                <div class={styles.receiptMetaItem}>
+                  <span class={styles.receiptMetaLabel}>File Type</span>
                   <span>{selectedReceipt()!.file_type}</span>
                 </div>
-                <div class="receipt-meta-item">
-                  <span class="receipt-meta-label">Size</span>
+                <div class={styles.receiptMetaItem}>
+                  <span class={styles.receiptMetaLabel}>Size</span>
                   <span>{(selectedReceipt()!.file_size / 1024).toFixed(2)} KB</span>
                 </div>
-                <div class="receipt-meta-item">
-                  <span class="receipt-meta-label">Uploaded</span>
+                <div class={styles.receiptMetaItem}>
+                  <span class={styles.receiptMetaLabel}>Uploaded</span>
                   <span>{new Date(selectedReceipt()!.uploaded_at).toLocaleString()}</span>
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
+            <div class={styles.modalFooter}>
               <a
                 href={`/api/receipts/${selectedReceipt()!.id}/file`}
                 download={selectedReceipt()!.original_name}
-                class="btn btn-secondary"
+                class={styles.btnSecondary}
               >
                 <svg
                   width="16"
@@ -698,7 +698,7 @@ export default function Transactions() {
                 </svg>
                 Download
               </a>
-              <button class="btn btn-danger" onclick={deleteReceipt}>
+              <button class={styles.btnDanger} onclick={deleteReceipt}>
                 <svg
                   width="16"
                   height="16"
@@ -711,7 +711,7 @@ export default function Transactions() {
                 </svg>
                 Delete
               </button>
-              <button class="btn btn-secondary" onclick={closeReceiptModal}>
+              <button class={styles.btnSecondary} onclick={closeReceiptModal}>
                 Close
               </button>
             </div>

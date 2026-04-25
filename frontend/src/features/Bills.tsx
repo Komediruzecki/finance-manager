@@ -295,7 +295,7 @@ export default function Bills() {
                 </div>
                 <div class={styles.billAmount}>
                   <div class={styles.amountValue}>{formatCurrency(bill.amount)}</div>
-                  <div class="bill-actions">
+                  <div class={styles.billActions}>
                     {!bill.paid ? (
                       <button
                         data-test-id="mark-paid-btn"
