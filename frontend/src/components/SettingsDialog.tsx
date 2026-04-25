@@ -38,7 +38,9 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
         setTheme(settings.theme !== undefined ? settings.theme : 'light')
         setLanguage(settings.language !== undefined ? settings.language : 'en')
         setCurrency(settings.currency !== undefined ? settings.currency : 'USD')
-        setPrimaryCurrency(settings.primary_currency !== undefined ? settings.primary_currency : 'USD')
+        setPrimaryCurrency(
+          settings.primary_currency !== undefined ? settings.primary_currency : 'USD'
+        )
       }
     } catch (_error: unknown) {
       console.error('Failed to load settings:', _error)
@@ -190,39 +192,47 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
   ]
 
   return (
-    <div class='settings-dialog'>
-      <Modal isOpen={props.isOpen} onClose={props.onClose} title='Settings'>
+    <div class="settings-dialog">
+      <Modal isOpen={props.isOpen} onClose={props.onClose} title="Settings">
         {/* Tabs */}
-        <div class='settings-tabs'>
+        <div class="settings-tabs">
           <button
             class={`tab ${activeTab() === 'general' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('general') }}
+            onClick={() => {
+              setActiveTab('general')
+            }}
           >
             General
           </button>
           <button
             class={`tab ${activeTab() === 'storage' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('storage') }}
+            onClick={() => {
+              setActiveTab('storage')
+            }}
           >
             Storage
           </button>
         </div>
 
         {/* General Settings */}
-        <div class='tab-content' classList={{ active: activeTab() === 'general' }}>
+        <div class="tab-content" classList={{ active: activeTab() === 'general' }}>
           {/* Theme */}
-          <div class='setting-group'>
-            <label class='setting-label'>Theme</label>
-            <div class='theme-selector'>
+          <div class="setting-group">
+            <label class="setting-label">Theme</label>
+            <div class="theme-selector">
               <button
                 class={`theme-btn ${theme() === 'light' ? 'active' : ''}`}
-                onClick={() => { setTheme('light') }}
+                onClick={() => {
+                  setTheme('light')
+                }}
               >
                 <span>Light</span>
               </button>
               <button
                 class={`theme-btn ${theme() === 'dark' ? 'active' : ''}`}
-                onClick={() => { setTheme('dark') }}
+                onClick={() => {
+                  setTheme('dark')
+                }}
               >
                 <span>Dark</span>
               </button>
@@ -230,24 +240,28 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Language */}
-          <div class='setting-group'>
-            <label class='setting-label'>Language</label>
+          <div class="setting-group">
+            <label class="setting-label">Language</label>
             <select
-              class='setting-select'
+              class="setting-select"
               value={language()}
-              onChange={(e) => { setLanguage(e.currentTarget.value) }}
+              onChange={(e) => {
+                setLanguage(e.currentTarget.value)
+              }}
             >
               <For each={languages}>{(lang) => <option value={lang.code}>{lang.name}</option>}</For>
             </select>
           </div>
 
           {/* Currency */}
-          <div class='setting-group'>
-            <label class='setting-label'>Currency</label>
+          <div class="setting-group">
+            <label class="setting-label">Currency</label>
             <select
-              class='setting-select'
+              class="setting-select"
               value={currency()}
-              onChange={(e) => { setCurrency(e.currentTarget.value) }}
+              onChange={(e) => {
+                setCurrency(e.currentTarget.value)
+              }}
             >
               <For each={currencies}>
                 {(curr) => <option value={curr.code}>{curr.name}</option>}
@@ -255,12 +269,14 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
             </select>
           </div>
 
-          <div class='setting-group'>
-            <label class='setting-label'>Primary Currency</label>
+          <div class="setting-group">
+            <label class="setting-label">Primary Currency</label>
             <select
-              class='setting-select'
+              class="setting-select"
               value={primaryCurrency()}
-              onChange={(e) => { setPrimaryCurrency(e.currentTarget.value) }}
+              onChange={(e) => {
+                setPrimaryCurrency(e.currentTarget.value)
+              }}
             >
               <For each={currencies}>
                 {(curr) => <option value={curr.code}>{curr.name}</option>}
@@ -268,41 +284,50 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
             </select>
           </div>
 
-          <div class='setting-actions'>
-            <button class='btn-primary' onClick={() => { void saveSettings() }}>
+          <div class="setting-actions">
+            <button
+              class="btn-primary"
+              onClick={() => {
+                void saveSettings()
+              }}
+            >
               Save Settings
             </button>
           </div>
         </div>
 
         {/* Storage Settings */}
-        <div class='tab-content' classList={{ active: activeTab() === 'storage' }}>
+        <div class="tab-content" classList={{ active: activeTab() === 'storage' }}>
           {/* Storage Mode */}
-          <div class='setting-group'>
-            <label class='setting-label'>Storage Mode</label>
-            <div class='mode-selector'>
+          <div class="setting-group">
+            <label class="setting-label">Storage Mode</label>
+            <div class="mode-selector">
               <button
                 class={`mode-btn ${currentMode() === 'serverless' ? 'active' : ''}`}
-                onClick={() => { void handleSetMode('serverless') }}
+                onClick={() => {
+                  void handleSetMode('serverless')
+                }}
               >
-                <div class='mode-info'>
+                <div class="mode-info">
                   <strong>Serverless</strong>
                   <span>Browser localStorage storage</span>
                 </div>
-                <div class='mode-icon'>Serverless</div>
+                <div class="mode-icon">Serverless</div>
               </button>
               <button
                 class={`mode-btn ${currentMode() === 'self-hosted' ? 'active' : ''}`}
-                onClick={() => { void handleSetMode('self-hosted') }}
+                onClick={() => {
+                  void handleSetMode('self-hosted')
+                }}
               >
-                <div class='mode-info'>
+                <div class="mode-info">
                   <strong>Self-Hosted</strong>
                   <span>Backend server storage</span>
                 </div>
-                <div class='mode-icon'>Self-Hosted</div>
+                <div class="mode-icon">Self-Hosted</div>
               </button>
             </div>
-            <p class='setting-hint'>
+            <p class="setting-hint">
               {currentMode() === 'serverless'
                 ? 'Your data is stored in your browser. You can export/import your data at any time.'
                 : 'Your data is stored on the backend server. Use this if you need data access across devices.'}
@@ -310,23 +335,40 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Data Management */}
-          <div class='setting-group'>
-            <label class='setting-label'>Data Management</label>
-            <div class='data-actions'>
-              <button class='btn-secondary' onClick={() => { void handleExport() }}>
+          <div class="setting-group">
+            <label class="setting-label">Data Management</label>
+            <div class="data-actions">
+              <button
+                class="btn-secondary"
+                onClick={() => {
+                  void handleExport()
+                }}
+              >
                 Export Data
               </button>
-              <button class='btn-secondary'>
+              <button class="btn-secondary">
                 Import Data
-                <input type='file' accept='.json' style='display: none' onChange={(e) => { void handleImport(e) }} />
+                <input
+                  type="file"
+                  accept=".json"
+                  style="display: none"
+                  onChange={(e) => {
+                    void handleImport(e)
+                  }}
+                />
               </button>
             </div>
           </div>
 
           {/* Reset */}
-          <div class='setting-group'>
-            <label class='setting-label'>Danger Zone</label>
-            <button class='btn-danger' onClick={() => { void _handleReset() }}>
+          <div class="setting-group">
+            <label class="setting-label">Danger Zone</label>
+            <button
+              class="btn-danger"
+              onClick={() => {
+                void _handleReset()
+              }}
+            >
               Reset All Data
             </button>
           </div>
