@@ -162,8 +162,80 @@
   border-radius: var(--radius);
 }
 
+.stat-item .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stat-item .stat-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stat-item .stat-value.positive {
+  color: var(--income);
+}
+
 .forecast-chart {
   margin-top: 16px;
+}
+
+/* Chart Row Styles */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 80px 80px;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.chart-row:last-child {
+  border-bottom: none;
+}
+
+.chart-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chart-value {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.chart-value.budget-val {
+  color: var(--primary);
+}
+
+.chart-value.actual-val {
+  color: var(--expense);
+}
+
+.chart-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.chart-status-over,
+.chartStatusOver {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.chart-status-warning,
+.chartStatusWarning {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--warning);
+}
+
+.chart-status-ok,
+.chartStatusOk {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
 }
 
 /* Category chart section */
@@ -211,4 +283,544 @@
 
 .page-budgets {
   display: block;
+}
+
+/* Budget Allocations Table */
+.budget-allocations {
+  margin-top: 24px;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-container {
+  overflow-x: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: var(--table-hover);
+}
+
+/* Table cell styles */
+.category-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: var(--bg-color, var(--primary));
+}
+
+.category-name {
+  font-weight: 500;
+}
+
+.amount-col {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.percent-col {
+  min-width: 120px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color, var(--primary));
+  transition: width 0.3s;
+}
+
+.percent-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-col {
+  white-space: nowrap;
+}
+
+.actions-col {
+  white-space: nowrap;
+}
+
+/* Status classes */
+.status-over {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.status-warning {
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.status-ok {
+  background: transparent;
+}
+
+.badge-ok {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+/* Summary card highlighted */
+.summaryCard {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.summaryCard.highlighted {
+  border-color: var(--primary);
+}
+
+.summaryValue {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.summaryValuePositive {
+  color: var(--income);
+}
+
+.summaryValueNegative {
+  color: var(--expense);
+}
+
+.summaryValueStatusOk {
+  color: var(--success);
+}
+
+/* Toast error */
+.toastError {
+  background: var(--danger-bg, rgba(239, 68, 68, 0.1));
+  color: var(--danger);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Modal small */
+.modalSmall {
+  max-width: 400px;
+}
+
+.modalText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Form label */
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+/* Help text */
+.helpText {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Budget message */
+.budgetMessage {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Budget traditional */
+.budgetTraditional {
+  margin-top: 24px;
+}
+
+/* Forecast stats */
+.forecastStats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Stat item */
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.statValue {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btnPrimary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btnPrimary:hover {
+  background: var(--primary-hover);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btnGhost:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btnOutline:hover {
+  background: var(--bg);
+  border-color: var(--primary);
+}
+
+.btnLarge {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+/* Modal overlay, modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalHeader h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modalClose {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: background 0.2s;
+}
+
+.modalClose:hover {
+  background: var(--bg);
+}
+
+.modalBody {
+  padding: 20px;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* Page structure */
+.budgetsPage {
+  padding: 24px;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budgetsPage h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.pageSubtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.monthSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monthDisplay {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* Budget summary grid */
+.budgetSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Category chart section */
+.categoryChartSection {
+  margin-top: 24px;
+}
+
+.chartWrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+/* Forecast toggle section */
+.forecastToggleSection {
+  margin-bottom: 16px;
+}
+
+/* Budget forecast */
+.budgetForecast {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.forecastHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.forecastTitle {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Forecast chart */
+.forecastChart {
+  margin-top: 16px;
+}
+
+/* Chart row */
+.chartRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 80px 80px;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.chartRow:last-child {
+  border-bottom: none;
+}
+
+.chartLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chartValue {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.budgetVal {
+  color: var(--primary);
+}
+
+.actualVal {
+  color: var(--expense);
+}
+
+.chartStatus {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.chartStatusOver {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.chartStatusWarning {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--warning);
+}
+
+.chartStatusOk {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+/* Empty state */
+.emptyState {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+}
+
+.emptyState p {
+  margin: 8px 0;
 }

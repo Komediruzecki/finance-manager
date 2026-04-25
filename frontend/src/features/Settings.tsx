@@ -104,11 +104,11 @@ export default function Settings() {
           <div class="settings-col">
             <div class={styles.card}>
               <div class="settings-section">
-                <div class="settings-section-title">Database Storage</div>
-                <div class="form-group">
-                  <label class="form-label">Storage Type</label>
+                <div class={styles.settingsSectionTitle}>Database Storage</div>
+                <div class={styles.formGroup}>
+                  <label class={styles.formLabel}>Storage Type</label>
                   <select
-                    class="form-control"
+                    class={styles.formControl}
                     value={storageType()}
                     onchange={handleStorageTypeChange}
                     style="max-width: 250px;"
@@ -125,7 +125,7 @@ export default function Settings() {
                       the application after switching storage types.
                     </p>
                     <button
-                      class="btn btn-primary"
+                      class={styles.btnPrimary}
                       onclick={applyStorageType}
                       style="margin-top: 12px;"
                     >
@@ -140,11 +140,11 @@ export default function Settings() {
           <div class="settings-col">
             <div class={styles.card}>
               <div class="settings-section">
-                <div class="settings-section-title">General</div>
-                <div class="form-group">
-                  <label class="form-label">Local Currency</label>
+                <div class={styles.settingsSectionTitle}>General</div>
+                <div class={styles.formGroup}>
+                  <label class={styles.formLabel}>Local Currency</label>
                   <select
-                    class="form-control"
+                    class={styles.formControl}
                     value={localCurrency()}
                     onchange={handleLocalCurrencyChange}
                     style="max-width: 200px;"
@@ -175,9 +175,9 @@ export default function Settings() {
             </div>
             <div class={styles.card}>
               <div class="settings-section">
-                <div class="settings-section-title">Appearance</div>
-                <div class="form-group">
-                  <label class="form-label">Theme</label>
+                <div class={styles.settingsSectionTitle}>Appearance</div>
+                <div class={styles.formGroup}>
+                  <label class={styles.formLabel}>Theme</label>
                   <div style="display: flex; align-items: center; gap: 12px;">
                     <span style="font-size: 14px; color: var(--text-secondary);">Light</span>
                     <label class="toggle-switch">

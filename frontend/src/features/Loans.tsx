@@ -285,7 +285,7 @@ export default function Loans() {
                         <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button class="btn btn-sm btn-ghost" onClick={() => deleteLoan(loan.id)}>
+                    <button class={`${styles.btnSm} ${styles.btnGhost}`} onClick={() => deleteLoan(loan.id)}>
                       <svg
                         width="16"
                         height="16"
@@ -303,21 +303,21 @@ export default function Loans() {
                   <div class={styles.balanceAmount}>{formatAmount(remaining)}</div>
                 </div>
                 <div class={styles.loanDetails}>
-                  <div class="detail-row">
-                    <span class="detail-label">Principal</span>
-                    <span class="detail-value">{formatAmount(loan.principal)}</span>
+                  <div class={styles.detailRow}>
+                    <span class={styles.detailLabel}>Principal</span>
+                    <span class={styles.detailValue}>{formatAmount(loan.principal)}</span>
                   </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Interest Rate</span>
-                    <span class="detail-value">{loan.interest_rate}%</span>
+                  <div class={styles.detailRow}>
+                    <span class={styles.detailLabel}>Interest Rate</span>
+                    <span class={styles.detailValue}>{loan.interest_rate}%</span>
                   </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Monthly Payment</span>
-                    <span class="detail-value">{formatAmount(monthly)}</span>
+                  <div class={styles.detailRow}>
+                    <span class={styles.detailLabel}>Monthly Payment</span>
+                    <span class={styles.detailValue}>{formatAmount(monthly)}</span>
                   </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Next Payment</span>
-                    <span class="detail-value">
+                  <div class={styles.detailRow}>
+                    <span class={styles.detailLabel}>Next Payment</span>
+                    <span class={styles.detailValue}>
                       {loan.next_payment_date ? formatDate(loan.next_payment_date) : 'Not set'}
                     </span>
                   </div>
@@ -339,9 +339,9 @@ export default function Loans() {
 
       {/* Loan Amortization Chart */}
       {loans().length > 0 && (
-        <div class="loan-amortization-section">
+        <div class={styles.loanAmortizationSection}>
           <h3>Loan Amortization Summary</h3>
-          <div class="amortization-chart-wrapper">
+          <div class={styles.amortizationChartWrapper}>
             <Chart
               id="loan-amortization-chart"
               type="line"
