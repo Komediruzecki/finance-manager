@@ -211,7 +211,8 @@ export class ApiClient {
     const queryParams = new URLSearchParams()
     if (params?.date_from !== undefined) queryParams.append('date_from', params.date_from)
     if (params?.date_to !== undefined) queryParams.append('date_to', params.date_to)
-    if (params?.category_id !== undefined) queryParams.append('category_id', params.category_id.toString())
+    if (params?.category_id !== undefined)
+      queryParams.append('category_id', params.category_id.toString())
     if (params?.search !== undefined) queryParams.append('search', params.search)
     if (params?.type !== undefined) {
       queryParams.append('type', params.type)

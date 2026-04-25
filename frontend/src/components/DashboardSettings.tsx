@@ -77,7 +77,10 @@ export const DashboardSettings: Component = () => {
           <div class={styles.settingItem}>
             <button
               class={styles.widgetToggle}
-              classList={{ [styles.active]: selectedWidget() !== null && selectedWidget()!.split(',').includes(widget.id) }}
+              classList={{
+                [styles.active]:
+                  selectedWidget() !== null && selectedWidget()!.split(',').includes(widget.id),
+              }}
               onClick={() => {
                 toggleWidget(widget.id)
               }}
@@ -85,7 +88,9 @@ export const DashboardSettings: Component = () => {
               <span class={styles.widgetIcon}>{widget.icon}</span>
               <span class={styles.widgetName}>{widget.name}</span>
               <span class={styles.widgetStatus}>
-                {selectedWidget() !== null && selectedWidget()!.split(',').includes(widget.id) ? 'Visible' : 'Hidden'}
+                {selectedWidget() !== null && selectedWidget()!.split(',').includes(widget.id)
+                  ? 'Visible'
+                  : 'Hidden'}
               </span>
             </button>
           </div>

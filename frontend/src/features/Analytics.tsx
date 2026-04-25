@@ -2,7 +2,7 @@
  * Analytics Component
  * Visualizes financial data with charts and insights
  */
-import { createEffect,createSignal, onMount } from 'solid-js'
+import { createEffect, createSignal, onMount } from 'solid-js'
 import styles from '../components/AnalyticsPage.module.css'
 import Chart from '../components/Chart'
 import { formatCurrency } from '../core/api'
@@ -18,9 +18,9 @@ interface AnalyticsData {
 export default function Analytics() {
   const [data, setData] = createSignal<AnalyticsData | null>(null)
   const [loading, setLoading] = createSignal(true)
-  const [selectedChart, setSelectedChart] = createSignal<'category' | 'monthly' | 'savings' | 'heatmap'>(
-    'category'
-  )
+  const [selectedChart, setSelectedChart] = createSignal<
+    'category' | 'monthly' | 'savings' | 'heatmap'
+  >('category')
   const [heatmapYear, setHeatmapYear] = createSignal(new Date().getFullYear())
   const [heatmapType, setHeatmapType] = createSignal<'income' | 'expense'>('expense')
   const [heatmapData, setHeatmapData] = createSignal<Map<string, number>>(new Map())
@@ -65,7 +65,9 @@ export default function Analytics() {
   // Load heatmap data
   const loadHeatmapData = async () => {
     try {
-      const res = await apiGet<any>(`/api/analytics/daily-heatmap?year=${heatmapYear()}&type=${heatmapType()}`)
+      const res = await apiGet<any>(
+        `/api/analytics/daily-heatmap?year=${heatmapYear()}&type=${heatmapType()}`
+      )
       const dataMap = new Map<string, number>()
       if (res.dates) {
         Object.entries(res.dates).forEach(([date, amount]) => {
@@ -400,11 +402,17 @@ export default function Analytics() {
                 ) : (
                   <>
                     <div class={styles.heatmapContainer}>
-                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>Mon</div>
+                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>
+                        Mon
+                      </div>
                       <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}></div>
-                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>Wed</div>
+                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>
+                        Wed
+                      </div>
                       <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}></div>
-                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>Fri</div>
+                      <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}>
+                        Fri
+                      </div>
                       <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}></div>
                       <div class={styles.heatmapCell} classList={{ [styles.dayLabel]: true }}></div>
 
@@ -469,19 +477,39 @@ export default function Analytics() {
                       <div class={styles.heatmapScale}>
                         <span
                           class={styles.heatmapScaleColor}
-                          style={{ backgroundColor: heatmapType() === 'income' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(34, 197, 94, 0.1)' }}
+                          style={{
+                            backgroundColor:
+                              heatmapType() === 'income'
+                                ? 'rgba(74, 222, 128, 0.1)'
+                                : 'rgba(34, 197, 94, 0.1)',
+                          }}
                         />
                         <span
                           class={styles.heatmapScaleColor}
-                          style={{ backgroundColor: heatmapType() === 'income' ? 'rgba(74, 222, 128, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
+                          style={{
+                            backgroundColor:
+                              heatmapType() === 'income'
+                                ? 'rgba(74, 222, 128, 0.4)'
+                                : 'rgba(34, 197, 94, 0.4)',
+                          }}
                         />
                         <span
                           class={styles.heatmapScaleColor}
-                          style={{ backgroundColor: heatmapType() === 'income' ? 'rgba(74, 222, 128, 0.7)' : 'rgba(34, 197, 94, 0.7)' }}
+                          style={{
+                            backgroundColor:
+                              heatmapType() === 'income'
+                                ? 'rgba(74, 222, 128, 0.7)'
+                                : 'rgba(34, 197, 94, 0.7)',
+                          }}
                         />
                         <span
                           class={styles.heatmapScaleColor}
-                          style={{ backgroundColor: heatmapType() === 'income' ? 'rgba(74, 222, 128, 1)' : 'rgba(34, 197, 94, 1)' }}
+                          style={{
+                            backgroundColor:
+                              heatmapType() === 'income'
+                                ? 'rgba(74, 222, 128, 1)'
+                                : 'rgba(34, 197, 94, 1)',
+                          }}
                         />
                       </div>
                     </div>

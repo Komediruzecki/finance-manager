@@ -8,6 +8,18 @@
 1. ✅ Transactions page - HAS full table, filters, pagination
 2. ✅ Settings page - HAS storage switching implementation
 
+✅ **Priority 2 (HIGH) - ALL FIXED:**
+3. ✅ Add charts to Dashboard (use Chart.js)
+4. ✅ Add charts to Budgets page
+5. ✅ Restore Heatmap to Analytics
+6. ✅ Restore Goals progress bars
+
+✅ **Priority 3 (MEDIUM) - ALL FIXED:**
+7. ✅ Housing calculator - clarified as expense management, not rent/buy comparison
+8. ✅ Loans calculator - HAS calculator, amortization chart, and detailed amortization table
+9. ✅ Bills list - fully implemented with due date tracking and payment history
+10. ✅ Categories color picker and type selection - fully implemented
+
 📋 **Remaining Work:**
 
 ### Priority 2 (HIGH):
@@ -182,7 +194,7 @@
 
 ### Priority 3 (MEDIUM):
 7. ✅ Housing calculator - clarified as expense management, not rent/buy comparison
-8. ⚠️ Loans calculator - HAS calculator and amortization chart, but NO detailed amortization table
+8. ✅ Loans calculator - HAS calculator, amortization chart, and detailed amortization table with toggle
 9. ✅ Bills list - fully implemented with due date tracking and payment history
 10. ✅ Categories color picker and type selection - fully implemented, but NO parent category hierarchy
 
@@ -190,6 +202,14 @@
 11. Cleanup CSS - standardize to kebab-case, use CSS modules consistently
 12. Remove inline styles, convert to CSS modules
 13. Consolidate duplicate styles
+
+---
+
+## Summary
+
+**All High Priority items are now complete.** The SolidJS migration is essentially feature-complete for the core functionality. The remaining items are low priority CSS cleanup and the optional parent category hierarchy feature (not present in old app).
+
+The application successfully runs on the `fix/charts-and-missing-features` branch and has been pushed to GitHub.
 
 ## Files Needing Creation/Refactoring
 

@@ -2,11 +2,10 @@
  * LoanAmortizationTable Component
  * Displays detailed amortization schedule for a loan
  */
-import { createSignal, createEffect, onMount } from 'solid-js'
-import Chart from './Chart'
-import styles from './LoansPage.module.css'
+import { createSignal, onMount } from 'solid-js'
 import { api as _api, formatCurrency } from '../core/api'
 import { apiPost, showToast } from '../utils/api'
+import styles from './LoansPage.module.css'
 
 interface AmortizationRow {
   month: number
@@ -96,10 +95,7 @@ export default function LoanAmortizationTable(props: Props) {
             >
               Recalculate
             </button>
-            <button
-              class={`${styles.btnPrimary} ${styles.btnSm}`}
-              onClick={toggleDetailed}
-            >
+            <button class={`${styles.btnPrimary} ${styles.btnSm}`} onClick={toggleDetailed}>
               {showDetailed() ? 'Hide Amortization' : 'View Amortization'}
             </button>
           </div>
@@ -140,9 +136,7 @@ export default function LoanAmortizationTable(props: Props) {
                   const prepayDate = new Date(loanStart)
                   prepayDate.setMonth(prepayDate.getMonth() + p.month - 1)
                   return (
-                    <div
-                      style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: var(--radius);"
-                    >
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: var(--radius);">
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         {formatDate(prepayDate.toISOString().split('T')[0])}
                       </span>
@@ -171,14 +165,13 @@ export default function LoanAmortizationTable(props: Props) {
                   const rateDate = new Date(loanStart)
                   rateDate.setMonth(rateDate.getMonth() + rp.start_month - 1)
                   return (
-                    <div
-                      style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: var(--radius);"
-                    >
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: var(--radius);">
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         {formatDate(rateDate.toISOString().split('T')[0])}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        ({rp.start_month}{rp.end_month ? ` - ${rp.end_month}` : '+'} mo)
+                        ({rp.start_month}
+                        {rp.end_month ? ` - ${rp.end_month}` : '+'} mo)
                       </span>
                       <span style={{ fontWeight: 600 }}>{rp.rate}%</span>
                     </div>
@@ -200,7 +193,9 @@ export default function LoanAmortizationTable(props: Props) {
 
           {/* Basic Amortization Table */}
           <div>
-            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">Amortization Schedule</h4>
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">
+              Amortization Schedule
+            </h4>
             <div class={styles.amortTable}>
               <table>
                 <thead>
@@ -221,7 +216,11 @@ export default function LoanAmortizationTable(props: Props) {
                     const prev = idx > 0 ? schedule[idx - 1] : null
                     const rateChanged = prev && prev.rate !== row.rate
                     const hasPrepayment = row.prepayment && row.prepayment > 0
-                    const note = hasPrepayment ? 'Prepayment' : rateChanged ? `Rate: ${row.rate}%` : ''
+                    const note = hasPrepayment
+                      ? 'Prepayment'
+                      : rateChanged
+                        ? `Rate: ${row.rate}%`
+                        : ''
 
                     return (
                       <tr
@@ -242,7 +241,10 @@ export default function LoanAmortizationTable(props: Props) {
                         <td style={{ fontWeight: 600 }}>{formatCurrency(row.balance)}</td>
                         <td>{row.rate.toFixed(3)}%</td>
                         {hasPrepayment ? (
-                          <td class={styles.tdAmount} style={{ color: 'var(--success)', fontWeight: 600 }}>
+                          <td
+                            class={styles.tdAmount}
+                            style={{ color: 'var(--success)', fontWeight: 600 }}
+                          >
                             {formatCurrency(row.prepayment)}
                           </td>
                         ) : (
@@ -296,7 +298,9 @@ export default function LoanAmortizationTable(props: Props) {
             <div style="margin-top: 24px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <div>
-                  <h4 style="margin: 0; font-size: 16px; font-weight: 600;">Detailed Amortization Schedule</h4>
+                  <h4 style="margin: 0; font-size: 16px; font-weight: 600;">
+                    Detailed Amortization Schedule
+                  </h4>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {props.loan.name} - {schedule.length} payments
                   </span>
@@ -339,7 +343,10 @@ export default function LoanAmortizationTable(props: Props) {
                           <td style={{ fontWeight: 600 }}>{row.balance}</td>
                           <td>{row.rate}</td>
                           {row.prepayment > 0 ? (
-                            <td class={styles.tdAmount} style={{ color: 'var(--success)', fontWeight: 600 }}>
+                            <td
+                              class={styles.tdAmount}
+                              style={{ color: 'var(--success)', fontWeight: 600 }}
+                            >
                               {row.prepayment}
                             </td>
                           ) : (
@@ -352,10 +359,20 @@ export default function LoanAmortizationTable(props: Props) {
                     </tbody>
                     <tfoot>
                       <tr class={styles.totalsRow}>
-                        <td colSpan={2}><strong>Totals</strong></td>
-                        <td class={styles.tdAmount}><strong>{s?.totalPaid ? formatCurrency(s.totalPaid) : '-'}</strong></td>
-                        <td class={`${styles.tdAmount} ${styles.income}`}><strong>{s?.totalPaid ? formatCurrency(s.totalPaid - s.totalInterest) : '-'}</strong></td>
-                        <td class={`${styles.tdAmount} ${styles.expense}`}><strong>{formatCurrency(s?.totalInterest || 0)}</strong></td>
+                        <td colSpan={2}>
+                          <strong>Totals</strong>
+                        </td>
+                        <td class={styles.tdAmount}>
+                          <strong>{s?.totalPaid ? formatCurrency(s.totalPaid) : '-'}</strong>
+                        </td>
+                        <td class={`${styles.tdAmount} ${styles.income}`}>
+                          <strong>
+                            {s?.totalPaid ? formatCurrency(s.totalPaid - s.totalInterest) : '-'}
+                          </strong>
+                        </td>
+                        <td class={`${styles.tdAmount} ${styles.expense}`}>
+                          <strong>{formatCurrency(s?.totalInterest || 0)}</strong>
+                        </td>
                         <td colSpan={5}></td>
                       </tr>
                     </tfoot>
@@ -388,7 +405,10 @@ export default function LoanAmortizationTable(props: Props) {
                         <td style={{ fontWeight: 600 }}>{row.balance}</td>
                         <td>{row.rate}</td>
                         {row.prepayment > 0 ? (
-                          <td class={styles.tdAmount} style={{ color: 'var(--success)', fontWeight: 600 }}>
+                          <td
+                            class={styles.tdAmount}
+                            style={{ color: 'var(--success)', fontWeight: 600 }}
+                          >
                             {row.prepayment}
                           </td>
                         ) : (
@@ -401,10 +421,20 @@ export default function LoanAmortizationTable(props: Props) {
                   </tbody>
                   <tfoot>
                     <tr class={styles.totalsRow}>
-                      <td colSpan={2}><strong>Totals</strong></td>
-                      <td class={styles.tdAmount}><strong>{s?.totalPaid ? formatCurrency(s.totalPaid) : '-'}</strong></td>
-                      <td class={`${styles.tdAmount} ${styles.income}`}><strong>{s?.totalPaid ? formatCurrency(s.totalPaid - s.totalInterest) : '-'}</strong></td>
-                      <td class={`${styles.tdAmount} ${styles.expense}`}><strong>{formatCurrency(s?.totalInterest || 0)}</strong></td>
+                      <td colSpan={2}>
+                        <strong>Totals</strong>
+                      </td>
+                      <td class={styles.tdAmount}>
+                        <strong>{s?.totalPaid ? formatCurrency(s.totalPaid) : '-'}</strong>
+                      </td>
+                      <td class={`${styles.tdAmount} ${styles.income}`}>
+                        <strong>
+                          {s?.totalPaid ? formatCurrency(s.totalPaid - s.totalInterest) : '-'}
+                        </strong>
+                      </td>
+                      <td class={`${styles.tdAmount} ${styles.expense}`}>
+                        <strong>{formatCurrency(s?.totalInterest || 0)}</strong>
+                      </td>
                       <td colSpan={5}></td>
                     </tr>
                   </tfoot>
@@ -412,7 +442,14 @@ export default function LoanAmortizationTable(props: Props) {
               )}
               <div style="margin-top: 12px; font-size: 12px; color: 'var(--text-secondary)'; display: flex; gap: 16px;">
                 <span>
-                  <span style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '2px 6px', borderRadius: 4, marginRight: 4 }}>
+                  <span
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      marginRight: 4,
+                    }}
+                  >
                     &nbsp;
                   </span>
                   Year End
@@ -424,100 +461,6 @@ export default function LoanAmortizationTable(props: Props) {
       )}
     </div>
   )
-}
-
-// Helper to render charts after data is loaded
-function renderCharts(loanId: number, result: AmortizationResult, formatCurrency: (val: number) => string) {
-  if (!result.schedule.length) return
-
-  // Principal vs Interest stacked bar
-  const prinCtx = document.getElementById(`loan-chart-principal-${loanId}`)
-  if (prinCtx) {
-    const rows = result.schedule.filter((_, i) => i % Math.ceil(result.schedule.length / 24) === 0)
-    new (window as any).Chart(prinCtx, {
-      type: 'bar',
-      data: {
-        labels: rows.map((r) => r.month.toString()),
-        datasets: [
-          {
-            label: 'Principal',
-            data: rows.map((r) => r.principal),
-            backgroundColor: 'rgba(34, 197, 94, 0.8)',
-            borderRadius: 2,
-          },
-          {
-            label: 'Interest',
-            data: rows.map((r) => r.interest),
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderRadius: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        stacked: true,
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: { boxWidth: 12, font: { size: 11 }, color: 'var(--text)' },
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx: any) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-            },
-          },
-        },
-        scales: {
-          y: {
-            stacked: true,
-            ticks: { callback: (v: any) => formatCurrency(v) },
-            grid: { color: 'rgba(0, 0, 0, 0.1)' },
-          },
-          x: { grid: { color: 'rgba(0, 0, 0, 0.1)' } },
-        },
-      },
-    })
-  }
-
-  // Balance over time
-  const balCtx = document.getElementById(`loan-chart-balance-${loanId}`)
-  if (balCtx) {
-    const rows = result.schedule.filter((_, i) => i % Math.ceil(result.schedule.length / 24) === 0)
-    new (window as any).Chart(balCtx, {
-      type: 'line',
-      data: {
-        labels: rows.map((r) => r.month.toString()),
-        datasets: [
-          {
-            label: 'Remaining Balance',
-            data: rows.map((r) => r.balance),
-            borderColor: 'var(--primary)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            fill: true,
-            tension: 0.3,
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          tooltip: {
-            callbacks: { label: (ctx: any) => ` Balance: ${formatCurrency(ctx.raw)}` },
-          },
-        },
-        scales: {
-          y: {
-            ticks: { callback: (v: any) => formatCurrency(v) },
-            grid: { color: 'rgba(0, 0, 0, 0.1)' },
-          },
-          x: { grid: { color: 'rgba(0, 0, 0, 0.1)' } },
-        },
-      },
-    })
-  }
 }
 
 function isLongTable(schedule: AmortizationRow[]): boolean {
@@ -532,7 +475,6 @@ function generateDetailedRows(
   const startDate = new Date(schedule[0]?.date || new Date())
   let cumulativeInterest = 0
   let cumulativePrincipal = 0
-  const initialBalance = schedule[0]?.balance || schedule[0]?.principal || 0
 
   schedule.forEach((row) => {
     cumulativeInterest += row.interest

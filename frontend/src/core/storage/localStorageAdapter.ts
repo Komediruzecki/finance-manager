@@ -3,9 +3,6 @@
  * Stores all data in browser localStorage with automatic saving
  */
 
-/* eslint-disable @typescript-eslint/require-await -- LocalStorageAdapter implements StorageAdapter interface */
-/* eslint-disable @typescript-eslint/no-array-delete -- Using undefined assignment for sparse arrays */
-
 import type {
   AccountData,
   BalanceEntryData,
@@ -30,7 +27,6 @@ import type {
   Transaction,
   TransactionFilters,
 } from '@/types/storage'
-
 
 const STORAGE_KEY = 'finance_data'
 const PROFILE_ID_KEY = 'finance_profile_id'
@@ -1135,7 +1131,9 @@ export class LocalStorageAdapter implements StorageAdapter {
           Object.keys(balanceHistory).forEach((bhKey) => {
             const entry = balanceHistory[Number(bhKey)]
             if (entry !== undefined && entry.account_id !== undefined) {
-              const account = Object.values(importData.accounts).find((a) => a.id === entry.account_id)
+              const account = Object.values(importData.accounts).find(
+                (a) => a.id === entry.account_id
+              )
               if (account !== undefined && account.profile_id === currentProfileId) {
                 const key = Number(bhKey)
                 balanceHistory[key] = undefined

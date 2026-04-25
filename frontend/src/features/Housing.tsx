@@ -190,7 +190,10 @@ export default function HousingForm() {
                     <span class={`badge ${housing.autopay ? 'badge-success' : 'badge-default'}`}>
                       {housing.autopay ? '🔄 Autopay' : 'Manual'}
                     </span>
-                    <button class={`${styles.btnSm} ${styles.btnGhost}`} onClick={() => deleteHousing(housing.id)}>
+                    <button
+                      class={`${styles.btnSm} ${styles.btnGhost}`}
+                      onClick={() => deleteHousing(housing.id)}
+                    >
                       <svg
                         width="16"
                         height="16"
