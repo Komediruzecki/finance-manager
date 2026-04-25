@@ -41,9 +41,7 @@ export default function Categories() {
   const loadCategories = async () => {
     setLoading(true)
     try {
-      const [allRes] = await Promise.all([
-        apiGet<Category[]>('/api/categories'),
-      ])
+      const [allRes] = await Promise.all([apiGet<Category[]>('/api/categories')])
       setCategories(allRes)
     } catch (err) {
       console.error('Failed to load categories:', err)

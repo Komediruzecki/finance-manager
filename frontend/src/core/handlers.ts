@@ -214,9 +214,7 @@ export function handleModalAction(action: string, arg?: unknown): void {
         typeof window.transactionsSetType === 'function'
           ? window.transactionsSetType
           : (_newType: string) => {
-              const txComponent = document.querySelector(
-                '[data-page="transactions"]'
-              )
+              const txComponent = document.querySelector('[data-page="transactions"]')
               if (txComponent !== null && txComponent.setType !== undefined) {
                 txComponent.setType(_newType)
               }

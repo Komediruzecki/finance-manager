@@ -90,7 +90,6 @@ export class ModalStore {
 export const modal = new ModalStore()
 
 // Global access for HTML attributes - available on window for direct HTML attribute calls
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).modal = {
   open: modal.open.bind(modal),
   close: modal.close.bind(modal),

@@ -74,7 +74,9 @@ export default function Retirement() {
   // Load projection
   const loadProjection = async () => {
     try {
-      const res = await apiGet<RetirementProjection & { current_amount: number }>('/api/retirement/projection')
+      const res = await apiGet<RetirementProjection & { current_amount: number }>(
+        '/api/retirement/projection'
+      )
       setProjection(res)
 
       // Calculate detailed projection
@@ -121,7 +123,10 @@ export default function Retirement() {
       } else {
         await apiPost('/api/retirement-goals', data)
       }
-      showToast(editingGoal() ? 'Goal updated successfully' : 'Goal created successfully', 'success')
+      showToast(
+        editingGoal() ? 'Goal updated successfully' : 'Goal created successfully',
+        'success'
+      )
       setShowAddModal(false)
       setEditingGoal(null)
       setFormData({

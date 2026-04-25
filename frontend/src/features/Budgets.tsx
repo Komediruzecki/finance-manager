@@ -223,7 +223,7 @@ export default function Budgets() {
       <div class={styles.budgetSummary}>
         <div class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Income</div>
-          <div class={styles.summaryValue}>{formatCurrency((summary()?.income) ?? 0)}</div>
+          <div class={styles.summaryValue}>{formatCurrency(summary()?.income ?? 0)}</div>
         </div>
         <div class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Allocated</div>
@@ -346,10 +346,16 @@ export default function Budgets() {
                 {forecastData()!.forecast.map((fm) => (
                   <div class={styles.chartRow} data-index={fm.month}>
                     <span class={styles.chartLabel}>{fm.label}</span>
-                    <span class={`${styles.chartValue} ${styles.budgetVal}`}>{formatCurrency(fm.budget_amount)}</span>
-                    <span class={`${styles.chartValue} ${styles.actualVal}`}>{formatCurrency(fm.predicted_spent)}</span>
+                    <span class={`${styles.chartValue} ${styles.budgetVal}`}>
+                      {formatCurrency(fm.budget_amount)}
+                    </span>
+                    <span class={`${styles.chartValue} ${styles.actualVal}`}>
+                      {formatCurrency(fm.predicted_spent)}
+                    </span>
                     <span class={styles.chartValue}>{Math.round(fm.adherence)}%</span>
-                    <span class={`${styles.chartStatus} ${styles[`chartStatus${fm.status.charAt(0).toUpperCase() + fm.status.slice(1)}`]}`}>
+                    <span
+                      class={`${styles.chartStatus} ${styles[`chartStatus${fm.status.charAt(0).toUpperCase() + fm.status.slice(1)}`]}`}
+                    >
                       {fm.status === 'over'
                         ? 'Over'
                         : fm.status === 'warning'
@@ -440,7 +446,10 @@ export default function Budgets() {
                     <tr class={styles[getStatusClass(item.status)]}>
                       <td>
                         <div class={styles.categoryCell}>
-                          <div class={styles.categoryIcon} style={`--bg-color: ${item.category_color}`}>
+                          <div
+                            class={styles.categoryIcon}
+                            style={`--bg-color: ${item.category_color}`}
+                          >
                             {item.category_icon}
                           </div>
                           <span class={styles.categoryName}>{item.category_name}</span>
@@ -448,7 +457,9 @@ export default function Budgets() {
                       </td>
                       <td class={styles.amountCol}>{formatCurrency(item.allocated)}</td>
                       <td class={styles.amountCol}>{formatCurrency(item.spent)}</td>
-                      <td class={`${styles.amountCol} ${styles.statusOk}`}>{formatCurrency(item.remaining_budget)}</td>
+                      <td class={`${styles.amountCol} ${styles.statusOk}`}>
+                        {formatCurrency(item.remaining_budget)}
+                      </td>
                       <td class={styles.percentCol}>
                         <div class={styles.progressBar}>
                           <div
@@ -468,7 +479,13 @@ export default function Budgets() {
                       </td>
                       <td class={styles.actionsCol}>
                         {item.can_allocate && !item.is_budgeted ? (
-                          <Button variant="ghost" size="sm" onClick={() => { openAllocateModal(item); }}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              openAllocateModal(item)
+                            }}
+                          >
                             Allocate
                           </Button>
                         ) : (

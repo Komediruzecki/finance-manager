@@ -36,10 +36,14 @@ function checkResponseStatus(response: Response): void {
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type')
   if (contentType !== null && contentType.includes('application/json')) {
-    const data = await response.json() as T
+    const data = (await response.json()) as T
     if (!response.ok) {
       const errorData = data as ApiError | undefined
-      throw new Error((errorData?.error ?? '') !== '' ? errorData?.error : `Request failed with status ${response.status}`)
+      throw new Error(
+        (errorData?.error ?? '') !== ''
+          ? errorData?.error
+          : `Request failed with status ${response.status}`
+      )
     }
     return data
   }
@@ -124,11 +128,14 @@ export async function apiRequest<T>(
     let data: T | undefined
 
     if (contentType !== null && contentType.includes('application/json')) {
-      data = await response.json() as T
+      data = (await response.json()) as T
     }
 
     if (!response.ok) {
-      const errorMsg = data !== undefined && 'error' in data ? (data as ApiError).error : `Request failed (${response.status})`
+      const errorMsg =
+        data !== undefined && 'error' in data
+          ? (data as ApiError).error
+          : `Request failed (${response.status})`
       return { success: false, error: errorMsg }
     }
 
@@ -172,6 +179,8 @@ export function showToast(message: string, type: 'success' | 'error' | 'info' = 
   if (toastTimeout !== null) clearTimeout(toastTimeout)
   toastTimeout = setTimeout(() => {
     toast.style.animation = 'toastSlideOut 0.3s ease-out'
-    setTimeout(() => { toast.remove(); }, 300)
+    setTimeout(() => {
+      toast.remove()
+    }, 300)
   }, 4000)
 }
