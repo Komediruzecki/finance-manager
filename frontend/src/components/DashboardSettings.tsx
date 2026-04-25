@@ -3,8 +3,8 @@
  */
 
 import { createSignal, onMount } from 'solid-js'
-import type { Component } from 'solid-js'
 import styles from './DashboardSettings.module.css'
+import type { Component } from 'solid-js'
 
 export const DashboardSettings: Component = () => {
   const [selectedWidget, setSelectedWidget] = createSignal<string | null>(null)
