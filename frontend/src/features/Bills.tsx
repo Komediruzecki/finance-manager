@@ -12,8 +12,8 @@ interface Bill {
   name: string
   amount: number
   due_date: string
-  account_id?: number
   category?: string
+  account_id?: number
   frequency: 'monthly' | 'weekly' | 'biweekly'
   paid: boolean
   autopay: boolean
@@ -21,18 +21,34 @@ interface Bill {
   created_at: string
 }
 
+interface Category {
+  id: number
+  name: string
+  type: 'expense' | 'income'
+  color: string
+  tax_deductible?: boolean
+}
+
 export default function Bills() {
   const [bills, setBills] = createSignal<Bill[]>([])
   const [upcoming, setUpcoming] = createSignal<Bill[]>([])
   const [paid, setPaid] = createSignal<Bill[]>([])
+  const [categories, setCategories] = createSignal<Category[]>([])
   const [loading, setLoading] = createSignal(true)
   const [showAddModal, setShowAddModal] = createSignal(false)
+  const [showCategoryModal, setShowCategoryModal] = createSignal(false)
   const [formData, setFormData] = createSignal({
     name: '',
     amount: '',
     due_date: '',
+    category: '',
     frequency: 'monthly' as Bill['frequency'],
     autopay: false,
+  })
+  const [categoryForm, setCategoryForm] = createSignal({
+    name: '',
+    type: 'expense' as 'expense' | 'income',
+    color: '#6b7280',
   })
 
   // Load bills
@@ -61,6 +77,49 @@ export default function Bills() {
     }
   }
 
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      const data = await apiGet<Category[]>('/api/categories')
+      setCategories(data.filter((c) => c.type === 'expense'))
+    } catch (err) {
+      console.error('Failed to load categories', err)
+    }
+  }
+
+  // Add category
+  const addCategory = async (e: Event) => {
+    e.preventDefault()
+    try {
+      await apiPost('/api/categories', categoryForm())
+      showToast('Category added', 'success')
+      setCategoryForm({ name: '', type: 'expense', color: '#6b7280' })
+      setShowCategoryModal(false)
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to add category', err)
+      showToast('Failed to add category', 'error')
+    }
+  }
+
+  // Delete category
+  const deleteCategory = async (id: number) => {
+    if (!confirm('Delete this category? Bills linked to this category will be unaffected.')) return
+    try {
+      await apiDelete(`/api/categories/${id}`)
+      showToast('Category deleted', 'success')
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to delete category', err)
+      showToast('Failed to delete category', 'error')
+    }
+  }
+
+  // Open category modal
+  const openCategoryModal = () => {
+    setShowCategoryModal(true)
+  }
+
   // Handle form submit
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
@@ -68,6 +127,7 @@ export default function Bills() {
       name: formData().name,
       amount: parseFloat(formData().amount),
       due_date: formData().due_date,
+      category: formData().category || undefined,
       frequency: formData().frequency,
       autopay: formData().autopay,
     }
@@ -76,7 +136,7 @@ export default function Bills() {
       await apiPost('/api/bills', data)
       showToast('Bill saved successfully', 'success')
       setShowAddModal(false)
-      setFormData({ name: '', amount: '', due_date: '', frequency: 'monthly', autopay: false })
+      setFormData({ name: '', amount: '', due_date: '', category: '', frequency: 'monthly', autopay: false })
       loadBills()
     } catch (err) {
       console.error('Failed to save bill:', err)
@@ -386,6 +446,27 @@ export default function Bills() {
                 />
               </div>
               <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Category</label>
+                <select
+                  class={styles.formControl}
+                  value={formData().category}
+                  oninput={(e) => setFormData({ ...formData(), category: e.target.value })}
+                >
+                  <option value="">No category</option>
+                  {categories().map((cat) => (
+                    <option value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  class={styles.btnLink}
+                  style={{ marginTop: 8 }}
+                  onClick={openCategoryModal}
+                >
+                  + Add Category
+                </button>
+              </div>
+              <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Frequency</label>
                 <select
                   class={styles.formControl}
@@ -425,6 +506,79 @@ export default function Bills() {
                 </button>
                 <button type="submit" class={styles.btnPrimary}>
                   Add Bill
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Category Modal */}
+      {showCategoryModal() && (
+        <div
+          class={styles.modalOverlay}
+          onclick={(e) => {
+            if (e.target === e.currentTarget) setShowCategoryModal(false)
+          }}
+        >
+          <div
+            class={styles.modal}
+            onclick={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            <div class={styles.modalHeader}>
+              <h3 class={styles.modalTitle}>Add Category</h3>
+              <button class={styles.modalClose} onClick={() => setShowCategoryModal(false)}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form class={styles.modalBody} onSubmit={addCategory}>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Category Name</label>
+                <input
+                  type="text"
+                  class={styles.formControl}
+                  placeholder="e.g., Utilities, Entertainment"
+                  value={categoryForm().name}
+                  oninput={(e) => setCategoryForm({ ...categoryForm(), name: e.target.value })}
+                  required
+                />
+              </div>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Type</label>
+                <select
+                  class={styles.formControl}
+                  value={categoryForm().type}
+                  oninput={(e) =>
+                    setCategoryForm({ ...categoryForm(), type: e.target.value as 'expense' | 'income' })
+                  }
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Color</label>
+                <input
+                  type="color"
+                  class={styles.colorInput}
+                  value={categoryForm().color}
+                  oninput={(e) => setCategoryForm({ ...categoryForm(), color: e.target.value })}
+                />
+              </div>
+              <div class={styles.modalFooter}>
+                <button
+                  type="button"
+                  class={styles.btnSecondary}
+                  onClick={() => setShowCategoryModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" class={styles.btnPrimary}>
+                  Add Category
                 </button>
               </div>
             </form>

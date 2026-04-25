@@ -15,10 +15,11 @@
 6. ✅ Restore Goals progress bars
 
 ✅ **Priority 3 (MEDIUM) - ALL FIXED:**
-7. ✅ Housing calculator - clarified as expense management, not rent/buy comparison
+7. ✅ Rent vs Buy calculator - NEW 30-year cost comparison with charts
 8. ✅ Loans calculator - HAS calculator, amortization chart, and detailed amortization table
-9. ✅ Bills list - fully implemented with due date tracking and payment history
+9. ✅ Bills list - fully implemented with due date tracking, autopay, and category selection
 10. ✅ Categories color picker and type selection - fully implemented
+11. ✅ Accounts management - fully implemented with balance tracking and transactions
 
 📋 **Remaining Work:**
 
