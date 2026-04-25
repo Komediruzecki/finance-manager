@@ -20,32 +20,36 @@ export default function Chart(props: ChartProps) {
     if (canvasRef === null) return
 
     // Lazy load Chart.js to avoid import issues
-    import('chart.js/auto').then(({ default: ChartJS }) => {
-      // Destroy existing chart
-      const existingChart = (canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance
-      if (existingChart !== undefined) {
-        existingChart.destroy()
-      }
+    import('chart.js/auto')
+      .then(({ default: ChartJS }) => {
+        // Destroy existing chart
+        const existingChart = (canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart })
+          .chartInstance
+        if (existingChart !== undefined) {
+          existingChart.destroy()
+        }
 
-      // Create new chart
-      const ctx = canvasRef.getContext('2d')
-      if (ctx === null) return
-
-      ;(canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance = new ChartJS(ctx, {
-        type: props.type,
-        data: props.data,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          ...props.options,
-        },
+        // Create new chart
+        const ctx = canvasRef.getContext('2d')
+        if (ctx === null) return
+        ;(canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance =
+          new ChartJS(ctx, {
+            type: props.type,
+            data: props.data,
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              ...props.options,
+            },
+          })
       })
-    }).catch((_err: unknown) => {
-      console.error('Failed to load Chart.js')
-    })
+      .catch((_err: unknown) => {
+        console.error('Failed to load Chart.js')
+      })
 
     onCleanup(() => {
-      const existingChart = (canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance
+      const existingChart = (canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart })
+        .chartInstance
       if (existingChart !== undefined) {
         existingChart.destroy()
         delete (canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance
@@ -55,7 +59,9 @@ export default function Chart(props: ChartProps) {
 
   return (
     <canvas
-      ref={(canvas: HTMLCanvasElement) => { canvasRef = canvas }}
+      ref={(canvas: HTMLCanvasElement) => {
+        canvasRef = canvas
+      }}
       height={props.height}
       width={props.width}
     />

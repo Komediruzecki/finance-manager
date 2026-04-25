@@ -60,7 +60,9 @@ export default function Import() {
       const workbook = (window as Record<string, unknown>).XLSX.read(binary, { type: 'array' })
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
-      const data = (window as Record<string, unknown>).XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+      const data = (window as Record<string, unknown>).XLSX.utils.sheet_to_json(worksheet, {
+        defval: '',
+      })
       return data
     } catch {
       throw new Error('Failed to parse Excel file')
@@ -158,7 +160,10 @@ export default function Import() {
       }
 
       // Check duplicates first
-      const preview = await apiPost<{ duplicateTransactions: number; newTransactions: number }>('/api/import/preview', apiData)
+      const preview = await apiPost<{ duplicateTransactions: number; newTransactions: number }>(
+        '/api/import/preview',
+        apiData
+      )
       if (preview.duplicateTransactions > 0) {
         if (
           !confirm(
@@ -172,7 +177,10 @@ export default function Import() {
 
       // Execute import
       const result = await apiPost<{ imported: number }>('/api/import', apiData)
-      showToast(`Successfully imported ${result.imported || apiData.transactions.length} transactions`, 'success')
+      showToast(
+        `Successfully imported ${result.imported || apiData.transactions.length} transactions`,
+        'success'
+      )
       setImportResult({
         status: 'success',
         message: `Successfully imported ${result.imported || apiData.transactions.length} transactions`,
@@ -301,7 +309,12 @@ export default function Import() {
               <select
                 class={styles.formControl}
                 value={formData().type}
-                oninput={(e) => setFormData({ ...formData(), type: e.target.value as "income" | "expense" | "transfer" })}
+                oninput={(e) =>
+                  setFormData({
+                    ...formData(),
+                    type: e.target.value as 'income' | 'expense' | 'transfer',
+                  })
+                }
               >
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>

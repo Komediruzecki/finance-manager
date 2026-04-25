@@ -42,7 +42,10 @@ export default function TransactionTable(props: TransactionTableProps) {
   // Initialize sort config from props
   createEffect(() => {
     if (props.sortField !== undefined) {
-      setSortConfig({ field: props.sortField, direction: props.sortOrder !== undefined ? props.sortOrder : 'desc' })
+      setSortConfig({
+        field: props.sortField,
+        direction: props.sortOrder !== undefined ? props.sortOrder : 'desc',
+      })
     }
   })
 
@@ -76,16 +79,24 @@ export default function TransactionTable(props: TransactionTableProps) {
         default: {
           const defaultValA = a[field as keyof Transaction]
           const defaultValB = b[field as keyof Transaction]
-          valA = typeof defaultValA === 'string' || typeof defaultValA === 'number' ? defaultValA : undefined
-          valB = typeof defaultValB === 'string' || typeof defaultValB === 'number' ? defaultValB : undefined
+          valA =
+            typeof defaultValA === 'string' || typeof defaultValA === 'number'
+              ? defaultValA
+              : undefined
+          valB =
+            typeof defaultValB === 'string' || typeof defaultValB === 'number'
+              ? defaultValB
+              : undefined
         }
       }
 
       if (valA !== undefined && valB !== undefined) {
         if (typeof valA === 'string') {
-          return direction === 'asc' ? valA.localeCompare(valB as string) : (valB as string).localeCompare(valA)
+          return direction === 'asc'
+            ? valA.localeCompare(valB as string)
+            : (valB as string).localeCompare(valA)
         }
-        return direction === 'asc' ? (valA > valB ? 1 : -1) : (valB > valA ? 1 : -1)
+        return direction === 'asc' ? (valA > valB ? 1 : -1) : valB > valA ? 1 : -1
       }
       return 0
     })
@@ -116,7 +127,7 @@ export default function TransactionTable(props: TransactionTableProps) {
           <tr>
             <th class={styles.checkboxCol}>
               <input
-                type='checkbox'
+                type="checkbox"
                 class={styles.checkbox}
                 checked={
                   props.selectedTransactions.length === filtered().length && filtered().length > 0
@@ -131,19 +142,31 @@ export default function TransactionTable(props: TransactionTableProps) {
                 }}
               />
             </th>
-            <th class={`${styles.col} ${styles.dateCol}`} onClick={() => { handleSort('date') }}>
+            <th
+              class={`${styles.col} ${styles.dateCol}`}
+              onClick={() => {
+                handleSort('date')
+              }}
+            >
               Date {sortConfig().field === 'date' && (sortConfig().direction === 'asc' ? '↑' : '↓')}
             </th>
             <th
               class={`${styles.col} ${styles.descriptionCol}`}
-              onClick={() => { handleSort('description') }}
+              onClick={() => {
+                handleSort('description')
+              }}
             >
               Description{' '}
               {sortConfig().field === 'description' &&
                 (sortConfig().direction === 'asc' ? '↑' : '↓')}
             </th>
             <th class={`${styles.col} ${styles.categoryCol}`}>Category</th>
-            <th class={`${styles.col} ${styles.amountCol}`} onClick={() => { handleSort('amount') }}>
+            <th
+              class={`${styles.col} ${styles.amountCol}`}
+              onClick={() => {
+                handleSort('amount')
+              }}
+            >
               Amount{' '}
               {sortConfig().field === 'amount' && (sortConfig().direction === 'asc' ? '↑' : '↓')}
             </th>
@@ -157,7 +180,7 @@ export default function TransactionTable(props: TransactionTableProps) {
               <tr>
                 <td class={styles.checkboxCol}>
                   <input
-                    type='checkbox'
+                    type="checkbox"
                     class={styles.checkbox}
                     checked={props.selectedTransactions.includes(transaction.id)}
                     onChange={(e) => {
@@ -178,10 +201,13 @@ export default function TransactionTable(props: TransactionTableProps) {
                   {transaction.beneficiary !== undefined && transaction.beneficiary !== '' && (
                     <div class={styles.beneficiary}>Pay to: {transaction.beneficiary}</div>
                   )}
-                  {transaction.payor !== undefined && transaction.payor !== '' && <div class={styles.payor}>From: {transaction.payor}</div>}
-                  {transaction.means_of_payment !== undefined && transaction.means_of_payment !== '' && (
-                    <div class={styles.paymentMethod}>{transaction.means_of_payment}</div>
+                  {transaction.payor !== undefined && transaction.payor !== '' && (
+                    <div class={styles.payor}>From: {transaction.payor}</div>
                   )}
+                  {transaction.means_of_payment !== undefined &&
+                    transaction.means_of_payment !== '' && (
+                      <div class={styles.paymentMethod}>{transaction.means_of_payment}</div>
+                    )}
                 </td>
                 <td class={styles.categoryCol}>
                   <div class={styles.categoryName}>{transaction.category_name}</div>
@@ -217,17 +243,17 @@ export default function TransactionTable(props: TransactionTableProps) {
                     data-action={`transaction:edit:${transaction.id}`}
                   >
                     <svg
-                      width='14'
-                      height='14'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
                       <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         strokeWidth={2}
-                        d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                       />
                     </svg>
                   </button>

@@ -27,42 +27,44 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
   }
 
   // Simple error handler for SolidJS
-  const FallbackComponent = props.fallback || (() => (
-    <div style={{
-      padding: '40px',
-      'text-align': 'center',
-      'max-width': '500px',
-      margin: '0 auto',
-    }}>
-      <h2 style={{ color: '#dc3545', 'margin-bottom': '16px' }}>Something went wrong</h2>
-      <p style={{ color: '#666', 'margin-bottom': '20px' }}>
-        {state().error?.message ?? 'An unexpected error occurred'}
-      </p>
-      <button
-        onClick={reset}
+  const FallbackComponent =
+    props.fallback ||
+    (() => (
+      <div
         style={{
-          padding: '10px 20px',
-          background: '#007bff',
-          color: 'white',
-          border: 'none',
-          'border-radius': '6px',
-          cursor: 'pointer',
-          'font-size': '14px',
+          padding: '40px',
+          'text-align': 'center',
+          'max-width': '500px',
+          margin: '0 auto',
         }}
       >
-        Reload Page
-      </button>
-    </div>
-  ))
+        <h2 style={{ color: '#dc3545', 'margin-bottom': '16px' }}>Something went wrong</h2>
+        <p style={{ color: '#666', 'margin-bottom': '20px' }}>
+          {state().error?.message ?? 'An unexpected error occurred'}
+        </p>
+        <button
+          onClick={reset}
+          style={{
+            padding: '10px 20px',
+            background: '#007bff',
+            color: 'white',
+            border: 'none',
+            'border-radius': '6px',
+            cursor: 'pointer',
+            'font-size': '14px',
+          }}
+        >
+          Reload Page
+        </button>
+      </div>
+    ))
 
   if (state().hasError) {
     return <FallbackComponent error={state().error!} reset={reset} />
   }
 
   return (
-    <ErrorCatch
-      onError={(error) => setState({ hasError: true, error })}
-    >
+    <ErrorCatch onError={(error) => setState({ hasError: true, error })}>
       {props.children}
     </ErrorCatch>
   )

@@ -12,20 +12,25 @@ import type { PageName } from './router.tsx'
 // Loading spinner for lazy-loaded pages
 function PageLoader() {
   return (
-    <div class="page-loader" style={{
-      display: 'flex',
-      'justify-content': 'center',
-      'align-items': 'center',
-      'min-height': '400px',
-    }}>
-      <div style={{
-        width: '40px',
-        height: '40px',
-        border: '3px solid #f3f3f3',
-        'border-top': '3px solid #007bff',
-        'border-radius': '50%',
-        animation: 'spin 1s linear infinite',
-      }} />
+    <div
+      class="page-loader"
+      style={{
+        display: 'flex',
+        'justify-content': 'center',
+        'align-items': 'center',
+        'min-height': '400px',
+      }}
+    >
+      <div
+        style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid #f3f3f3',
+          'border-top': '3px solid #007bff',
+          'border-radius': '50%',
+          animation: 'spin 1s linear infinite',
+        }}
+      />
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -136,7 +141,8 @@ export function App() {
       if (
         action === 'transaction:receiptFile' &&
         (e.target as HTMLInputElement).id === 'tx-receipt' &&
-        typeof window.receipts !== 'undefined' && window.receipts !== null
+        typeof window.receipts !== 'undefined' &&
+        window.receipts !== null
       ) {
         window.receipts.handleFileSelect(e)
       }
@@ -411,9 +417,7 @@ export function App() {
         {/* Main Content */}
         <main class={sidebar.main}>
           <div id="page-content" class="page page-content">
-            <Suspense fallback={<PageLoader />}>
-              {pages[currentPage()]}
-            </Suspense>
+            <Suspense fallback={<PageLoader />}>{pages[currentPage()]}</Suspense>
           </div>
         </main>
       </div>
