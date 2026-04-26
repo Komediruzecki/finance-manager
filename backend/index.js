@@ -1,24 +1,26 @@
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const session = require("express-session");
-const bcrypt = require("bcrypt");
-const SQLiteStore = require("connect-sqlite3")(session);
-const db = require("./database");
-const loanCalc = require("./models/loanCalculator");
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const SQLiteStore = require('connect-sqlite3')(session);
+const db = require('./database');
+const loanCalc = require('./models/loanCalculator');
 
 // Helper function to convert snake_case keys to camelCase
 function toCamelCase(obj) {
   if (Array.isArray(obj)) {
-    return obj.map(item => toCamelCase(item));
+    return obj.map((item) => toCamelCase(item));
   }
   if (obj !== null && typeof obj === 'object') {
     const result = {};
-    Object.keys(obj).forEach(key => {
-      const camelKey = key.replace(/_([a-z])/g, function(_, letter) { return letter.toUpperCase(); });
+    Object.keys(obj).forEach((key) => {
+      const camelKey = key.replace(/_([a-z])/g, function (_, letter) {
+        return letter.toUpperCase();
+      });
       result[camelKey] = toCamelCase(obj[key]);
     });
     return result;
@@ -53,7 +55,7 @@ function calculateRetirementProjection(
 
   // Project savings until retirement
   for (let i = 1; i <= monthsToRetirement; i++) {
-    const monthlyReturn = (annualReturn / 100) / 12;
+    const monthlyReturn = annualReturn / 100 / 12;
     investmentGains += savings * monthlyReturn;
     savings += monthlyContribution;
     balance = savings + investmentGains;
@@ -68,7 +70,7 @@ function calculateRetirementProjection(
   while (retirementSavings > 0 && yearsInRetirement < 50) {
     retirementSavings -= annualWithdrawal;
     const annualReturnReal = (annualReturn - 3) / 100;
-    retirementSavings *= (1 + annualReturnReal);
+    retirementSavings *= 1 + annualReturnReal;
     yearsInRetirement++;
     balanceAtYearEnd = Math.max(0, retirementSavings);
     finalBalance = balanceAtYearEnd;
@@ -95,15 +97,15 @@ function calculateRetirementProjection(
     yearsOfRunway,
   };
 }
-const XLSX = require("xlsx");
-const PDFDocument = require("pdfkit");
+const XLSX = require('xlsx');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3847;
 
 // Server error logging
-const LOGS_DIR = path.join(__dirname, "..", "logs");
-const LOGS_FILE = path.join(LOGS_DIR, "server-logs.json");
+const LOGS_DIR = path.join(__dirname, '..', 'logs');
+const LOGS_FILE = path.join(LOGS_DIR, 'server-logs.json');
 if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
 
 function logError(level, source, error, request) {
@@ -114,23 +116,25 @@ function logError(level, source, error, request) {
     source,
     error: error?.message || String(error),
     stack: error?.stack || null,
-    request: request ? {
-      method: request.method,
-      path: request.path,
-      query: request.query,
-      ip: request.ip,
-      userAgent: request.get("user-agent")
-    } : null
+    request: request
+      ? {
+          method: request.method,
+          path: request.path,
+          query: request.query,
+          ip: request.ip,
+          userAgent: request.get('user-agent'),
+        }
+      : null,
   };
 
-  let logs = { version: "1.0", max_entries: 500, entries: [] };
+  let logs = { version: '1.0', max_entries: 500, entries: [] };
   try {
     if (fs.existsSync(LOGS_FILE)) {
-      const data = fs.readFileSync(LOGS_FILE, "utf-8");
+      const data = fs.readFileSync(LOGS_FILE, 'utf-8');
       logs = JSON.parse(data);
     }
   } catch (e) {
-    console.warn("Failed to read logs:", e.message);
+    console.warn('Failed to read logs:', e.message);
   }
 
   logs.entries.unshift(logEntry);
@@ -141,41 +145,39 @@ function logError(level, source, error, request) {
   try {
     fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2));
   } catch (e) {
-    console.error("Failed to write logs:", e.message);
+    console.error('Failed to write logs:', e.message);
   }
 }
 
 // Health check endpoint (no auth required)
-app.get("/api/health", (req, res) => {
+app.get('/api/health', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
-  res.json({ status: "ok", timestamp: new Date().toISOString(), database: "connected" });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'connected' });
 });
 
 // Ensure directories exist
-const uploadsDir = path.join(__dirname, "..", "assets");
+const uploadsDir = path.join(__dirname, '..', 'assets');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 // Date parsing utility - handles DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
 function parseDateString(dateStr) {
-  if (!dateStr) return new Date().toISOString().split("T")[0];
-  if (typeof dateStr === "number") {
+  if (!dateStr) return new Date().toISOString().split('T')[0];
+  if (typeof dateStr === 'number') {
     // Excel date code
     const d = XLSX.SSF.parse_date_code(dateStr);
-    if (d) return new Date(d.y, d.m - 1, d.d).toISOString().split("T")[0];
+    if (d) return new Date(d.y, d.m - 1, d.d).toISOString().split('T')[0];
   }
   const s = String(dateStr).trim();
   // Try DD/MM/YYYY or DD-MM-YYYY (European)
   const euMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (euMatch) {
     const [, d, m, y] = euMatch;
-    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
-      .toISOString()
-      .split("T")[0];
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).toISOString().split('T')[0];
   }
   // Try MM/DD/YYYY (US) or ISO
   const date = new Date(s);
-  if (!isNaN(date.getTime())) return date.toISOString().split("T")[0];
-  return new Date().toISOString().split("T")[0];
+  if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0];
 }
 
 // Session secret: require env var in production
@@ -203,10 +205,10 @@ app.use(
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
     store: new SQLiteStore({
-      db: "sessions.db",
-      dir: path.join(__dirname, "..", "db"),
+      db: 'sessions.db',
+      dir: path.join(__dirname, '..', 'db'),
     }),
-  }),
+  })
 );
 
 // ==================== RATE LIMITING ====================
@@ -230,7 +232,7 @@ const apiRateLimiter = (() => {
 
     // Always set rate limit headers so tests that check them pass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-    const profileId = parseInt(req.headers["x-profile-id"] || req.query.profile_id || 1);
+    const profileId = parseInt(req.headers['x-profile-id'] || req.query.profile_id || 1);
     const key = `ip:${ip}:profile:${profileId}`;
     const now = Date.now();
     let data = store.get(key);
@@ -254,7 +256,7 @@ const apiRateLimiter = (() => {
       res.setHeader('Retry-After', String(retryAfter));
       return res.status(429).json({
         error: 'Too many requests. Please wait before trying again.',
-        retryAfter
+        retryAfter,
       });
     }
     next();
@@ -263,8 +265,10 @@ const apiRateLimiter = (() => {
 
 // Auth rate limiter: 10 login attempts per 15 minutes per IP
 const authRateLimiter = (() => {
-  const store = (process.env.NODE_ENV === 'test' && global.__authRateLimitStore)
-    || global.__authRateLimitStore || new Map();
+  const store =
+    (process.env.NODE_ENV === 'test' && global.__authRateLimitStore) ||
+    global.__authRateLimitStore ||
+    new Map();
   global.__authRateLimitStore = store;
   const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
   const MAX_REQUESTS = 10; // Stricter for auth
@@ -304,7 +308,7 @@ const authRateLimiter = (() => {
       res.setHeader('Retry-After', String(retryAfter));
       return res.status(429).json({
         error: 'Too many login attempts. Please wait before trying again.',
-        retryAfter
+        retryAfter,
       });
     }
     next();
@@ -314,19 +318,21 @@ const authRateLimiter = (() => {
 // ==================== MIDDLEWARE ====================
 // Security headers with Helmet
 app.use(helmet());
-app.use(helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Vite HMR
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:", "blob:"],
-    connectSrc: ["'self'"],
-    fontSrc: ["'self'"],
-    objectSrc: ["'none'"],
-    mediaSrc: ["'self'"],
-    frameSrc: ["'none'"],
-  },
-}));
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Vite HMR
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  })
+);
 app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
 app.use(helmet.xssFilter());
 app.use(helmet.noSniff());
@@ -337,69 +343,69 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      // In production, reject unknown origins
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('Not allowed by CORS'));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        // In production, reject unknown origins
+        if (process.env.NODE_ENV === 'production') {
+          return callback(new Error('Not allowed by CORS'));
+        }
+        // In development, allow all origins but log it
+        console.warn(`CORS warning: Unknown origin ${origin} allowed in development mode`);
       }
-      // In development, allow all origins but log it
-      console.warn(`CORS warning: Unknown origin ${origin} allowed in development mode`);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
-}));
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
 
 // Body parsing
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: '50mb' }));
 
 // ==================== LOGS API ====================
-app.get("/api/logs", (req, res) => {
+app.get('/api/logs', (req, res) => {
   try {
     const level = req.query.level;
     const limit = parseInt(req.query.limit) || 50;
     const offset = parseInt(req.query.offset) || 0;
 
-    let logs = { version: "1.0", max_entries: 500, entries: [] };
+    let logs = { version: '1.0', max_entries: 500, entries: [] };
     if (fs.existsSync(LOGS_FILE)) {
-      const data = fs.readFileSync(LOGS_FILE, "utf-8");
+      const data = fs.readFileSync(LOGS_FILE, 'utf-8');
       logs = JSON.parse(data);
     }
 
     let filteredLogs = logs.entries;
     if (level) {
-      filteredLogs = logs.entries.filter(entry => entry.level === level);
+      filteredLogs = logs.entries.filter((entry) => entry.level === level);
     }
 
-    const paginatedLogs = filteredLogs
-      .slice(offset, offset + limit)
-      .map(entry => ({
-        timestamp: entry.timestamp,
-        level: entry.level,
-        source: entry.source,
-        error: entry.error,
-        request: entry.request
-      }));
+    const paginatedLogs = filteredLogs.slice(offset, offset + limit).map((entry) => ({
+      timestamp: entry.timestamp,
+      level: entry.level,
+      source: entry.source,
+      error: entry.error,
+      request: entry.request,
+    }));
 
     res.json({
       logs: paginatedLogs,
       total: filteredLogs.length,
       offset,
       limit,
-      hasMore: offset + limit < filteredLogs.length
+      hasMore: offset + limit < filteredLogs.length,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/logs/clear", (req, res) => {
+app.post('/api/logs/clear', (req, res) => {
   try {
-    fs.writeFileSync(LOGS_FILE, JSON.stringify({ version: "1.0", max_entries: 500, entries: [] }));
+    fs.writeFileSync(LOGS_FILE, JSON.stringify({ version: '1.0', max_entries: 500, entries: [] }));
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -407,7 +413,7 @@ app.post("/api/logs/clear", (req, res) => {
 });
 
 // Static files
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Multer for file uploads
 const storage = multer.diskStorage({
@@ -459,7 +465,10 @@ const uploadReceipt = multer({
       cb(null, receiptsDir);
     },
     filename: (req, file, cb) => {
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`);
+      cb(
+        null,
+        `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`
+      );
     },
   }),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for images
@@ -475,16 +484,17 @@ const uploadImport = multer({
 
 // Helper: get profile ID from request (header first, then query param, then 1)
 function getProfileId(req) {
-  return parseInt(req.headers["x-profile-id"] || req.query.profile_id || 1);
+  return parseInt(req.headers['x-profile-id'] || req.query.profile_id || 1);
 }
 
 // Helper: get profile IDs from request (supports JSON array via header)
 function getProfileIds(req) {
-  const header = req.headers["x-profile-ids"];
+  const header = req.headers['x-profile-ids'];
   if (header) {
     try {
       const parsed = JSON.parse(header);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
+      if (Array.isArray(parsed) && parsed.length > 0)
+        return parsed.map((id) => parseInt(id)).filter((id) => !isNaN(id));
     } catch (e) {
       // single ID fallback
     }
@@ -494,13 +504,15 @@ function getProfileIds(req) {
 }
 
 // Helper: wrap all data queries with profile_id
-function profileWhere(tableAlias = "t", extra = "") {
-  return `${tableAlias}.profile_id = ?${extra ? " AND " + extra : ""}`;
+function profileWhere(tableAlias = 't', extra = '') {
+  return `${tableAlias}.profile_id = ?${extra ? ' AND ' + extra : ''}`;
 }
 
 // Helper: build profile IN clause for multiple profiles
-function profileInClause(tableAlias = "t", extra = "") {
-  const placeholder = extra ? `${tableAlias}.profile_id IN (?) AND ${extra}` : `${tableAlias}.profile_id IN (?)`;
+function profileInClause(tableAlias = 't', extra = '') {
+  const placeholder = extra
+    ? `${tableAlias}.profile_id IN (?) AND ${extra}`
+    : `${tableAlias}.profile_id IN (?)`;
   return placeholder;
 }
 
@@ -514,28 +526,26 @@ function profileParams(pids, extra = []) {
 // ========================
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 }
 
-app.post("/api/auth/login", authRateLimiter, async (req, res) => {
+app.post('/api/auth/login', authRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
+      return res.status(400).json({ error: 'Username and password required' });
     }
 
-    const user = db
-      .prepare("SELECT * FROM users WHERE username = ?")
-      .get(username);
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     req.session.userId = user.id;
@@ -543,19 +553,19 @@ app.post("/api/auth/login", authRateLimiter, async (req, res) => {
     res.json({ ok: true, username: user.username, isLoggedIn: true });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/auth/logout", apiRateLimiter, (req, res) => {
+app.post('/api/auth/logout', apiRateLimiter, (req, res) => {
   req.session.destroy((err) => {
-    if (err) return res.status(500).json({ error: "Logout failed" });
+    if (err) return res.status(500).json({ error: 'Logout failed' });
     res.json(toCamelCase({ ok: true }));
   });
 });
 
-app.get("/api/auth/me", apiRateLimiter, requireAuth, (req, res) => {
+app.get('/api/auth/me', apiRateLimiter, requireAuth, (req, res) => {
   res.json({ userId: req.session.userId, username: req.session.username });
 });
 
@@ -563,7 +573,7 @@ app.get("/api/auth/me", apiRateLimiter, requireAuth, (req, res) => {
 const APP_VERSION = '1.0.0';
 const APP_REPO = 'https://github.com/Komediruzecki/finance-manager';
 
-app.get("/api/app-info", (req, res) => {
+app.get('/api/app-info', (req, res) => {
   res.json({
     version: APP_VERSION,
     repository: APP_REPO,
@@ -572,33 +582,29 @@ app.get("/api/app-info", (req, res) => {
 });
 
 // Test endpoint: reset rate limit store
-app.post("/api/test/reset-rate-limit", (req, res) => {
+app.post('/api/test/reset-rate-limit', (req, res) => {
   if (global.__rateLimitStore) global.__rateLimitStore.clear();
   if (global.__authRateLimitStore) global.__authRateLimitStore.clear();
-    res.json(toCamelCase({ ok: true }));
+  res.json(toCamelCase({ ok: true }));
 });
 
 // ========================
-app.get("/api/profiles", apiRateLimiter, (req, res) => {
+app.get('/api/profiles', apiRateLimiter, (req, res) => {
   try {
     let profiles;
     if (req.session.userId) {
       // Logged in: return user's profiles plus ExampleProfile
       profiles = db
-        .prepare(
-          "SELECT * FROM profiles WHERE user_id = ? OR id = 1 ORDER BY id",
-        )
+        .prepare('SELECT * FROM profiles WHERE user_id = ? OR id = 1 ORDER BY id')
         .all(req.session.userId);
     } else {
       // Not logged in: return all example profiles (1, 2, 3)
-      profiles = db.prepare("SELECT * FROM profiles WHERE id IN (1, 2, 3) ORDER BY id").all();
+      profiles = db.prepare('SELECT * FROM profiles WHERE id IN (1, 2, 3) ORDER BY id').all();
     }
     // Include transaction counts
     const counts = {};
     const txCount = db
-      .prepare(
-        "SELECT profile_id, COUNT(*) as c FROM transactions GROUP BY profile_id",
-      )
+      .prepare('SELECT profile_id, COUNT(*) as c FROM transactions GROUP BY profile_id')
       .all();
     for (const r of txCount) counts[r.profile_id] = r.c;
     const result = profiles.map((p) => ({
@@ -608,121 +614,110 @@ app.get("/api/profiles", apiRateLimiter, (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/profiles", apiRateLimiter, (req, res) => {
+app.post('/api/profiles', apiRateLimiter, (req, res) => {
   try {
     if (!req.session.userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     const { name } = req.body;
-    if (!name || !name.trim())
-      return res.status(400).json({ error: "Name is required" });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     // Check name uniqueness across all profiles
     const existing = db
-      .prepare("SELECT id FROM profiles WHERE LOWER(name) = LOWER(?)")
+      .prepare('SELECT id FROM profiles WHERE LOWER(name) = LOWER(?)')
       .get(name.trim());
-    if (existing)
-      return res
-        .status(400)
-        .json({ error: "A profile with this name already exists" });
-    db.prepare("INSERT INTO profiles (name, user_id) VALUES (?, ?)").run(
+    if (existing) return res.status(400).json({ error: 'A profile with this name already exists' });
+    db.prepare('INSERT INTO profiles (name, user_id) VALUES (?, ?)').run(
       name.trim(),
-      req.session.userId,
+      req.session.userId
     );
     res.json({
-      id: db.prepare("SELECT last_insert_rowid() as id").get().id,
+      id: db.prepare('SELECT last_insert_rowid() as id').get().id,
       name: name.trim(),
       transaction_count: 0,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/profiles/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/profiles/:id', apiRateLimiter, (req, res) => {
   try {
     if (!req.session.userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     const pid = parseInt(req.params.id);
-    if (pid === 1)
-      return res
-        .status(400)
-        .json({ error: "Cannot delete the default profile" });
+    if (pid === 1) return res.status(400).json({ error: 'Cannot delete the default profile' });
     // Only allow deleting profiles owned by this user
-    const profile = db.prepare("SELECT * FROM profiles WHERE id = ?").get(pid);
-    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
     if (profile.user_id !== req.session.userId) {
-      return res
-        .status(403)
-        .json({ error: "Cannot delete another user's profile" });
+      return res.status(403).json({ error: "Cannot delete another user's profile" });
     }
-    const count = db.prepare("SELECT COUNT(*) as c FROM profiles").get();
-    if (count.c <= 1)
-      return res.status(400).json({ error: "Cannot delete the last profile" });
+    const count = db.prepare('SELECT COUNT(*) as c FROM profiles').get();
+    if (count.c <= 1) return res.status(400).json({ error: 'Cannot delete the last profile' });
     // Delete all data for this profile (cascades via foreign keys)
-    db.prepare("DELETE FROM transactions WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM budgets WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM categories WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM loans WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM profiles WHERE id = ?").run(pid);
+    db.prepare('DELETE FROM transactions WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM budgets WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM categories WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM loans WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM profiles WHERE id = ?').run(pid);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/profile/data", apiRateLimiter, (req, res) => {
+app.delete('/api/profile/data', apiRateLimiter, (req, res) => {
   // Nuke all data for the current profile but keep the profile itself
   try {
     const pid = getProfileId(req);
     db.prepare(
-      "DELETE FROM loan_prepayments WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)",
+      'DELETE FROM loan_prepayments WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
     ).run(pid);
     db.prepare(
-      "DELETE FROM loan_rate_periods WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)",
+      'DELETE FROM loan_rate_periods WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
     ).run(pid);
-    db.prepare("DELETE FROM transactions WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM budgets WHERE profile_id = ?").run(pid);
-    db.prepare("DELETE FROM loans WHERE profile_id = ?").run(pid);
+    db.prepare('DELETE FROM transactions WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM budgets WHERE profile_id = ?').run(pid);
+    db.prepare('DELETE FROM loans WHERE profile_id = ?').run(pid);
     // Reset categories to defaults
-    db.prepare("DELETE FROM categories WHERE profile_id = ?").run(pid);
+    db.prepare('DELETE FROM categories WHERE profile_id = ?').run(pid);
     const defaults = [
-      ["Housing", "#ef4444", "home", "expense"],
-      ["Food & Dining", "#f97316", "utensils", "expense"],
-      ["Transportation", "#eab308", "car", "expense"],
-      ["Healthcare", "#22c55e", "heart", "expense"],
-      ["Entertainment", "#06b6d4", "film", "expense"],
-      ["Shopping", "#8b5cf6", "shopping-bag", "expense"],
-      ["Utilities", "#64748b", "zap", "expense"],
-      ["Education", "#ec4899", "book", "expense"],
-      ["Personal Care", "#f43f5e", "smile", "expense"],
-      ["Travel", "#14b8a6", "plane", "expense"],
-      ["Salary", "#10b981", "briefcase", "income"],
-      ["Freelance", "#3b82f6", "laptop", "income"],
-      ["Investments", "#6366f1", "trending-up", "income"],
-      ["Other Income", "#8b5cf6", "plus-circle", "income"],
+      ['Housing', '#ef4444', 'home', 'expense'],
+      ['Food & Dining', '#f97316', 'utensils', 'expense'],
+      ['Transportation', '#eab308', 'car', 'expense'],
+      ['Healthcare', '#22c55e', 'heart', 'expense'],
+      ['Entertainment', '#06b6d4', 'film', 'expense'],
+      ['Shopping', '#8b5cf6', 'shopping-bag', 'expense'],
+      ['Utilities', '#64748b', 'zap', 'expense'],
+      ['Education', '#ec4899', 'book', 'expense'],
+      ['Personal Care', '#f43f5e', 'smile', 'expense'],
+      ['Travel', '#14b8a6', 'plane', 'expense'],
+      ['Salary', '#10b981', 'briefcase', 'income'],
+      ['Freelance', '#3b82f6', 'laptop', 'income'],
+      ['Investments', '#6366f1', 'trending-up', 'income'],
+      ['Other Income', '#8b5cf6', 'plus-circle', 'income'],
     ];
     const insertCat = db.prepare(
-      "INSERT INTO categories (name, color, icon, type, profile_id) VALUES (?, ?, ?, ?, ?)",
+      'INSERT INTO categories (name, color, icon, type, profile_id) VALUES (?, ?, ?, ?, ?)'
     );
     for (const c of defaults) insertCat.run(...c, pid);
     res.json({
       ok: true,
-      message:
-        "All profile data has been deleted and categories reset to defaults",
+      message: 'All profile data has been deleted and categories reset to defaults',
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -730,73 +725,80 @@ app.delete("/api/profile/data", apiRateLimiter, (req, res) => {
 // ========================
 // SETTINGS (per-profile)
 // ========================
-app.get("/api/settings", apiRateLimiter, (req, res) => {
+app.get('/api/settings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
-      .prepare(
-        "SELECT key, value FROM settings WHERE profile_id = ? OR profile_id IS NULL",
-      )
+      .prepare('SELECT key, value FROM settings WHERE profile_id = ? OR profile_id IS NULL')
       .all(pid);
     const settings = {};
     for (const r of rows) settings[r.key] = r.value;
     // Add user preferences section
     settings.preferences = {
       theme: settings.theme || 'light',
-      notifications: settings.notifications !== undefined ? settings.notifications : true
+      notifications: settings.notifications !== undefined ? settings.notifications : true,
     };
     res.setHeader('Cache-Control', 'no-cache');
     res.json(settings);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/settings", apiRateLimiter, (req, res) => {
+app.put('/api/settings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     // Validate currency code (ISO 4217)
     if (req.body.currency && !/^[A-Z]{3}$/.test(req.body.currency)) {
-      return res.status(422).json({ error: 'Invalid currency code. Must be 3-letter ISO 4217 code (e.g., USD, EUR).' });
+      return res
+        .status(422)
+        .json({ error: 'Invalid currency code. Must be 3-letter ISO 4217 code (e.g., USD, EUR).' });
     }
     // Validate locale code (BCP 47 language tags - simplified)
     if (req.body.locale) {
       // Must be in format: language[-region] or language[-region][-variant]
       const localeRegex = /^[a-z]{2,3}(?:-[A-Z]{2,3}(?:-[A-Z0-9]+)*)?$/i;
       if (!localeRegex.test(req.body.locale)) {
-        return res.status(422).json({ error: 'Invalid locale code. Use valid BCP 47 language tags (e.g., en-US, fr-FR).' });
+        return res
+          .status(422)
+          .json({
+            error: 'Invalid locale code. Use valid BCP 47 language tags (e.g., en-US, fr-FR).',
+          });
       }
     }
 
     const upsert = db.prepare(
-      "INSERT OR REPLACE INTO settings (key, value, profile_id) VALUES (?, ?, ?)",
+      'INSERT OR REPLACE INTO settings (key, value, profile_id) VALUES (?, ?, ?)'
     );
     const entries = Object.entries(req.body);
     for (const [k, v] of entries) upsert.run(k, String(v), pid);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/settings/set-storage", apiRateLimiter, (req, res) => {
+app.post('/api/settings/set-storage', apiRateLimiter, (req, res) => {
   try {
     const { type } = req.body;
 
     if (type === 'postgresql') {
       // Store PostgreSQL config (optional - would need to expand backend)
-      res.json({ ok: true, message: 'PostgreSQL storage configured. Please restart the application.' });
+      res.json({
+        ok: true,
+        message: 'PostgreSQL storage configured. Please restart the application.',
+      });
     } else {
       // Reset to SQLite
       res.json({ ok: true, message: 'SQLite storage configured. Please restart the application.' });
     }
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -804,7 +806,7 @@ app.post("/api/settings/set-storage", apiRateLimiter, (req, res) => {
 // ========================
 // CATEGORIES (per-profile)
 // ========================
-app.get("/api/categories", apiRateLimiter, (req, res) => {
+app.get('/api/categories', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -815,22 +817,29 @@ app.get("/api/categories", apiRateLimiter, (req, res) => {
       LEFT JOIN categories p ON c.parent_id = p.id AND p.profile_id = c.profile_id
       WHERE c.profile_id = ?
       ORDER BY c.type, c.name
-    `,
+    `
       )
       .all(pid);
     res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/categories", apiRateLimiter, (req, res) => {
+app.post('/api/categories', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { name, color = '#6b7280', icon = 'tag', type = 'expense', parent_id: parentIdParam, tax_deductible } = req.body;
-    const parent_id = parentIdParam !== undefined ? parentIdParam : (req.body.parentId || null);
+    const {
+      name,
+      color = '#6b7280',
+      icon = 'tag',
+      type = 'expense',
+      parent_id: parentIdParam,
+      tax_deductible,
+    } = req.body;
+    const parent_id = parentIdParam !== undefined ? parentIdParam : req.body.parentId || null;
 
     // Validation: ensure name is required
     if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -838,37 +847,33 @@ app.post("/api/categories", apiRateLimiter, (req, res) => {
     }
 
     // Check for duplicate category name for same profile
-    const existing = db.prepare('SELECT id FROM categories WHERE name=? AND profile_id=?').get(name.trim(), pid);
+    const existing = db
+      .prepare('SELECT id FROM categories WHERE name=? AND profile_id=?')
+      .get(name.trim(), pid);
     if (existing) {
       return res.status(400).json({ error: 'Category name already exists for this profile' });
     }
 
     const info = db
       .prepare(
-        "INSERT INTO categories (name, color, icon, type, parent_id, tax_deductible, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        'INSERT INTO categories (name, color, icon, type, parent_id, tax_deductible, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
       )
-      .run(
-        name.trim(),
-        color.trim(),
-        icon,
-        type,
-        parent_id,
-        tax_deductible ? 1 : 0,
-        pid,
-      );
+      .run(name.trim(), color.trim(), icon, type, parent_id, tax_deductible ? 1 : 0, pid);
 
-    res.json(toCamelCase({
-      id: info.lastInsertRowid,
-      name: name.trim(),
-      color: color.trim(),
-      icon: icon,
-      type: type.trim(),
-      parent_id,
-      profile_id: pid,
-    }));
+    res.json(
+      toCamelCase({
+        id: info.lastInsertRowid,
+        name: name.trim(),
+        color: color.trim(),
+        icon: icon,
+        type: type.trim(),
+        parent_id,
+        profile_id: pid,
+      })
+    );
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -880,14 +885,14 @@ const MERCHANT_DICTIONARY = [
   // Streaming
   { pattern: 'netflix', category: 'Streaming', confidence: 0.95 },
   { pattern: 'spotify', category: 'Streaming', confidence: 0.95 },
-  { pattern: 'youtube', category: 'Streaming', confidence: 0.90 },
+  { pattern: 'youtube', category: 'Streaming', confidence: 0.9 },
   { pattern: 'disney+', category: 'Streaming', confidence: 0.95 },
   { pattern: 'hulu', category: 'Streaming', confidence: 0.95 },
-  { pattern: 'apple tv', category: 'Streaming', confidence: 0.90 },
-  { pattern: 'hbo', category: 'Streaming', confidence: 0.90 },
+  { pattern: 'apple tv', category: 'Streaming', confidence: 0.9 },
+  { pattern: 'hbo', category: 'Streaming', confidence: 0.9 },
   { pattern: 'prime video', category: 'Streaming', confidence: 0.95 },
   // Shopping
-  { pattern: 'amazon', category: 'Shopping', confidence: 0.90 },
+  { pattern: 'amazon', category: 'Shopping', confidence: 0.9 },
   { pattern: 'ebay', category: 'Shopping', confidence: 0.95 },
   { pattern: 'walmart', category: 'Shopping', confidence: 0.95 },
   { pattern: 'target', category: 'Shopping', confidence: 0.95 },
@@ -902,29 +907,29 @@ const MERCHANT_DICTIONARY = [
   { pattern: 'trader joe', category: 'Groceries', confidence: 0.95 },
   { pattern: 'whole foods', category: 'Groceries', confidence: 0.95 },
   { pattern: 'target grocery', category: 'Groceries', confidence: 0.95 },
-  { pattern: 'kroger', category: 'Groceries', confidence: 0.90 },
-  { pattern: 'safeway', category: 'Groceries', confidence: 0.90 },
-  { pattern: 'albertsons', category: 'Groceries', confidence: 0.90 },
-  { pattern: 'stop & shop', category: 'Groceries', confidence: 0.90 },
-  { pattern: 'publix', category: 'Groceries', confidence: 0.90 },
+  { pattern: 'kroger', category: 'Groceries', confidence: 0.9 },
+  { pattern: 'safeway', category: 'Groceries', confidence: 0.9 },
+  { pattern: 'albertsons', category: 'Groceries', confidence: 0.9 },
+  { pattern: 'stop & shop', category: 'Groceries', confidence: 0.9 },
+  { pattern: 'publix', category: 'Groceries', confidence: 0.9 },
   { pattern: 'whole foods market', category: 'Groceries', confidence: 0.95 },
-  { pattern: 'sams club', category: 'Groceries', confidence: 0.90 },
+  { pattern: 'sams club', category: 'Groceries', confidence: 0.9 },
   // Dining
   { pattern: 'starbucks', category: 'Dining', confidence: 0.95 },
   { pattern: 'mcdonalds', category: 'Dining', confidence: 0.95 },
-  { pattern: 'burger king', category: 'Dining', confidence: 0.90 },
-  { pattern: 'wendy', category: 'Dining', confidence: 0.90 },
-  { pattern: 'taco bell', category: 'Dining', confidence: 0.90 },
-  { pattern: 'pizza hut', category: 'Dining', confidence: 0.90 },
-  { pattern: 'dominos', category: 'Dining', confidence: 0.90 },
-  { pattern: 'subway', category: 'Dining', confidence: 0.90 },
-  { pattern: 'panera', category: 'Dining', confidence: 0.90 },
-  { pattern: 'chipotle', category: 'Dining', confidence: 0.90 },
-  { pattern: 'chipotle mexican grill', category: 'Dining', confidence: 0.90 },
-  { pattern: 'dunkin', category: 'Dining', confidence: 0.90 },
+  { pattern: 'burger king', category: 'Dining', confidence: 0.9 },
+  { pattern: 'wendy', category: 'Dining', confidence: 0.9 },
+  { pattern: 'taco bell', category: 'Dining', confidence: 0.9 },
+  { pattern: 'pizza hut', category: 'Dining', confidence: 0.9 },
+  { pattern: 'dominos', category: 'Dining', confidence: 0.9 },
+  { pattern: 'subway', category: 'Dining', confidence: 0.9 },
+  { pattern: 'panera', category: 'Dining', confidence: 0.9 },
+  { pattern: 'chipotle', category: 'Dining', confidence: 0.9 },
+  { pattern: 'chipotle mexican grill', category: 'Dining', confidence: 0.9 },
+  { pattern: 'dunkin', category: 'Dining', confidence: 0.9 },
   { pattern: 'krispy kreme', category: 'Dining', confidence: 0.85 },
   { pattern: 'dunkin donuts', category: 'Dining', confidence: 0.85 },
-  { pattern: 'starbucks coffee', category: 'Dining', confidence: 0.90 },
+  { pattern: 'starbucks coffee', category: 'Dining', confidence: 0.9 },
   { pattern: 'cafe', category: 'Dining', confidence: 0.85 },
   { pattern: 'restaurant', category: 'Dining', confidence: 0.85 },
   { pattern: 'dinner', category: 'Dining', confidence: 0.85 },
@@ -934,72 +939,76 @@ const MERCHANT_DICTIONARY = [
   { pattern: 'cafe coffee', category: 'Dining', confidence: 0.85 },
   // Utilities
   { pattern: 'electric', category: 'Utilities', confidence: 0.95 },
-  { pattern: 'power', category: 'Utilities', confidence: 0.90 },
-  { pattern: 'gas bill', category: 'Utilities', confidence: 0.90 },
-  { pattern: 'gas', category: 'Utilities', confidence: 0.90 },
-  { pattern: 'water bill', category: 'Utilities', confidence: 0.90 },
-  { pattern: 'water', category: 'Utilities', confidence: 0.90 },
+  { pattern: 'power', category: 'Utilities', confidence: 0.9 },
+  { pattern: 'gas bill', category: 'Utilities', confidence: 0.9 },
+  { pattern: 'gas', category: 'Utilities', confidence: 0.9 },
+  { pattern: 'water bill', category: 'Utilities', confidence: 0.9 },
+  { pattern: 'water', category: 'Utilities', confidence: 0.9 },
   { pattern: 'internet', category: 'Utilities', confidence: 0.85 },
   { pattern: 'phone', category: 'Utilities', confidence: 0.85 },
   { pattern: 'mobile', category: 'Utilities', confidence: 0.85 },
-  { pattern: 'at&t', category: 'Utilities', confidence: 0.90 },
-  { pattern: 'verizon', category: 'Utilities', confidence: 0.90 },
-  { pattern: 't-mobile', category: 'Utilities', confidence: 0.90 },
+  { pattern: 'at&t', category: 'Utilities', confidence: 0.9 },
+  { pattern: 'verizon', category: 'Utilities', confidence: 0.9 },
+  { pattern: 't-mobile', category: 'Utilities', confidence: 0.9 },
   // Healthcare
   { pattern: 'pharmacy', category: 'Healthcare', confidence: 0.85 },
   { pattern: 'cvs', category: 'Healthcare', confidence: 0.95 },
   { pattern: 'walgreens', category: 'Healthcare', confidence: 0.95 },
-  { pattern: 'hospital', category: 'Healthcare', confidence: 0.90 },
+  { pattern: 'hospital', category: 'Healthcare', confidence: 0.9 },
   { pattern: 'doctor', category: 'Healthcare', confidence: 0.85 },
   { pattern: 'clinic', category: 'Healthcare', confidence: 0.85 },
-  { pattern: 'dental', category: 'Healthcare', confidence: 0.90 },
-  { pattern: 'optometrist', category: 'Healthcare', confidence: 0.90 },
+  { pattern: 'dental', category: 'Healthcare', confidence: 0.9 },
+  { pattern: 'optometrist', category: 'Healthcare', confidence: 0.9 },
   // Entertainment
-  { pattern: 'cinema', category: 'Entertainment', confidence: 0.90 },
-  { pattern: 'theater', category: 'Entertainment', confidence: 0.90 },
-  { pattern: 'concert', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'cinema', category: 'Entertainment', confidence: 0.9 },
+  { pattern: 'theater', category: 'Entertainment', confidence: 0.9 },
+  { pattern: 'concert', category: 'Entertainment', confidence: 0.9 },
   { pattern: 'ticketmaster', category: 'Entertainment', confidence: 0.95 },
-  { pattern: 'steam', category: 'Entertainment', confidence: 0.90 },
-  { pattern: 'playstation', category: 'Entertainment', confidence: 0.90 },
-  { pattern: 'xbox', category: 'Entertainment', confidence: 0.90 },
+  { pattern: 'steam', category: 'Entertainment', confidence: 0.9 },
+  { pattern: 'playstation', category: 'Entertainment', confidence: 0.9 },
+  { pattern: 'xbox', category: 'Entertainment', confidence: 0.9 },
   // Housing
   { pattern: 'rent', category: 'Housing', confidence: 0.95 },
   { pattern: 'mortgage', category: 'Housing', confidence: 0.95 },
-  { pattern: 'hoa', category: 'Housing', confidence: 0.90 },
-  { pattern: 'insurance', category: 'Housing', confidence: 0.70 },
+  { pattern: 'hoa', category: 'Housing', confidence: 0.9 },
+  { pattern: 'insurance', category: 'Housing', confidence: 0.7 },
   // Income
   { pattern: 'payroll', category: 'Salary', confidence: 0.95 },
   { pattern: 'salary', category: 'Salary', confidence: 0.95 },
-  { pattern: 'direct deposit', category: 'Salary', confidence: 0.90 },
-  { pattern: 'freelance', category: 'Freelance', confidence: 0.90 },
+  { pattern: 'direct deposit', category: 'Salary', confidence: 0.9 },
+  { pattern: 'freelance', category: 'Freelance', confidence: 0.9 },
   { pattern: 'dividend', category: 'Investments', confidence: 0.95 },
-  { pattern: 'interest', category: 'Investments', confidence: 0.90 },
+  { pattern: 'interest', category: 'Investments', confidence: 0.9 },
 ];
 
 // Get learned mappings for profile
-app.get("/api/categories/mappings", apiRateLimiter, (req, res) => {
-  console.log("[DEBUG] GET /api/categories/mappings called, pid:", getProfileId(req));
+app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
+  console.log('[DEBUG] GET /api/categories/mappings called, pid:', getProfileId(req));
   try {
     const pid = getProfileId(req);
-    console.log("[DEBUG] pid:", pid);
-    const rows = db.prepare(`
+    console.log('[DEBUG] pid:', pid);
+    const rows = db
+      .prepare(
+        `
       SELECT cm.*, c.name as category_name, c.color as category_color
       FROM category_mappings cm
       JOIN categories c ON cm.category_id = c.id
       WHERE cm.profile_id = ?
       ORDER BY cm.use_count DESC, cm.confidence DESC
-    `).all(pid);
-    console.log("[DEBUG] rows:", rows);
+    `
+      )
+      .all(pid);
+    console.log('[DEBUG] rows:', rows);
     res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Add/update a mapping
-app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
+app.post('/api/categories/mappings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { pattern, category_id, confidence, use_count } = req.body;
@@ -1013,91 +1022,98 @@ app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
     }
 
     // Check if mapping already exists
-    const existing = db.prepare(
-      'SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?'
-    ).get(pid, pattern);
+    const existing = db
+      .prepare('SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?')
+      .get(pid, pattern);
 
     if (existing) {
       // Update existing mapping
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE category_mappings
         SET category_id=?, confidence=?, use_count=?
         WHERE id=?
-      `).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
-      res.json(toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 }));
+      `
+      ).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
+      res.json(
+        toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 })
+      );
     } else {
       // Insert new mapping
-      const info = db.prepare(`
+      const info = db
+        .prepare(
+          `
         INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
         VALUES (?, ?, ?, ?, ?)
-      `).run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
+      `
+        )
+        .run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
       res.json(toCamelCase({ ok: true, id: info.lastInsertRowid }));
     }
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Delete a mapping
-app.delete("/api/categories/mappings/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/categories/mappings/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const result = db.prepare(
-      'DELETE FROM category_mappings WHERE id=? AND profile_id=?'
-    ).run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    const result = db
+      .prepare('DELETE FROM category_mappings WHERE id=? AND profile_id=?')
+      .run(req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ==================== CATEGORY CRUD ====================
 
-app.delete("/api/categories", apiRateLimiter, (req, res) => {
+app.delete('/api/categories', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare("DELETE FROM categories WHERE profile_id=?").run(pid);
-    res.json({ ok: true, message: "All categories deleted" });
+    db.prepare('DELETE FROM categories WHERE profile_id=?').run(pid);
+    res.json({ ok: true, message: 'All categories deleted' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/categories/:id", apiRateLimiter, (req, res) => {
+app.get('/api/categories/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const cat = db
       .prepare(
-        "SELECT id, name, color, icon, type, parent_id, tax_deductible, created_at FROM categories WHERE id=? AND profile_id=?"
+        'SELECT id, name, color, icon, type, parent_id, tax_deductible, created_at FROM categories WHERE id=? AND profile_id=?'
       )
       .get(req.params.id, pid);
     if (!cat) {
-      return res.status(404).json({ error: "Not found" });
+      return res.status(404).json({ error: 'Not found' });
     }
     res.json(toCamelCase(cat));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/categories/:id", apiRateLimiter, (req, res) => {
+app.put('/api/categories/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color, icon, type, parent_id: parentIdParam, tax_deductible } = req.body;
-    const parent_id = parentIdParam !== undefined ? parentIdParam : (req.body.parentId || null);
+    const parent_id = parentIdParam !== undefined ? parentIdParam : req.body.parentId || null;
     const result = db
       .prepare(
-        "UPDATE categories SET name=?, color=?, icon=?, type=?, parent_id=?, tax_deductible=? WHERE id=? AND profile_id=?",
+        'UPDATE categories SET name=?, color=?, icon=?, type=?, parent_id=?, tax_deductible=? WHERE id=? AND profile_id=?'
       )
       .run(
         name || '',
@@ -1107,69 +1123,71 @@ app.put("/api/categories/:id", apiRateLimiter, (req, res) => {
         parent_id || null,
         tax_deductible ? 1 : 0,
         req.params.id,
-        pid,
+        pid
       );
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/categories/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/categories/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM categories WHERE id=? AND profile_id=?")
+      .prepare('DELETE FROM categories WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/categories", apiRateLimiter, (req, res) => {
+app.delete('/api/categories', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare("DELETE FROM categories WHERE profile_id=?").run(pid);
-    res.json({ ok: true, message: "All categories deleted" });
+    db.prepare('DELETE FROM categories WHERE profile_id=?').run(pid);
+    res.json({ ok: true, message: 'All categories deleted' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/categories/mappings", apiRateLimiter, (req, res) => {
-  console.log("[DEBUG] GET /api/categories/mappings called, pid:", getProfileId(req));
+app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
+  console.log('[DEBUG] GET /api/categories/mappings called, pid:', getProfileId(req));
   try {
     const pid = getProfileId(req);
-    console.log("[DEBUG] pid:", pid);
-    const rows = db.prepare(`
+    console.log('[DEBUG] pid:', pid);
+    const rows = db
+      .prepare(
+        `
       SELECT cm.*, c.name as category_name, c.color as category_color
       FROM category_mappings cm
       JOIN categories c ON cm.category_id = c.id
       WHERE cm.profile_id = ?
       ORDER BY cm.use_count DESC, cm.confidence DESC
-    `).all(pid);
-    console.log("[DEBUG] rows:", rows);
+    `
+      )
+      .all(pid);
+    console.log('[DEBUG] rows:', rows);
     res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Add/update a mapping
-app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
+app.post('/api/categories/mappings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { pattern, category_id, confidence, use_count } = req.body;
@@ -1183,46 +1201,53 @@ app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
     }
 
     // Check if mapping already exists
-    const existing = db.prepare(
-      'SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?'
-    ).get(pid, pattern);
+    const existing = db
+      .prepare('SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?')
+      .get(pid, pattern);
 
     if (existing) {
       // Update existing mapping
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE category_mappings
         SET category_id=?, confidence=?, use_count=?
         WHERE id=?
-      `).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
-      res.json(toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 }));
+      `
+      ).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
+      res.json(
+        toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 })
+      );
     } else {
       // Insert new mapping
-      const info = db.prepare(`
+      const info = db
+        .prepare(
+          `
         INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
         VALUES (?, ?, ?, ?, ?)
-      `).run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
+      `
+        )
+        .run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
       res.json(toCamelCase({ ok: true, id: info.lastInsertRowid }));
     }
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Delete a mapping
-app.delete("/api/categories/mappings/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/categories/mappings/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const result = db.prepare(
-      'DELETE FROM category_mappings WHERE id=? AND profile_id=?'
-    ).run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    const result = db
+      .prepare('DELETE FROM category_mappings WHERE id=? AND profile_id=?')
+      .run(req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1243,7 +1268,7 @@ function diceCoefficient(a, b) {
   }
 
   let intersection = 0;
-  bigrams1.forEach(bg => {
+  bigrams1.forEach((bg) => {
     if (bigrams2.has(bg)) intersection++;
   });
 
@@ -1251,22 +1276,26 @@ function diceCoefficient(a, b) {
 }
 
 // Auto-map uncategorized transactions
-app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
+app.post('/api/categories/auto-map', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { transaction_ids } = req.body;
 
     // Get categories for matching
-    const categories = db.prepare(
-      'SELECT id, name, color, type FROM categories WHERE profile_id = ?'
-    ).all(pid);
+    const categories = db
+      .prepare('SELECT id, name, color, type FROM categories WHERE profile_id = ?')
+      .all(pid);
 
     // Get learned mappings
-    const learnedMappings = db.prepare(`
+    const learnedMappings = db
+      .prepare(
+        `
       SELECT pattern, category_id, confidence, use_count
       FROM category_mappings
       WHERE profile_id = ?
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
     // Get transactions to auto-map (uncategorized or "Other")
     let txQuery = `
@@ -1287,7 +1316,8 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
     const proposedMappings = [];
 
     for (const tx of transactions) {
-      const searchText = `${tx.description} ${tx.beneficiary || ''} ${tx.payor || ''}`.toLowerCase();
+      const searchText =
+        `${tx.description} ${tx.beneficiary || ''} ${tx.payor || ''}`.toLowerCase();
       const normalizedSearch = searchText.replace(/[^a-z0-9]/g, '');
 
       let bestMatch = null;
@@ -1297,12 +1327,18 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
       for (const mapping of learnedMappings) {
         const patternLower = mapping.pattern.toLowerCase();
         if (normalizedSearch.includes(patternLower.replace(/[^a-z0-9]/g, ''))) {
-          const score = mapping.confidence * Math.min(1 + Math.log10(mapping.use_count + 1) * 0.2, 1.5);
+          const score =
+            mapping.confidence * Math.min(1 + Math.log10(mapping.use_count + 1) * 0.2, 1.5);
           if (score > bestScore) {
             bestScore = score;
-            const cat = categories.find(c => c.id === mapping.category_id);
+            const cat = categories.find((c) => c.id === mapping.category_id);
             if (cat) {
-              bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: score };
+              bestMatch = {
+                category_id: cat.id,
+                category_name: cat.name,
+                category_color: cat.color,
+                confidence: score,
+              };
             }
           }
         }
@@ -1315,9 +1351,16 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
           if (normalizedSearch.includes(patternLower.replace(/[^a-z0-9]/g, ''))) {
             if (merchant.confidence > bestScore) {
               bestScore = merchant.confidence;
-              const cat = categories.find(c => c.name.toLowerCase() === merchant.category.toLowerCase());
+              const cat = categories.find(
+                (c) => c.name.toLowerCase() === merchant.category.toLowerCase()
+              );
               if (cat) {
-                bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: merchant.confidence };
+                bestMatch = {
+                  category_id: cat.id,
+                  category_name: cat.name,
+                  category_color: cat.color,
+                  confidence: merchant.confidence,
+                };
               }
             }
           }
@@ -1326,15 +1369,26 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
 
       // 3. Token overlap matching with category names
       if (!bestMatch || bestScore < 0.6) {
-        const searchTokens = normalizedSearch.split(/[0-9]+/).filter(t => t.length > 2);
+        const searchTokens = normalizedSearch.split(/[0-9]+/).filter((t) => t.length > 2);
 
         for (const cat of categories) {
-          const catTokens = cat.name.toLowerCase().replace(/[^a-z]/g, '').split('').filter(c => c.length > 2);
+          const catTokens = cat.name
+            .toLowerCase()
+            .replace(/[^a-z]/g, '')
+            .split('')
+            .filter((c) => c.length > 2);
 
           // Calculate token overlap
           let matches = 0;
           for (const token of searchTokens) {
-            if (cat.name.toLowerCase().includes(token) || token.length > 3 && cat.name.toLowerCase().split('').some(c => c.startsWith(token.slice(0, 3)))) {
+            if (
+              cat.name.toLowerCase().includes(token) ||
+              (token.length > 3 &&
+                cat.name
+                  .toLowerCase()
+                  .split('')
+                  .some((c) => c.startsWith(token.slice(0, 3))))
+            ) {
               matches++;
             }
           }
@@ -1343,7 +1397,12 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
             const score = (matches / Math.max(searchTokens.length, catTokens.length)) * 0.5;
             if (score > bestScore) {
               bestScore = score;
-              bestMatch = { category_id: cat.id, category_name: cat.name, category_color: cat.color, confidence: score };
+              bestMatch = {
+                category_id: cat.id,
+                category_name: cat.name,
+                category_color: cat.color,
+                confidence: score,
+              };
             }
           }
         }
@@ -1364,27 +1423,27 @@ app.post("/api/categories/auto-map", apiRateLimiter, (req, res) => {
     res.json({
       total: transactions.length,
       mapped: proposedMappings.length,
-      mappings: proposedMappings
+      mappings: proposedMappings,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Apply confirmed mappings to transactions
-app.post("/api/categories/apply-mappings", apiRateLimiter, (req, res) => {
+app.post('/api/categories/apply-mappings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { mappings } = req.body;
 
     if (!mappings || !Array.isArray(mappings)) {
-      return res.status(400).json({ error: "Invalid mappings array" });
+      return res.status(400).json({ error: 'Invalid mappings array' });
     }
 
     const updateTx = db.prepare(
-      'UPDATE transactions SET category_id = ?, updated_at = datetime(\'now\') WHERE id = ? AND profile_id = ?'
+      "UPDATE transactions SET category_id = ?, updated_at = datetime('now') WHERE id = ? AND profile_id = ?"
     );
     const insertMapping = db.prepare(`
       INSERT OR REPLACE INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
@@ -1416,7 +1475,7 @@ app.post("/api/categories/apply-mappings", apiRateLimiter, (req, res) => {
     res.json({ ok: true, updated });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1424,28 +1483,37 @@ app.post("/api/categories/apply-mappings", apiRateLimiter, (req, res) => {
 // ========================
 // TAGS (per-profile)
 // ========================
-app.get("/api/tags", apiRateLimiter, (req, res) => {
+app.get('/api/tags', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
-      .prepare("SELECT id, name, color, created_at FROM tags WHERE profile_id = ? ORDER BY name")
+      .prepare('SELECT id, name, color, created_at FROM tags WHERE profile_id = ? ORDER BY name')
       .all(pid);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Tag color palette for auto-assignment
 const TAG_COLORS = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
-  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
-  '#84cc16', '#6366f1', '#14b8a6', '#a855f7',
+  '#3b82f6',
+  '#ef4444',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#f97316',
+  '#84cc16',
+  '#6366f1',
+  '#14b8a6',
+  '#a855f7',
 ];
 
-app.post("/api/tags", apiRateLimiter, (req, res) => {
+app.post('/api/tags', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color } = req.body;
@@ -1455,16 +1523,16 @@ app.post("/api/tags", apiRateLimiter, (req, res) => {
     let tagColor = color;
     if (!tagColor) {
       // Cycle through palette based on existing tag count
-      const count = db.prepare("SELECT COUNT(*) as c FROM tags WHERE profile_id = ?").get(pid).c;
+      const count = db.prepare('SELECT COUNT(*) as c FROM tags WHERE profile_id = ?').get(pid).c;
       tagColor = TAG_COLORS[count % TAG_COLORS.length];
     }
     const info = db
-      .prepare("INSERT INTO tags (name, color, profile_id) VALUES (?, ?, ?)")
+      .prepare('INSERT INTO tags (name, color, profile_id) VALUES (?, ?, ?)')
       .run(name.trim(), tagColor, pid);
     res.json({ id: info.lastInsertRowid, name: name.trim(), color: tagColor });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     if (err.message.includes('UNIQUE constraint')) {
       return res.status(400).json({ error: 'Tag already exists' });
     }
@@ -1472,7 +1540,7 @@ app.post("/api/tags", apiRateLimiter, (req, res) => {
   }
 });
 
-app.put("/api/tags/:id", apiRateLimiter, (req, res) => {
+app.put('/api/tags/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color } = req.body;
@@ -1480,13 +1548,13 @@ app.put("/api/tags/:id", apiRateLimiter, (req, res) => {
       return res.status(400).json({ error: 'Tag name is required' });
     }
     const result = db
-      .prepare("UPDATE tags SET name = ?, color = ? WHERE id = ? AND profile_id = ?")
+      .prepare('UPDATE tags SET name = ?, color = ? WHERE id = ? AND profile_id = ?')
       .run(name.trim(), color || '#6b7280', req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     if (err.message.includes('UNIQUE constraint')) {
       return res.status(400).json({ error: 'Tag name already exists' });
     }
@@ -1494,23 +1562,23 @@ app.put("/api/tags/:id", apiRateLimiter, (req, res) => {
   }
 });
 
-app.delete("/api/tags/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/tags/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM tags WHERE id = ? AND profile_id = ?")
+      .prepare('DELETE FROM tags WHERE id = ? AND profile_id = ?')
       .run(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Add tags to a transaction (replaces existing)
-app.post("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
+app.post('/api/transactions/:id/tags', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { tagIds } = req.body;
@@ -1518,25 +1586,29 @@ app.post("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
       return res.status(400).json({ error: 'tagIds must be an array' });
     }
     // Verify transaction belongs to profile
-    const tx = db.prepare("SELECT id FROM transactions WHERE id = ? AND profile_id = ?").get(req.params.id, pid);
+    const tx = db
+      .prepare('SELECT id FROM transactions WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
     // Replace existing tags with new ones
-    db.prepare("DELETE FROM transaction_tags WHERE transaction_id = ?").run(req.params.id);
-    const insertStmt = db.prepare("INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)");
+    db.prepare('DELETE FROM transaction_tags WHERE transaction_id = ?').run(req.params.id);
+    const insertStmt = db.prepare(
+      'INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)'
+    );
     for (const tagId of tagIds) {
       insertStmt.run(req.params.id, tagId);
     }
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Update tags for a transaction (alias for POST — replaces existing)
-app.put("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
+app.put('/api/transactions/:id/tags', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { tagIds } = req.body;
@@ -1544,49 +1616,57 @@ app.put("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
       return res.status(400).json({ error: 'tagIds must be an array' });
     }
     // Verify transaction belongs to profile
-    const tx = db.prepare("SELECT id FROM transactions WHERE id = ? AND profile_id = ?").get(req.params.id, pid);
+    const tx = db
+      .prepare('SELECT id FROM transactions WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
-    db.prepare("DELETE FROM transaction_tags WHERE transaction_id = ?").run(req.params.id);
-    const insertStmt = db.prepare("INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)");
+    db.prepare('DELETE FROM transaction_tags WHERE transaction_id = ?').run(req.params.id);
+    const insertStmt = db.prepare(
+      'INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)'
+    );
     for (const tagId of tagIds) {
       insertStmt.run(req.params.id, tagId);
     }
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get tags for a transaction
-app.get("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
+app.get('/api/transactions/:id/tags', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     // Verify transaction belongs to profile
-    const tx = db.prepare("SELECT id FROM transactions WHERE id = ? AND profile_id = ?").get(req.params.id, pid);
+    const tx = db
+      .prepare('SELECT id FROM transactions WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
     const tags = db
-      .prepare(`
+      .prepare(
+        `
         SELECT t.id, t.name, t.color
         FROM tags t
         JOIN transaction_tags tt ON t.id = tt.tag_id
         WHERE tt.transaction_id = ? AND t.profile_id = ?
         ORDER BY t.name
-      `)
+      `
+      )
       .all(req.params.id, pid);
     res.json(tags);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Search transactions by tag
-app.get("/api/transactions/by-tag/:tagId", apiRateLimiter, (req, res) => {
+app.get('/api/transactions/by-tag/:tagId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { startDate, endDate, category_ids, type, limit, offset } = req.query;
@@ -1600,18 +1680,30 @@ app.get("/api/transactions/by-tag/:tagId", apiRateLimiter, (req, res) => {
     `;
     const params = [pid, req.params.tagId];
 
-    if (startDate) { sql += " AND t.date >= ?"; params.push(startDate); }
-    if (endDate) { sql += " AND t.date <= ?"; params.push(endDate); }
+    if (startDate) {
+      sql += ' AND t.date >= ?';
+      params.push(startDate);
+    }
+    if (endDate) {
+      sql += ' AND t.date <= ?';
+      params.push(endDate);
+    }
     if (category_ids) {
-      const ids = category_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const ids = category_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (ids.length > 0) {
         sql += ` AND t.category_id IN (${ids.map(() => '?').join(',')})`;
         params.push(...ids);
       }
     }
-    if (type) { sql += " AND t.type = ?"; params.push(type); }
+    if (type) {
+      sql += ' AND t.type = ?';
+      params.push(type);
+    }
 
-    sql += " ORDER BY t.date DESC, t.id DESC";
+    sql += ' ORDER BY t.date DESC, t.id DESC';
     if (limit) sql += ` LIMIT ${parseInt(limit)}`;
     if (offset) sql += ` OFFSET ${parseInt(offset)}`;
 
@@ -1619,7 +1711,7 @@ app.get("/api/transactions/by-tag/:tagId", apiRateLimiter, (req, res) => {
     res.json({ rows, total: rows.length });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1627,7 +1719,7 @@ app.get("/api/transactions/by-tag/:tagId", apiRateLimiter, (req, res) => {
 // ========================
 // TRANSACTIONS (per-profile, multi-profile for combined view)
 // ========================
-app.get("/api/transactions", apiRateLimiter, (req, res) => {
+app.get('/api/transactions', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -1653,7 +1745,10 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     const params = [...pids];
     let tagFilterApplied = false;
     if (tag_ids) {
-      const tids = tag_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const tids = tag_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (tids.length > 0) {
         const tagPlaceholders = tids.map(() => '?').join(',');
         sql += ` AND t.id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id IN (${tagPlaceholders}))`;
@@ -1662,15 +1757,18 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
       }
     }
     if (startDate) {
-      sql += " AND t.date >= ?";
+      sql += ' AND t.date >= ?';
       params.push(startDate);
     }
     if (endDate) {
-      sql += " AND t.date <= ?";
+      sql += ' AND t.date <= ?';
       params.push(endDate);
     }
     if (category_ids) {
-      const ids = category_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const ids = category_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (ids.length > 0) {
         const placeholders = ids.map(() => '?').join(',');
         sql += ` AND t.category_id IN (${placeholders})`;
@@ -1678,23 +1776,35 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
       }
     }
     if (type) {
-      sql += " AND t.type = ?";
+      sql += ' AND t.type = ?';
       params.push(type);
     }
     if (search) {
       sql +=
-        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+        ' AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)';
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (reconciled !== undefined) {
       if (reconciled === '0' || reconciled === 'false') {
-        sql += " AND (t.reconciled = 0 OR t.reconciled IS NULL)";
+        sql += ' AND (t.reconciled = 0 OR t.reconciled IS NULL)';
       } else if (reconciled === '1' || reconciled === 'true') {
-        sql += " AND t.reconciled = 1";
+        sql += ' AND t.reconciled = 1';
       }
     }
     if (sort) {
-      const sortCol = ['date', 'amount', 'description', 'category_name', 'type', 'beneficiary', 'payor'].includes(sort) ? (sort === 'category_name' ? 'c.name' : `t.${sort}`) : 't.date';
+      const sortCol = [
+        'date',
+        'amount',
+        'description',
+        'category_name',
+        'type',
+        'beneficiary',
+        'payor',
+      ].includes(sort)
+        ? sort === 'category_name'
+          ? 'c.name'
+          : `t.${sort}`
+        : 't.date';
       const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
       sql += ` ORDER BY ${sortCol} ${sortOrder}, t.id ${sortOrder}`;
     } else {
@@ -1720,15 +1830,18 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     let countSql = `SELECT COUNT(*) as c FROM transactions t WHERE t.profile_id IN (${inClause})`;
     const cparams = [...pids];
     if (startDate) {
-      countSql += " AND t.date >= ?";
+      countSql += ' AND t.date >= ?';
       cparams.push(startDate);
     }
     if (endDate) {
-      countSql += " AND t.date <= ?";
+      countSql += ' AND t.date <= ?';
       cparams.push(endDate);
     }
     if (category_ids) {
-      const ids = category_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const ids = category_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (ids.length > 0) {
         const placeholders = ids.map(() => '?').join(',');
         countSql += ` AND t.category_id IN (${placeholders})`;
@@ -1736,23 +1849,26 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
       }
     }
     if (type) {
-      countSql += " AND t.type = ?";
+      countSql += ' AND t.type = ?';
       cparams.push(type);
     }
     if (search) {
       countSql +=
-        " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+        ' AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)';
       cparams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (reconciled !== undefined) {
       if (reconciled === '0' || reconciled === 'false') {
-        countSql += " AND (t.reconciled = 0 OR t.reconciled IS NULL)";
+        countSql += ' AND (t.reconciled = 0 OR t.reconciled IS NULL)';
       } else if (reconciled === '1' || reconciled === 'true') {
-        countSql += " AND t.reconciled = 1";
+        countSql += ' AND t.reconciled = 1';
       }
     }
     if (tag_ids) {
-      const tids = tag_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const tids = tag_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (tids.length > 0) {
         const tagPlaceholders = tids.map(() => '?').join(',');
         countSql += ` AND t.id IN (SELECT transaction_id FROM transaction_tags WHERE tag_id IN (${tagPlaceholders}))`;
@@ -1763,12 +1879,12 @@ app.get("/api/transactions", apiRateLimiter, (req, res) => {
     res.json({ rows, total });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
+app.get('/api/transactions/summary', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -1787,15 +1903,18 @@ app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
     const params = [...pids];
 
     if (startDate) {
-      sql += " AND t.date >= ?";
+      sql += ' AND t.date >= ?';
       params.push(startDate);
     }
     if (endDate) {
-      sql += " AND t.date <= ?";
+      sql += ' AND t.date <= ?';
       params.push(endDate);
     }
     if (category_ids) {
-      const ids = category_ids.split(',').map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      const ids = category_ids
+        .split(',')
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (ids.length > 0) {
         const placeholders = ids.map(() => '?').join(',');
         sql += ` AND t.category_id IN (${placeholders})`;
@@ -1803,11 +1922,12 @@ app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
       }
     }
     if (type) {
-      sql += " AND t.type = ?";
+      sql += ' AND t.type = ?';
       params.push(type);
     }
     if (search) {
-      sql += " AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)";
+      sql +=
+        ' AND (t.description LIKE ? OR t.beneficiary LIKE ? OR t.payor LIKE ? OR t.notes LIKE ?)';
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
@@ -1816,16 +1936,16 @@ app.get("/api/transactions/summary", apiRateLimiter, (req, res) => {
       total_amount: result.total_amount || 0,
       total_expense: result.total_expense || 0,
       total_income: result.total_income || 0,
-      count: result.count || 0
+      count: result.count || 0,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/transactions", apiRateLimiter, (req, res) => {
+app.post('/api/transactions', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const {
@@ -1860,55 +1980,63 @@ app.post("/api/transactions", apiRateLimiter, (req, res) => {
       INSERT INTO transactions (description, amount, date, beneficiary, payor, category_id,
         currency, amount_local, means_of_payment, exchange_rate, type, notes, profile_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
+    `
       )
       .run(
         description,
         amount,
         date,
-        beneficiary || "",
-        payor || "",
+        beneficiary || '',
+        payor || '',
         category_id || null,
-        currency || "USD",
+        currency || 'USD',
         amount_local ?? amount,
-        means_of_payment || "",
+        means_of_payment || '',
         exchange_rate || 1.0,
-        type || "expense",
-        notes || "",
-        pid,
+        type || 'expense',
+        notes || '',
+        pid
       );
     res.json({ id: info.lastInsertRowid, ...req.body, profile_id: pid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET single transaction by ID
-app.get("/api/transactions/:id", apiRateLimiter, (req, res) => {
+app.get('/api/transactions/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { id } = req.params;
 
-    const tx = db.prepare(`
+    const tx = db
+      .prepare(
+        `
       SELECT t.*, c.name as category_name, c.color as category_color
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.id = ? AND t.profile_id = ?
-    `).get(id, pid);
+    `
+      )
+      .get(id, pid);
 
     if (!tx) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    tx.tags = db.prepare(`
+    tx.tags = db
+      .prepare(
+        `
       SELECT tg.id, tg.name, tg.color
       FROM tags tg
       JOIN transaction_tags tt ON tg.id = tt.tag_id
       WHERE tt.transaction_id = ?
       ORDER BY tg.name
-    `).all(id);
+    `
+      )
+      .all(id);
 
     // Transform response: map category_name to category, category_color to categoryColor
     const response = toCamelCase(tx);
@@ -1921,37 +2049,39 @@ app.get("/api/transactions/:id", apiRateLimiter, (req, res) => {
     res.json(response);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Bulk update: PUT /api/transactions/bulk
-app.put("/api/transactions/bulk", apiRateLimiter, (req, res) => {
+app.put('/api/transactions/bulk', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const { ids, action, data } = req.body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: "No transaction IDs provided" });
+      return res.status(400).json({ error: 'No transaction IDs provided' });
     }
     if (ids.length > 1000) {
-      return res.status(400).json({ error: "Cannot update more than 1000 transactions at once" });
+      return res.status(400).json({ error: 'Cannot update more than 1000 transactions at once' });
     }
 
     const placeholders = ids.map(() => '?').join(',');
     const authParams = [...pids, ...ids];
 
     if (action === 'delete') {
-      const stmt = db.prepare(`DELETE FROM transactions WHERE profile_id IN (${inClause}) AND id IN (${placeholders})`);
+      const stmt = db.prepare(
+        `DELETE FROM transactions WHERE profile_id IN (${inClause}) AND id IN (${placeholders})`
+      );
       const result = stmt.run(...authParams);
       return res.json({ ok: true, deleted: result.changes });
     }
 
     if (action === 'update') {
       if (!data || typeof data !== 'object') {
-        return res.status(400).json({ error: "No update data provided" });
+        return res.status(400).json({ error: 'No update data provided' });
       }
 
       const allowedFields = ['category_id', 'type', 'description', 'beneficiary', 'payor', 'notes'];
@@ -1962,10 +2092,16 @@ app.put("/api/transactions/bulk", apiRateLimiter, (req, res) => {
         if (data.hasOwnProperty(field)) {
           if (field === 'category_id') {
             updates.push('category_id = ?');
-            updateParams.push(data.category_id === null || data.category_id === '' ? null : parseInt(data.category_id));
+            updateParams.push(
+              data.category_id === null || data.category_id === ''
+                ? null
+                : parseInt(data.category_id)
+            );
           } else if (field === 'type') {
             if (!['income', 'expense', 'transfer'].includes(data.type)) {
-              return res.status(400).json({ error: "Invalid type. Must be income, expense, or transfer" });
+              return res
+                .status(400)
+                .json({ error: 'Invalid type. Must be income, expense, or transfer' });
             }
             updates.push('type = ?');
             updateParams.push(data.type);
@@ -1977,13 +2113,15 @@ app.put("/api/transactions/bulk", apiRateLimiter, (req, res) => {
       }
 
       if (updates.length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
+        return res.status(400).json({ error: 'No valid fields to update' });
       }
 
       updates.push("updated_at = datetime('now')");
       updateParams.push(...pids, ...ids);
 
-      const stmt = db.prepare(`UPDATE transactions SET ${updates.join(', ')} WHERE profile_id IN (${inClause}) AND id IN (${placeholders})`);
+      const stmt = db.prepare(
+        `UPDATE transactions SET ${updates.join(', ')} WHERE profile_id IN (${inClause}) AND id IN (${placeholders})`
+      );
       const result = stmt.run(...updateParams);
       return res.json({ ok: true, updated: result.changes });
     }
@@ -1991,12 +2129,12 @@ app.put("/api/transactions/bulk", apiRateLimiter, (req, res) => {
     return res.status(400).json({ error: "Invalid action. Must be 'delete' or 'update'" });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
+app.put('/api/transactions/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     let hasUpdate = false;
@@ -2036,12 +2174,12 @@ app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
     }
     if (beneficiary !== undefined) {
       updates.push('beneficiary=?');
-      params.push(beneficiary || "");
+      params.push(beneficiary || '');
       hasUpdate = true;
     }
     if (payor !== undefined) {
       updates.push('payor=?');
-      params.push(payor || "");
+      params.push(payor || '');
       hasUpdate = true;
     }
     if (category_id !== undefined) {
@@ -2061,7 +2199,7 @@ app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
     }
     if (means_of_payment !== undefined) {
       updates.push('means_of_payment=?');
-      params.push(means_of_payment || "");
+      params.push(means_of_payment || '');
       hasUpdate = true;
     }
     if (exchange_rate !== undefined) {
@@ -2076,12 +2214,12 @@ app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
     }
     if (notes !== undefined) {
       updates.push('notes=?');
-      params.push(notes || "");
+      params.push(notes || '');
       hasUpdate = true;
     }
     if (reconciled !== undefined) {
       updates.push('reconciled=?');
-      updates.push('reconciled_at=CASE WHEN ?=1 THEN datetime(\'now\') ELSE reconciled_at END');
+      updates.push("reconciled_at=CASE WHEN ?=1 THEN datetime('now') ELSE reconciled_at END");
       params.push(reconciled ? 1 : 0);
       params.push(reconciled ? 1 : 0);
       hasUpdate = true;
@@ -2091,49 +2229,45 @@ app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
       return res.status(400).json({ error: 'No valid fields provided for update' });
     }
 
-    updates.push('updated_at=datetime(\'now\')');
+    updates.push("updated_at=datetime('now')");
     params.push(req.params.id);
     params.push(pid);
 
     const result = db
-      .prepare(
-        `UPDATE transactions SET ${updates.join(', ')} WHERE id=? AND profile_id=?`
-      )
+      .prepare(`UPDATE transactions SET ${updates.join(', ')} WHERE id=? AND profile_id=?`)
       .run(...params);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/transactions/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/transactions/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM transactions WHERE id=? AND profile_id=?")
+      .prepare('DELETE FROM transactions WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/transactions", apiRateLimiter, (req, res) => {
+app.delete('/api/transactions', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare("DELETE FROM transactions WHERE profile_id=?").run(pid);
-    res.json({ ok: true, message: "All transactions deleted" });
+    db.prepare('DELETE FROM transactions WHERE profile_id=?').run(pid);
+    res.json({ ok: true, message: 'All transactions deleted' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2142,83 +2276,94 @@ app.delete("/api/transactions", apiRateLimiter, (req, res) => {
 // RECONCILIATION (per-profile)
 // ========================
 // Toggle reconciled status for a single transaction
-app.patch("/api/transactions/:id/reconcile", apiRateLimiter, (req, res) => {
+app.patch('/api/transactions/:id/reconcile', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const existing = db
-      .prepare("SELECT id, reconciled FROM transactions WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id, reconciled FROM transactions WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!existing) return res.status(404).json({ error: "Transaction not found" });
+    if (!existing) return res.status(404).json({ error: 'Transaction not found' });
 
     const newStatus = existing.reconciled ? 0 : 1;
     db.prepare(
       "UPDATE transactions SET reconciled = ?, reconciled_at = CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END WHERE id = ? AND profile_id = ?"
     ).run(newStatus, newStatus, req.params.id, pid);
-    res.json({ id: parseInt(req.params.id), reconciled: newStatus, reconciled_at: newStatus ? new Date().toISOString() : null });
+    res.json({
+      id: parseInt(req.params.id),
+      reconciled: newStatus,
+      reconciled_at: newStatus ? new Date().toISOString() : null,
+    });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Bulk reconcile transactions by date range
-app.post("/api/transactions/reconcile/bulk", apiRateLimiter, (req, res) => {
+app.post('/api/transactions/reconcile/bulk', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { startDate, endDate } = req.body;
-    if (!startDate || !endDate) return res.status(400).json({ error: "startDate and endDate are required" });
+    if (!startDate || !endDate)
+      return res.status(400).json({ error: 'startDate and endDate are required' });
 
-    const result = db.prepare(
-      `UPDATE transactions SET reconciled = 1, reconciled_at = datetime('now')
+    const result = db
+      .prepare(
+        `UPDATE transactions SET reconciled = 1, reconciled_at = datetime('now')
        WHERE profile_id = ? AND date >= ? AND date <= ? AND reconciled = 0`
-    ).run(pid, startDate, endDate);
+      )
+      .run(pid, startDate, endDate);
     res.json({ message: `${result.changes} transactions reconciled`, count: result.changes });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get reconciliation status summary
-app.get("/api/transactions/reconcile/summary", apiRateLimiter, (req, res) => {
+app.get('/api/transactions/reconcile/summary', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
-    const summary = db.prepare(
-      `SELECT
+    const summary = db
+      .prepare(
+        `SELECT
         COUNT(*) as total,
         SUM(CASE WHEN reconciled = 1 THEN 1 ELSE 0 END) as reconciled_count,
         SUM(CASE WHEN reconciled = 0 OR reconciled IS NULL THEN 1 ELSE 0 END) as unreconciled_count,
         SUM(CASE WHEN reconciled = 0 OR reconciled IS NULL THEN amount ELSE 0 END) as unreconciled_total
        FROM transactions WHERE profile_id IN (${inClause})`
-    ).get(...pids);
+      )
+      .get(...pids);
     res.json(summary);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Batch mark transactions as reconciled by ID list
-app.put("/api/transactions/reconcile-batch", apiRateLimiter, (req, res) => {
+app.put('/api/transactions/reconcile-batch', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { transaction_ids } = req.body;
     if (!Array.isArray(transaction_ids) || transaction_ids.length === 0) {
-      return res.status(400).json({ error: "transaction_ids array is required" });
+      return res.status(400).json({ error: 'transaction_ids array is required' });
     }
     const placeholders = transaction_ids.map(() => '?').join(',');
-    const result = db.prepare(
-      `UPDATE transactions SET reconciled = 1, reconciled_at = datetime('now')
+    const result = db
+      .prepare(
+        `UPDATE transactions SET reconciled = 1, reconciled_at = datetime('now')
        WHERE id IN (${placeholders}) AND profile_id = ?`
-    ).run(...transaction_ids, pid);
+      )
+      .run(...transaction_ids, pid);
     res.json({ message: `${result.changes} transactions reconciled`, updated: result.changes });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2228,17 +2373,17 @@ app.put("/api/transactions/reconcile-batch", apiRateLimiter, (req, res) => {
 // ========================
 
 // Upload receipt for a transaction
-app.post("/api/receipts/upload", apiRateLimiter, uploadReceipt.single('receipt'), (req, res) => {
+app.post('/api/receipts/upload', apiRateLimiter, uploadReceipt.single('receipt'), (req, res) => {
   try {
     const pid = getProfileId(req);
 
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const { transaction_id } = req.body;
     if (!transaction_id) {
-      return res.status(400).json({ error: "Transaction ID is required" });
+      return res.status(400).json({ error: 'Transaction ID is required' });
     }
 
     const filename = `${Date.now()}-${req.file.originalname}`;
@@ -2287,20 +2432,20 @@ app.post("/api/receipts/upload", apiRateLimiter, uploadReceipt.single('receipt')
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     if (err.code === 'ENOENT' || err.code === 'EACCES') {
-      res.status(500).json({ error: "Upload directory not accessible" });
+      res.status(500).json({ error: 'Upload directory not accessible' });
     } else {
-      res.status(500).json({ error: "Upload failed. Please try again." });
+      res.status(500).json({ error: 'Upload failed. Please try again.' });
     }
   }
 });
 
 // Error handler middleware for receipt upload
-app.use("/api/receipts/upload", (err, req, res, next) => {
+app.use('/api/receipts/upload', (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
+      return res.status(400).json({ error: 'File too large. Maximum size is 10MB.' });
     }
     return res.status(400).json({ error: err.message });
   }
@@ -2311,54 +2456,52 @@ app.use("/api/receipts/upload", (err, req, res, next) => {
 });
 
 // Get receipt by ID
-app.get("/api/receipts/:id", apiRateLimiter, (req, res) => {
+app.get('/api/receipts/:id', apiRateLimiter, (req, res) => {
   try {
     const { id } = req.params;
-    const receipt = db.prepare(
-      `SELECT * FROM receipts WHERE id = ?`
-    ).get(id);
+    const receipt = db.prepare(`SELECT * FROM receipts WHERE id = ?`).get(id);
 
     if (!receipt) {
-      return res.status(404).json({ error: "Receipt not found" });
+      return res.status(404).json({ error: 'Receipt not found' });
     }
 
     res.json(receipt);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get receipt by transaction ID
-app.get("/api/receipts/transaction/:transactionId", apiRateLimiter, (req, res) => {
+app.get('/api/receipts/transaction/:transactionId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { transactionId } = req.params;
-    const receipt = db.prepare(
-      `SELECT * FROM receipts WHERE transaction_id = ? AND profile_id = ?`
-    ).get(transactionId, pid);
+    const receipt = db
+      .prepare(`SELECT * FROM receipts WHERE transaction_id = ? AND profile_id = ?`)
+      .get(transactionId, pid);
 
     if (!receipt) {
-      return res.status(404).json({ error: "Receipt not found" });
+      return res.status(404).json({ error: 'Receipt not found' });
     }
 
     res.json(receipt);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get receipt file data
-app.get("/api/receipts/file/:filename", apiRateLimiter, (req, res) => {
+app.get('/api/receipts/file/:filename', apiRateLimiter, (req, res) => {
   try {
     const { filename } = req.params;
     const storagePath = path.join(__dirname, 'uploads', 'receipts', filename);
 
     if (!fs.existsSync(storagePath)) {
-      return res.status(404).json({ error: "File not found" });
+      return res.status(404).json({ error: 'File not found' });
     }
 
     const ext = path.extname(filename).toLowerCase();
@@ -2379,21 +2522,23 @@ app.get("/api/receipts/file/:filename", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Delete receipt
-app.delete("/api/receipts/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/receipts/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { id } = req.params;
 
-    const receipt = db.prepare("SELECT * FROM receipts WHERE id = ? AND profile_id = ?").get(id, pid);
+    const receipt = db
+      .prepare('SELECT * FROM receipts WHERE id = ? AND profile_id = ?')
+      .get(id, pid);
 
     if (!receipt) {
-      return res.status(404).json({ error: "Receipt not found" });
+      return res.status(404).json({ error: 'Receipt not found' });
     }
 
     // Delete the file if it exists
@@ -2406,12 +2551,12 @@ app.delete("/api/receipts/:id", apiRateLimiter, (req, res) => {
     }
 
     // Delete from database
-    db.prepare("DELETE FROM receipts WHERE id = ?").run(id);
+    db.prepare('DELETE FROM receipts WHERE id = ?').run(id);
 
-    res.json({ message: "Receipt deleted successfully" });
+    res.json({ message: 'Receipt deleted successfully' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2419,7 +2564,7 @@ app.delete("/api/receipts/:id", apiRateLimiter, (req, res) => {
 // ========================
 // BUDGETS (per-profile, multi-profile for combined view)
 // ========================
-app.get("/api/budgets", apiRateLimiter, (req, res) => {
+app.get('/api/budgets', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -2431,49 +2576,49 @@ app.get("/api/budgets", apiRateLimiter, (req, res) => {
       JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
       WHERE b.profile_id IN (${inClause})
       ORDER BY b.id DESC
-    `,
+    `
       )
       .all(...pids);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/budgets", apiRateLimiter, (req, res) => {
+app.post('/api/budgets', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
     const info = db
       .prepare(
-        "INSERT INTO budgets (category_id, amount, period, start_date, end_date, rollover_enabled, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        'INSERT INTO budgets (category_id, amount, period, start_date, end_date, rollover_enabled, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
       )
       .run(
         category_id,
         amount,
-        period || "monthly",
+        period || 'monthly',
         start_date,
         end_date || null,
         rollover_enabled ? 1 : 0,
-        pid,
+        pid
       );
     res.json({ id: info.lastInsertRowid, ...req.body, profile_id: pid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
+app.put('/api/budgets/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
     const result = db
       .prepare(
-        "UPDATE budgets SET category_id=?, amount=?, period=?, start_date=?, end_date=?, rollover_enabled=? WHERE id=? AND profile_id=?",
+        'UPDATE budgets SET category_id=?, amount=?, period=?, start_date=?, end_date=?, rollover_enabled=? WHERE id=? AND profile_id=?'
       )
       .run(
         category_id,
@@ -2483,36 +2628,34 @@ app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
         end_date || null,
         rollover_enabled ? 1 : 0,
         req.params.id,
-        pid,
+        pid
       );
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/budgets/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/budgets/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM budgets WHERE id=? AND profile_id=?")
+      .prepare('DELETE FROM budgets WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Manual rollover adjustment
-app.put("/api/budgets/:id/rollover", apiRateLimiter, (req, res) => {
+app.put('/api/budgets/:id/rollover', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { rollover_amount, rollover_used, rollover_enabled } = req.body;
@@ -2522,55 +2665,55 @@ app.put("/api/budgets/:id/rollover", apiRateLimiter, (req, res) => {
     const values = [];
 
     if (rollover_amount !== undefined) {
-      updates.push("rollover_amount = ?");
+      updates.push('rollover_amount = ?');
       values.push(rollover_amount);
     }
     if (rollover_used !== undefined) {
-      updates.push("rollover_used = ?");
+      updates.push('rollover_used = ?');
       values.push(rollover_used);
     }
     if (rollover_enabled !== undefined) {
-      updates.push("rollover_enabled = ?");
+      updates.push('rollover_enabled = ?');
       values.push(rollover_enabled ? 1 : 0);
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ error: "No rollover fields provided" });
+      return res.status(400).json({ error: 'No rollover fields provided' });
     }
 
     values.push(req.params.id, pid);
 
     const result = db
-      .prepare(`UPDATE budgets SET ${updates.join(", ")} WHERE id = ? AND profile_id = ?`)
+      .prepare(`UPDATE budgets SET ${updates.join(', ')} WHERE id = ? AND profile_id = ?`)
       .run(...values);
 
     if (result.changes === 0) {
-      return res.status(404).json({ error: "Budget not found" });
+      return res.status(404).json({ error: 'Budget not found' });
     }
 
     // Return updated budget
     const budget = db
-      .prepare("SELECT * FROM budgets WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT * FROM budgets WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
 
     res.json({ ok: true, budget });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/summary', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year, month, apply_rollover } = req.query;
     const y = year || new Date().getFullYear();
     const m = month || new Date().getMonth() + 1;
-    const startDate = `${y}-${String(m).padStart(2, "0")}-01`;
+    const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const nextM = m === 12 ? 1 : m + 1;
     const nextY = m === 12 ? y + 1 : y;
-    const endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
+    const endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
 
     const budgets = db
       .prepare(
@@ -2579,7 +2722,7 @@ app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
       FROM budgets b
       JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
       WHERE b.profile_id = ? AND (b.end_date IS NULL OR b.end_date >= ?)
-    `,
+    `
       )
       .all(pid, startDate);
 
@@ -2591,7 +2734,7 @@ app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
       FROM transactions
       WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
       GROUP BY category_id
-    `,
+    `
       )
       .all(pid, startDate, endDate);
 
@@ -2601,26 +2744,30 @@ app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
     // Calculate automatic rollover from previous month
     let prevY = m === 1 ? y - 1 : y;
     let prevM = m === 1 ? 12 : m - 1;
-    const prevStart = `${prevY}-${String(prevM).padStart(2, "0")}-01`;
-    const prevEnd = `${y}-${String(m).padStart(2, "0")}-01`;
+    const prevStart = `${prevY}-${String(prevM).padStart(2, '0')}-01`;
+    const prevEnd = `${y}-${String(m).padStart(2, '0')}-01`;
 
     // Get previous month's budgets with their spent amounts
     const prevBudgets = db
-      .prepare(`
+      .prepare(
+        `
         SELECT b.category_id, b.amount as budget_amount, b.rollover_enabled, b.rollover_amount, b.rollover_used
         FROM budgets b
         WHERE b.profile_id = ? AND b.start_date >= ? AND b.start_date < ?
-      `)
+      `
+      )
       .all(pid, prevStart, prevEnd);
 
     // Get previous month's spent
     const prevSpent = db
-      .prepare(`
+      .prepare(
+        `
         SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
         FROM transactions
         WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
         GROUP BY category_id
-      `)
+      `
+      )
       .all(pid, prevStart, prevEnd);
 
     const prevSpentMap = {};
@@ -2661,23 +2808,20 @@ app.get("/api/budgets/summary", apiRateLimiter, (req, res) => {
         effective_remaining,
         rollover_contribution: Math.max(0, rollover_contribution),
         auto_rollover,
-        percentage:
-          b.amount > 0
-            ? Math.min(100, (spentAmt / b.amount) * 100)
-            : 0,
+        percentage: b.amount > 0 ? Math.min(100, (spentAmt / b.amount) * 100) : 0,
       };
     });
 
     res.json(summary);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Duplicate budgets from previous month
-app.post("/api/budgets/duplicate-last", apiRateLimiter, (req, res) => {
+app.post('/api/budgets/duplicate-last', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year, month } = req.body;
@@ -2685,18 +2829,23 @@ app.post("/api/budgets/duplicate-last", apiRateLimiter, (req, res) => {
     // Calculate previous month
     let prevYear = year || new Date().getFullYear();
     let prevMonth = (month || new Date().getMonth() + 1) - 1;
-    if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear--;
+    }
 
-    const prevStart = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+    const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
 
     // Get previous month's budgets
     const prevBudgets = db
-      .prepare(`
+      .prepare(
+        `
         SELECT category_id, amount, period
         FROM budgets
         WHERE profile_id = ? AND start_date >= ? AND start_date < ?
-      `)
-      .all(pid, prevStart, `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-01`);
+      `
+      )
+      .all(pid, prevStart, `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`);
 
     if (prevBudgets.length === 0) {
       return res.json({ ok: false, message: 'No budgets found for previous month' });
@@ -2705,14 +2854,15 @@ app.post("/api/budgets/duplicate-last", apiRateLimiter, (req, res) => {
     // Create current month start date
     const currYear = year || new Date().getFullYear();
     const currMonth = month || new Date().getMonth() + 1;
-    const currStart = `${currYear}-${String(currMonth).padStart(2, "0")}-01`;
+    const currStart = `${currYear}-${String(currMonth).padStart(2, '0')}-01`;
 
     // Clear existing budgets for current month and insert from previous
-    db.prepare("DELETE FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ?")
-      .run(pid, currStart, `${currYear}-${String(currMonth + 1).padStart(2, "0")}-01`);
+    db.prepare(
+      'DELETE FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ?'
+    ).run(pid, currStart, `${currYear}-${String(currMonth + 1).padStart(2, '0')}-01`);
 
     const insert = db.prepare(
-      "INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)"
+      'INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)'
     );
 
     for (const b of prevBudgets) {
@@ -2722,13 +2872,13 @@ app.post("/api/budgets/duplicate-last", apiRateLimiter, (req, res) => {
     res.json({ ok: true, count: prevBudgets.length });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Set budgets from last month's actual expenses
-app.post("/api/budgets/from-expenses", apiRateLimiter, (req, res) => {
+app.post('/api/budgets/from-expenses', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { year, month } = req.body;
@@ -2736,20 +2886,25 @@ app.post("/api/budgets/from-expenses", apiRateLimiter, (req, res) => {
     // Calculate previous month
     let prevYear = year || new Date().getFullYear();
     let prevMonth = (month || new Date().getMonth() + 1) - 1;
-    if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear--;
+    }
 
-    const prevStart = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
-    const prevEnd = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-01`;
+    const prevStart = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+    const prevEnd = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
 
     // Get actual expenses by category
     const expenses = db
-      .prepare(`
+      .prepare(
+        `
         SELECT t.category_id, c.name, SUM(COALESCE(t.amount_local, t.amount)) as total
         FROM transactions t
         JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
         WHERE t.profile_id = ? AND t.date >= ? AND t.date < ? AND t.type = 'expense' AND t.category_id IS NOT NULL
         GROUP BY t.category_id
-      `)
+      `
+      )
       .all(pid, prevStart, prevEnd);
 
     if (expenses.length === 0) {
@@ -2759,11 +2914,12 @@ app.post("/api/budgets/from-expenses", apiRateLimiter, (req, res) => {
     // Create current month start date
     const currYear = year || new Date().getFullYear();
     const currMonth = month || new Date().getMonth() + 1;
-    const currStart = `${currYear}-${String(currMonth).padStart(2, "0")}-01`;
+    const currStart = `${currYear}-${String(currMonth).padStart(2, '0')}-01`;
 
     // Clear existing budgets for current month
-    db.prepare("DELETE FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ?")
-      .run(pid, currStart, `${currYear}-${String(currMonth + 1).padStart(2, "0")}-01`);
+    db.prepare(
+      'DELETE FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ?'
+    ).run(pid, currStart, `${currYear}-${String(currMonth + 1).padStart(2, '0')}-01`);
 
     const insert = db.prepare(
       "INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, 'monthly', ?, ?)"
@@ -2776,19 +2932,20 @@ app.post("/api/budgets/from-expenses", apiRateLimiter, (req, res) => {
     res.json({ ok: true, count: expenses.length });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get budget history for a category
-app.get("/api/budgets/history", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, months = 6 } = req.query;
 
     const history = db
-      .prepare(`
+      .prepare(
+        `
         SELECT b.start_date as month, b.amount as budget_amount,
                COALESCE(SUM(COALESCE(t.amount_local, t.amount)), 0) as spent
         FROM budgets b
@@ -2801,26 +2958,29 @@ app.get("/api/budgets/history", apiRateLimiter, (req, res) => {
         GROUP BY b.start_date
         ORDER BY b.start_date DESC
         LIMIT ?
-      `)
+      `
+      )
       .all(pid, parseInt(category_id), parseInt(months));
 
     res.json(history);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get budget improvements (month-over-month adherence)
-app.get("/api/budgets/improvements", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/improvements', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { months = 6 } = req.query;
     const numMonths = parseInt(months);
 
     // Get monthly aggregated adherence
-    const history = db.prepare(`
+    const history = db
+      .prepare(
+        `
       WITH monthly_data AS (
         SELECT
           strftime('%Y-%m', b.start_date) as month,
@@ -2856,19 +3016,25 @@ app.get("/api/budgets/improvements", apiRateLimiter, (req, res) => {
       FROM aggregated
       ORDER BY month DESC
       LIMIT ?
-    `).all(pid, numMonths);
+    `
+      )
+      .all(pid, numMonths);
 
     // Get category breakdown for latest month (for donut chart)
     let categoryBudgets = [];
     if (history.length > 0) {
       const latestMonth = history[0].month;
-      const catData = db.prepare(`
+      const catData = db
+        .prepare(
+          `
         SELECT c.name, c.color, b.amount as budget_amount
         FROM budgets b
         JOIN categories c ON c.id = b.category_id
         WHERE b.profile_id = ? AND strftime('%Y-%m', b.start_date) = ?
         ORDER BY b.amount DESC
-      `).all(pid, latestMonth);
+      `
+        )
+        .all(pid, latestMonth);
       categoryBudgets = catData;
     }
 
@@ -2880,7 +3046,7 @@ app.get("/api/budgets/improvements", apiRateLimiter, (req, res) => {
     res.json(history);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2888,7 +3054,7 @@ app.get("/api/budgets/improvements", apiRateLimiter, (req, res) => {
 // ========================
 // BUDGET ALERTS
 // ========================
-app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/alerts', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { threshold = 80, year, month } = req.query;
@@ -2899,16 +3065,16 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
     if (year && month) {
       const y = parseInt(year);
       const m = parseInt(month);
-      startDate = `${y}-${String(m).padStart(2, "0")}-01`;
+      startDate = `${y}-${String(m).padStart(2, '0')}-01`;
       const nextM = m === 12 ? 1 : m + 1;
       const nextY = m === 12 ? y + 1 : y;
-      endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
+      endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
     } else {
       const now = new Date();
-      startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const nextM = now.getMonth() === 11 ? 1 : now.getMonth() + 2;
       const nextY = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
-      endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
+      endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
     }
 
     const budgets = db
@@ -2916,7 +3082,7 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
         `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon
          FROM budgets b
          JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
-         WHERE b.profile_id = ? AND (b.end_date IS NULL OR b.end_date >= ?)`,
+         WHERE b.profile_id = ? AND (b.end_date IS NULL OR b.end_date >= ?)`
       )
       .all(pid, startDate);
 
@@ -2925,7 +3091,7 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
         `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
          FROM transactions
          WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
-         GROUP BY category_id`,
+         GROUP BY category_id`
       )
       .all(pid, startDate, endDate);
 
@@ -2946,12 +3112,7 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
           spent: s,
           remaining,
           percentage: Math.round(pct),
-          status:
-            pct > 100
-              ? 'over'
-              : pct >= alertThreshold
-              ? 'warning'
-              : 'ok',
+          status: pct > 100 ? 'over' : pct >= alertThreshold ? 'warning' : 'ok',
         };
       })
       .filter((b) => b.percentage >= alertThreshold)
@@ -2960,7 +3121,7 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
     res.json({ alerts, threshold: alertThreshold, startDate, endDate });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2970,57 +3131,72 @@ app.get("/api/budgets/alerts", apiRateLimiter, (req, res) => {
 // ========================
 
 // Get budget allocation form - categories with remaining allocation
-app.get("/api/budgets/zero-based", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/zero-based', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const month = req.query.month || new Date().toISOString().slice(0, 7);
     const startOfMonth = `${month}-01`;
-    const nextMonth = new Date(new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1));
+    const nextMonth = new Date(
+      new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1)
+    );
     const endOfMonth = nextMonth.toISOString().slice(0, 10);
 
     // Get all expense categories for this profile
-    const categories = db.prepare(
-      `SELECT id, name, color, icon FROM categories WHERE profile_id = ? AND type = 'expense' ORDER BY name`
-    ).all(pid);
+    const categories = db
+      .prepare(
+        `SELECT id, name, color, icon FROM categories WHERE profile_id = ? AND type = 'expense' ORDER BY name`
+      )
+      .all(pid);
 
     // Get existing budgets for this month
-    const budgets = db.prepare(
-      `SELECT * FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ? AND period = 'monthly'`
-    ).all(pid, startOfMonth, endOfMonth);
+    const budgets = db
+      .prepare(
+        `SELECT * FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ? AND period = 'monthly'`
+      )
+      .all(pid, startOfMonth, endOfMonth);
 
     const budgetMap = {};
-    budgets.forEach(b => budgetMap[b.category_id] = b);
+    budgets.forEach((b) => (budgetMap[b.category_id] = b));
 
     // Get actual spending for this month
-    const spent = db.prepare(
-      `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
+    const spent = db
+      .prepare(
+        `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
        FROM transactions
        WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
        GROUP BY category_id`
-    ).all(pid, startOfMonth, endOfMonth);
+      )
+      .all(pid, startOfMonth, endOfMonth);
 
     const spentMap = {};
-    spent.forEach(s => spentMap[s.category_id] = Math.abs(s.total));
+    spent.forEach((s) => (spentMap[s.category_id] = Math.abs(s.total)));
 
     // Calculate remaining amount for zero-based budgeting
-    const remaining = db.prepare(
-      `SELECT SUM(COALESCE(amount_local, amount)) as total
+    const remaining =
+      db
+        .prepare(
+          `SELECT SUM(COALESCE(amount_local, amount)) as total
        FROM transactions
        WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'income'
-    `).all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
+    `
+        )
+        .all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
 
     // Calculate already budgeted amounts
-    const alreadyBudgetedRows = db.prepare(
-      `SELECT SUM(amount) as total FROM budgets
+    const alreadyBudgetedRows = db
+      .prepare(
+        `SELECT SUM(amount) as total FROM budgets
        WHERE profile_id = ? AND start_date >= ? AND start_date < ?
-    `).all(pid, startOfMonth, endOfMonth);
+    `
+      )
+      .all(pid, startOfMonth, endOfMonth);
     const alreadyBudgeted = (alreadyBudgetedRows && alreadyBudgetedRows[0]?.total) ?? 0;
 
     // Calculate unassigned budget for this month
     const unassignedBudget = Math.max(0, remaining - alreadyBudgeted);
 
     // Build category allocation details
-    const allocations = categories.map(cat => {
+    const allocations = categories.map((cat) => {
       const budget = budgetMap[cat.id];
       const spentAmt = spentMap[cat.id] || 0;
       const remainingBudget = budget ? budget.amount - spentAmt : 0;
@@ -3051,41 +3227,45 @@ app.get("/api/budgets/zero-based", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Allocate budget to a category (zero-based budgeting)
-app.post("/api/budgets/allocate", apiRateLimiter, (req, res) => {
+app.post('/api/budgets/allocate', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period } = req.body;
 
     if (!category_id || amount == null) {
-      return res.status(400).json({ error: "Category ID and amount are required" });
+      return res.status(400).json({ error: 'Category ID and amount are required' });
     }
 
-    const budgetPeriod = period || "monthly";
+    const budgetPeriod = period || 'monthly';
 
     // Get month for this budget (default to current month)
     const month = req.query.month || new Date().toISOString().slice(0, 7);
     const start_date = `${month}-01`;
 
     // Check if budget already exists for this category and month
-    const existing = db.prepare(
-      `SELECT * FROM budgets WHERE category_id = ? AND profile_id = ? AND start_date = ? AND period = ?`
-    ).get(category_id, pid, start_date, period);
+    const existing = db
+      .prepare(
+        `SELECT * FROM budgets WHERE category_id = ? AND profile_id = ? AND start_date = ? AND period = ?`
+      )
+      .get(category_id, pid, start_date, period);
 
     if (existing) {
       return res.status(400).json({
-        error: `Budget already exists for ${month}. Use PUT /api/budgets/:id to update it.`
+        error: `Budget already exists for ${month}. Use PUT /api/budgets/:id to update it.`,
       });
     }
 
-    const info = db.prepare(
-      "INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)"
-    ).run(category_id, amount, period, start_date, pid);
+    const info = db
+      .prepare(
+        'INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)'
+      )
+      .run(category_id, amount, period, start_date, pid);
 
     res.json({
       id: info.lastInsertRowid,
@@ -3094,49 +3274,59 @@ app.post("/api/budgets/allocate", apiRateLimiter, (req, res) => {
       period,
       start_date,
       profile_id: pid,
-      message: "Budget allocated successfully"
+      message: 'Budget allocated successfully',
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get zero-based budget summary - view allocations and spending
-app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/zero-based/summary', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const month = req.query.month || new Date().toISOString().slice(0, 7);
     const startOfMonth = `${month}-01`;
-    const nextMonth = new Date(new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1));
+    const nextMonth = new Date(
+      new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1)
+    );
     const endOfMonth = nextMonth.toISOString().slice(0, 10);
 
     // Get allocations (budgets for this month)
-    const budgets = db.prepare(
-      `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon
+    const budgets = db
+      .prepare(
+        `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon
        FROM budgets b
        JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
        WHERE b.profile_id = ? AND b.start_date >= ? AND b.start_date < ? AND b.period = 'monthly'`
-    ).all(pid, startOfMonth, endOfMonth);
+      )
+      .all(pid, startOfMonth, endOfMonth);
 
     // Get actual spending by category
-    const spent = db.prepare(
-      `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
+    const spent = db
+      .prepare(
+        `SELECT category_id, SUM(COALESCE(amount_local, amount)) as total
        FROM transactions
        WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'expense' AND category_id IS NOT NULL
        GROUP BY category_id`
-    ).all(pid, startOfMonth, endOfMonth);
+      )
+      .all(pid, startOfMonth, endOfMonth);
 
     const spentMap = {};
-    spent.forEach(s => spentMap[s.category_id] = Math.abs(s.total));
+    spent.forEach((s) => (spentMap[s.category_id] = Math.abs(s.total)));
 
     // Get total income for this month
-    const income = db.prepare(
-      `SELECT SUM(COALESCE(amount_local, amount)) as total
+    const income =
+      db
+        .prepare(
+          `SELECT SUM(COALESCE(amount_local, amount)) as total
        FROM transactions
        WHERE profile_id = ? AND date >= ? AND date < ? AND type = 'income'
-    `).all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
+    `
+        )
+        .all(pid, startOfMonth, endOfMonth)[0]?.total || 0;
 
     // Calculate summary
     const totalBudget = budgets.reduce((sum, b) => sum + b.amount, 0);
@@ -3144,7 +3334,7 @@ app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
     const remaining = totalBudget - totalSpent;
     const zero_based_remaining = income - totalBudget;
 
-    const summary = budgets.map(b => ({
+    const summary = budgets.map((b) => ({
       category_id: b.category_id,
       category_name: b.category_name,
       category_color: b.category_color,
@@ -3155,29 +3345,31 @@ app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
       percent_used: b.amount > 0 ? ((spentMap[b.category_id] || 0) / b.amount) * 100 : 0,
       status: (spentMap[b.category_id] || 0) > b.amount ? 'over' : 'ok',
       is_fully_allocated: b.amount > 0 && (spentMap[b.category_id] || 0) <= b.amount,
-      alerts: []
+      alerts: [],
     }));
 
     // Add remaining unallocated alerts
     if (zero_based_remaining > 0) {
       summary.push({
         category_id: 0,
-        category_name: "Unallocated / Future",
-        category_color: "#9ca3af",
-        category_icon: "wallet",
+        category_name: 'Unallocated / Future',
+        category_color: '#9ca3af',
+        category_icon: 'wallet',
         allocated: 0,
         spent: 0,
         remaining: zero_based_remaining,
         percent_used: 0,
         status: 'ok',
         is_fully_allocated: true,
-        alerts: ['You have unallocated income. Consider adding a savings allocation or increase existing budgets.'],
+        alerts: [
+          'You have unallocated income. Consider adding a savings allocation or increase existing budgets.',
+        ],
         is_unallocated: true,
       });
     }
 
     // Over-budget alerts
-    summary.forEach(item => {
+    summary.forEach((item) => {
       if (item.percent_used >= 90) {
         item.alerts.push(`Approaching limit: ${Math.round(item.percent_used)}% used`);
       }
@@ -3197,7 +3389,7 @@ app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3205,22 +3397,30 @@ app.get("/api/budgets/zero-based/summary", apiRateLimiter, (req, res) => {
 // ========================
 // BUDGET FORECASTING
 // ========================
-app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
+app.get('/api/budgets/forecast', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { month = new Date().toISOString().slice(0, 7) } = req.query;
 
     // Get budgets active in or before the forecast start month
     const startOfMonth = `${month}-01`;
-    const endOfMonth = new Date(new Date(`${month}-01`).setMonth(new Date(`${month}-01`).getMonth() + 1)).toISOString().slice(0, 10);
+    const endOfMonth = new Date(
+      new Date(`${month}-01`).setMonth(new Date(`${month}-01`).getMonth() + 1)
+    )
+      .toISOString()
+      .slice(0, 10);
 
-    const budgets = db.prepare(`
+    const budgets = db
+      .prepare(
+        `
       SELECT b.*, c.name as category_name, c.color as category_color
       FROM budgets b
       JOIN categories c ON c.id = b.category_id
       WHERE b.profile_id = ? AND b.start_date <= ?
       ORDER BY b.start_date DESC
-    `).all(pid, month);
+    `
+      )
+      .all(pid, month);
 
     if (budgets.length === 0) {
       return res.json({
@@ -3237,7 +3437,9 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const startHistory = oneYearAgo.toISOString().slice(0, 7);
 
-    const historicalData = db.prepare(`
+    const historicalData = db
+      .prepare(
+        `
       SELECT
         strftime('%Y-%m', date) as month,
         b.category_id,
@@ -3251,7 +3453,9 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
         AND t.type = 'expense'
       WHERE b.profile_id = ?
       GROUP BY month, b.category_id, b.period
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
     // Build category historical averages
     const categoryAverages = {};
@@ -3284,10 +3488,15 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
 
     const forecastData = forecastMonths.map((fm) => {
       const fmMonthStr = fm.month + '-01';
-      const fmNextMonthStr = new Date(new Date(fm.month + '-01').setMonth(new Date(fm.month + '-01').getMonth() + 1)).toISOString().slice(0, 10);
+      const fmNextMonthStr = new Date(
+        new Date(fm.month + '-01').setMonth(new Date(fm.month + '-01').getMonth() + 1)
+      )
+        .toISOString()
+        .slice(0, 10);
 
       // Get current budget amount for this month (if active)
-      const currentBudget = budgets.find(b => b.start_date === fmMonthStr) || budgets[budgets.length - 1];
+      const currentBudget =
+        budgets.find((b) => b.start_date === fmMonthStr) || budgets[budgets.length - 1];
 
       // Predicted spending based on historical average
       const avgSpending = categoryAverages[currentBudget.category_id]
@@ -3299,7 +3508,8 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
       const inflationFactor = Math.pow(1.03, Math.max(0, monthsDiff));
 
       const predictedSpent = avgSpending * inflationFactor;
-      const adherence = currentBudget.amount > 0 ? Math.min(100, (predictedSpent / currentBudget.amount) * 100) : 0;
+      const adherence =
+        currentBudget.amount > 0 ? Math.min(100, (predictedSpent / currentBudget.amount) * 100) : 0;
       const status = adherence > 100 ? 'over' : adherence >= 80 ? 'warning' : 'ok';
       const forecastRemaining = Math.max(0, currentBudget.amount - predictedSpent);
 
@@ -3327,7 +3537,9 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
       });
     }
 
-    const historyData = db.prepare(`
+    const historyData = db
+      .prepare(
+        `
       SELECT
         strftime('%Y-%m', start_date) as month,
         SUM(amount) as total_budget,
@@ -3341,19 +3553,23 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
       GROUP BY month
       ORDER BY month DESC
       LIMIT ?
-    `).all(pid, now.toISOString().slice(0, 7), 6);
+    `
+      )
+      .all(pid, now.toISOString().slice(0, 7), 6);
 
     const history = historyData.map((h) => ({
       month: h.month,
-      label: new Date(h.month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      label: new Date(h.month + '-01').toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      }),
       total_budget: h.total_budget || 0,
       total_spent: h.total_spent || 0,
       adherence: h.total_budget > 0 ? Math.min(100, (h.total_spent / h.total_budget) * 100) : 0,
     }));
 
-    const avgAdherence = history.length > 0
-      ? history.reduce((sum, h) => sum + h.adherence, 0) / history.length
-      : 0;
+    const avgAdherence =
+      history.length > 0 ? history.reduce((sum, h) => sum + h.adherence, 0) / history.length : 0;
 
     res.json({
       period: month,
@@ -3364,7 +3580,7 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3372,89 +3588,80 @@ app.get("/api/budgets/forecast", apiRateLimiter, (req, res) => {
 // ========================
 // SAVINGS GOALS
 // ========================
-app.get("/api/savings-goals", apiRateLimiter, (req, res) => {
+app.get('/api/savings-goals', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const rows = db
       .prepare(
-        `SELECT * FROM savings_goals WHERE profile_id IN (${inClause}) ORDER BY created_at DESC`,
+        `SELECT * FROM savings_goals WHERE profile_id IN (${inClause}) ORDER BY created_at DESC`
       )
       .all(...pids);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/savings-goals", apiRateLimiter, (req, res) => {
+app.post('/api/savings-goals', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, target_amount, current_amount, deadline, notes } = req.body;
     if (!name || target_amount == null) {
-      return res.status(400).json({ error: "Name and target amount are required" });
+      return res.status(400).json({ error: 'Name and target amount are required' });
     }
     const info = db
       .prepare(
-        "INSERT INTO savings_goals (profile_id, name, target_amount, current_amount, deadline, notes) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO savings_goals (profile_id, name, target_amount, current_amount, deadline, notes) VALUES (?, ?, ?, ?, ?, ?)'
       )
-      .run(
-        pid,
-        name,
-        target_amount,
-        current_amount || 0,
-        deadline || null,
-        notes || "",
-      );
-    res.json({ id: info.lastInsertRowid, name, target_amount, current_amount: current_amount || 0, deadline, notes, profile_id: pid });
+      .run(pid, name, target_amount, current_amount || 0, deadline || null, notes || '');
+    res.json({
+      id: info.lastInsertRowid,
+      name,
+      target_amount,
+      current_amount: current_amount || 0,
+      deadline,
+      notes,
+      profile_id: pid,
+    });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/savings-goals/:id", apiRateLimiter, (req, res) => {
+app.put('/api/savings-goals/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, target_amount, current_amount, deadline, notes } = req.body;
     const result = db
       .prepare(
-        "UPDATE savings_goals SET name=?, target_amount=?, current_amount=?, deadline=?, notes=? WHERE id=? AND profile_id=?",
+        'UPDATE savings_goals SET name=?, target_amount=?, current_amount=?, deadline=?, notes=? WHERE id=? AND profile_id=?'
       )
-      .run(
-        name,
-        target_amount,
-        current_amount,
-        deadline || null,
-        notes || "",
-        req.params.id,
-        pid,
-      );
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+      .run(name, target_amount, current_amount, deadline || null, notes || '', req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/savings-goals/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/savings-goals/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM savings_goals WHERE id=? AND profile_id=?")
+      .prepare('DELETE FROM savings_goals WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3462,7 +3669,7 @@ app.delete("/api/savings-goals/:id", apiRateLimiter, (req, res) => {
 // ========================
 // LOANS (per-profile)
 // ========================
-app.get("/api/loans", apiRateLimiter, (req, res) => {
+app.get('/api/loans', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -3474,45 +3681,38 @@ app.get("/api/loans", apiRateLimiter, (req, res) => {
       FROM loans l
       WHERE l.profile_id = ?
       ORDER BY l.created_at DESC
-    `,
+    `
       )
       .all(pid);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/loans", apiRateLimiter, (req, res) => {
+app.post('/api/loans', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const {
-      name,
-      principal,
-      interest_rate,
-      start_date,
-      term_months,
-      rate_periods,
-    } = req.body;
+    const { name, principal, interest_rate, start_date, term_months, rate_periods } = req.body;
     const info = db
       .prepare(
-        "INSERT INTO loans (name, principal, interest_rate, start_date, term_months, profile_id) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO loans (name, principal, interest_rate, start_date, term_months, profile_id) VALUES (?, ?, ?, ?, ?, ?)'
       )
       .run(name, principal, interest_rate || 5.0, start_date, term_months, pid);
     const loanId = info.lastInsertRowid;
 
     if (rate_periods && rate_periods.length > 0) {
       const insert = db.prepare(
-        "INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)",
+        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
       );
       for (const rp of rate_periods) {
         insert.run(loanId, rp.rate, rp.start_month, rp.end_month || null);
       }
     } else if (interest_rate !== undefined) {
       db.prepare(
-        "INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)",
+        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
       ).run(loanId, interest_rate, 1, null);
     }
 
@@ -3527,76 +3727,51 @@ app.post("/api/loans", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/loans/:id", apiRateLimiter, (req, res) => {
+app.get('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT * FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT * FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Not found" });
+    if (!loan) return res.status(404).json({ error: 'Not found' });
     loan.rate_periods = db
-      .prepare(
-        "SELECT * FROM loan_rate_periods WHERE loan_id=? ORDER BY start_month",
-      )
+      .prepare('SELECT * FROM loan_rate_periods WHERE loan_id=? ORDER BY start_month')
       .all(req.params.id);
     loan.prepayments = db
-      .prepare("SELECT * FROM loan_prepayments WHERE loan_id=? ORDER BY month")
+      .prepare('SELECT * FROM loan_prepayments WHERE loan_id=? ORDER BY month')
       .all(req.params.id);
     res.json(loan);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/loans/:id", apiRateLimiter, (req, res) => {
+app.put('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const {
-      name,
-      principal,
-      interest_rate,
-      start_date,
-      term_months,
-      rate_periods,
-    } = req.body;
+    const { name, principal, interest_rate, start_date, term_months, rate_periods } = req.body;
     const result = db
       .prepare(
-        "UPDATE loans SET name=?, principal=?, interest_rate=?, start_date=?, term_months=? WHERE id=? AND profile_id=?",
+        'UPDATE loans SET name=?, principal=?, interest_rate=?, start_date=?, term_months=? WHERE id=? AND profile_id=?'
       )
-      .run(
-        name,
-        principal,
-        interest_rate || 5.0,
-        start_date,
-        term_months,
-        req.params.id,
-        pid,
-      );
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+      .run(name, principal, interest_rate || 5.0, start_date, term_months, req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
 
     if (rate_periods !== undefined) {
-      db.prepare("DELETE FROM loan_rate_periods WHERE loan_id=?").run(
-        req.params.id,
-      );
+      db.prepare('DELETE FROM loan_rate_periods WHERE loan_id=?').run(req.params.id);
       if (rate_periods.length > 0) {
         const insert = db.prepare(
-          "INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)",
+          'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
         );
         for (const rp of rate_periods) {
-          insert.run(
-            req.params.id,
-            rp.rate,
-            rp.start_month,
-            rp.end_month || null,
-          );
+          insert.run(req.params.id, rp.rate, rp.start_month, rp.end_month || null);
         }
       }
     }
@@ -3604,156 +3779,143 @@ app.put("/api/loans/:id", apiRateLimiter, (req, res) => {
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/loans/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const result = db
-      .prepare("DELETE FROM loans WHERE id=? AND profile_id=?")
+      .prepare('DELETE FROM loans WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Not found" });
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Rate periods CRUD
-app.post("/api/loans/:id/rates", apiRateLimiter, (req, res) => {
+app.post('/api/loans/:id/rates', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT id FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Loan not found" });
+    if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { rate, start_month, end_month } = req.body;
     const info = db
       .prepare(
-        "INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)",
+        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
       )
       .run(req.params.id, rate, start_month, end_month || null);
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
+app.put('/api/loans/:id/rates/:rateId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT id FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Loan not found" });
+    if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { rate, start_month, end_month } = req.body;
     db.prepare(
-      "UPDATE loan_rate_periods SET rate=?, start_month=?, end_month=? WHERE id=? AND loan_id=?",
-    ).run(
-      rate,
-      start_month,
-      end_month || null,
-      req.params.rateId,
-      req.params.id,
-    );
+      'UPDATE loan_rate_periods SET rate=?, start_month=?, end_month=? WHERE id=? AND loan_id=?'
+    ).run(rate, start_month, end_month || null, req.params.rateId, req.params.id);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
+app.delete('/api/loans/:id/rates/:rateId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT id FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Loan not found" });
-    db.prepare("DELETE FROM loan_rate_periods WHERE id=? AND loan_id=?").run(
+    if (!loan) return res.status(404).json({ error: 'Loan not found' });
+    db.prepare('DELETE FROM loan_rate_periods WHERE id=? AND loan_id=?').run(
       req.params.rateId,
-      req.params.id,
+      req.params.id
     );
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Prepayments CRUD
-app.post("/api/loans/:id/prepayments", apiRateLimiter, (req, res) => {
+app.post('/api/loans/:id/prepayments', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT id FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Loan not found" });
+    if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { month, amount, note } = req.body;
     const info = db
-      .prepare(
-        "INSERT INTO loan_prepayments (loan_id, month, amount, note) VALUES (?, ?, ?, ?)",
-      )
-      .run(req.params.id, month, amount, note || "");
+      .prepare('INSERT INTO loan_prepayments (loan_id, month, amount, note) VALUES (?, ?, ?, ?)')
+      .run(req.params.id, month, amount, note || '');
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/loans/:id/prepayments/:prepayId", apiRateLimiter, (req, res) => {
+app.delete('/api/loans/:id/prepayments/:prepayId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT id FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Loan not found" });
-    db.prepare("DELETE FROM loan_prepayments WHERE id=? AND loan_id=?").run(
+    if (!loan) return res.status(404).json({ error: 'Loan not found' });
+    db.prepare('DELETE FROM loan_prepayments WHERE id=? AND loan_id=?').run(
       req.params.prepayId,
-      req.params.id,
+      req.params.id
     );
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Calculate amortization
-app.post("/api/loans/:id/calculate", apiRateLimiter, (req, res) => {
+app.post('/api/loans/:id/calculate', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const loan = db
-      .prepare("SELECT * FROM loans WHERE id=? AND profile_id=?")
+      .prepare('SELECT * FROM loans WHERE id=? AND profile_id=?')
       .get(req.params.id, pid);
-    if (!loan) return res.status(404).json({ error: "Not found" });
+    if (!loan) return res.status(404).json({ error: 'Not found' });
 
     const ratePeriods = db
-      .prepare(
-        "SELECT * FROM loan_rate_periods WHERE loan_id=? ORDER BY start_month",
-      )
+      .prepare('SELECT * FROM loan_rate_periods WHERE loan_id=? ORDER BY start_month')
       .all(req.params.id);
     const prepayments = db
-      .prepare("SELECT * FROM loan_prepayments WHERE loan_id=? ORDER BY month")
+      .prepare('SELECT * FROM loan_prepayments WHERE loan_id=? ORDER BY month')
       .all(req.params.id);
 
     // Prepend the loan's initial rate as the first rate period (months 1 to before first user-set change)
-    const initialRatePeriod = [
-      { rate: loan.interest_rate, start_month: 1, end_month: undefined },
-    ];
+    const initialRatePeriod = [{ rate: loan.interest_rate, start_month: 1, end_month: undefined }];
     const allRatePeriods = [
       ...initialRatePeriod,
       ...ratePeriods.map((rp) => ({
@@ -3772,7 +3934,7 @@ app.post("/api/loans/:id/calculate", apiRateLimiter, (req, res) => {
         month: p.month,
         amount: p.amount,
         note: p.note,
-      })),
+      }))
     );
 
     const scheduleNoPrepayments = loanCalc.calculateSchedule(
@@ -3780,28 +3942,22 @@ app.post("/api/loans/:id/calculate", apiRateLimiter, (req, res) => {
       loan.start_date,
       loan.term_months,
       allRatePeriods,
-      [],
+      []
     );
 
-    const summary = loanCalc.getSummary(
-      scheduleWithPrepayments,
-      scheduleNoPrepayments,
-    );
+    const summary = loanCalc.getSummary(scheduleWithPrepayments, scheduleNoPrepayments);
 
     res.json({
       schedule: scheduleWithPrepayments,
       summary,
       comparison: {
         withPrepayments: summary,
-        withoutPrepayments: loanCalc.getSummary(
-          scheduleNoPrepayments,
-          scheduleNoPrepayments,
-        ),
+        withoutPrepayments: loanCalc.getSummary(scheduleNoPrepayments, scheduleNoPrepayments),
       },
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -3809,7 +3965,7 @@ app.post("/api/loans/:id/calculate", apiRateLimiter, (req, res) => {
 // ========================
 // DASHBOARD (aggregated endpoint)
 // ========================
-app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
+app.get('/api/dashboard', apiRateLimiter, async (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -3817,7 +3973,7 @@ app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
     // Get settings for currency
     const currencyRow = db
       .prepare(
-        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`,
+        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
       )
       .get(...pids);
     const currency = currencyRow ? currencyRow.value : 'EUR';
@@ -3830,7 +3986,7 @@ app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
 
     const monthly = db
       .prepare(
-        `SELECT type, SUM(COALESCE(amount_local, amount)) as total, COUNT(*) as count FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? AND date < ? GROUP BY type`,
+        `SELECT type, SUM(COALESCE(amount_local, amount)) as total, COUNT(*) as count FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? AND date < ? GROUP BY type`
       )
       .all(...pids, startDate, endDate);
 
@@ -3843,21 +3999,21 @@ app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
 
     const recent = db
       .prepare(
-        `SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon FROM transactions t LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date < ? ORDER BY t.date DESC, t.id DESC LIMIT 10`,
+        `SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon FROM transactions t LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date < ? ORDER BY t.date DESC, t.id DESC LIMIT 10`
       )
       .all(...pids, startDate, endDate);
 
     // Get category breakdown for expenses
     const expenseByCategory = db
       .prepare(
-        `SELECT c.name as category_name, c.color as category_color, SUM(COALESCE(t.amount_local, t.amount)) as total FROM transactions t LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.type = 'expense' AND t.date >= ? AND t.date < ? GROUP BY c.id, c.name, c.color ORDER BY total DESC`,
+        `SELECT c.name as category_name, c.color as category_color, SUM(COALESCE(t.amount_local, t.amount)) as total FROM transactions t LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.type = 'expense' AND t.date >= ? AND t.date < ? GROUP BY c.id, c.name, c.color ORDER BY total DESC`
       )
       .all(...pids, startDate, endDate);
 
     // Get account balances
     const accounts = db
       .prepare(
-        `SELECT id, name, type, currency, balance FROM accounts WHERE profile_id IN (${inClause})`,
+        `SELECT id, name, type, currency, balance FROM accounts WHERE profile_id IN (${inClause})`
       )
       .all(...pids);
     const balance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
@@ -3866,9 +4022,13 @@ app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
     const today = new Date();
     const upcomingBills = db
       .prepare(
-        `SELECT b.*, p.name as profile_name FROM bills b LEFT JOIN profiles p ON b.profile_id = p.id WHERE b.profile_id IN (${inClause}) AND b.due_date >= ? AND b.due_date <= ? ORDER BY b.due_date ASC LIMIT 5`,
+        `SELECT b.*, p.name as profile_name FROM bills b LEFT JOIN profiles p ON b.profile_id = p.id WHERE b.profile_id IN (${inClause}) AND b.due_date >= ? AND b.due_date <= ? ORDER BY b.due_date ASC LIMIT 5`
       )
-      .all(...pids, today.toISOString().split('T')[0], new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      .all(
+        ...pids,
+        today.toISOString().split('T')[0],
+        new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      );
 
     res.json({
       totalIncome: summary.income,
@@ -3889,7 +4049,7 @@ app.get("/api/dashboard", apiRateLimiter, async (req, res) => {
 // ========================
 // DASHBOARD (per-profile, multi-profile for combined view)
 // ========================
-app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
+app.get('/api/dashboard/summary', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -3902,10 +4062,10 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
 
     if (m) {
       // Specific month
-      startDate = `${y}-${String(m).padStart(2, "0")}-01`;
+      startDate = `${y}-${String(m).padStart(2, '0')}-01`;
       const nextM = m === 12 ? 1 : m + 1;
       const nextY = m === 12 ? y + 1 : y;
-      endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
+      endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
     } else {
       // Full year
       startDate = `${y}-01-01`;
@@ -3920,15 +4080,15 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
       FROM transactions
       WHERE profile_id IN (${inClause}) AND date >= ? AND date < ?
       GROUP BY type
-    `,
+    `
       )
       .all(...pids, startDate, endDate);
 
     const summary = { income: 0, expense: 0, transfer: 0, balance: 0 };
     for (const r of monthly) {
-      if (r.type === "income") summary.income = r.total;
-      else if (r.type === "expense") summary.expense = r.total;
-      else if (r.type === "transfer") summary.transfer = r.total;
+      if (r.type === 'income') summary.income = r.total;
+      else if (r.type === 'expense') summary.expense = r.total;
+      else if (r.type === 'transfer') summary.transfer = r.total;
     }
     summary.balance = summary.income - summary.expense;
 
@@ -3941,7 +4101,7 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date < ?
       ORDER BY t.date DESC, t.id DESC
       LIMIT 10
-    `,
+    `
       )
       .all(...pids, startDate, endDate);
 
@@ -3951,13 +4111,13 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
       .prepare(
         `
       SELECT type, SUM(COALESCE(amount_local, amount)) as total FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? GROUP BY type
-    `,
+    `
       )
       .all(...pids, yearStart);
     const ytdSummary = { income: 0, expense: 0 };
     for (const r of ytd) {
-      if (r.type === "income") ytdSummary.income = r.total;
-      else if (r.type === "expense") ytdSummary.expense = r.total;
+      if (r.type === 'income') ytdSummary.income = r.total;
+      else if (r.type === 'expense') ytdSummary.expense = r.total;
     }
     ytdSummary.net = ytdSummary.income - ytdSummary.expense;
 
@@ -3968,10 +4128,10 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
       // Previous month
       const pm = m == 1 ? 12 : m - 1;
       const py = m == 1 ? y - 1 : y;
-      prevStartDate = `${py}-${String(pm).padStart(2, "0")}-01`;
+      prevStartDate = `${py}-${String(pm).padStart(2, '0')}-01`;
       const nextPm = pm == 12 ? 1 : pm + 1;
       const nextPy = pm == 12 ? py + 1 : py;
-      prevEndDate = `${nextPy}-${String(nextPm).padStart(2, "0")}-01`;
+      prevEndDate = `${nextPy}-${String(nextPm).padStart(2, '0')}-01`;
     } else {
       // Previous year
       prevStartDate = `${y - 1}-01-01`;
@@ -3980,39 +4140,39 @@ app.get("/api/dashboard/summary", apiRateLimiter, (req, res) => {
 
     const prevMonthly = db
       .prepare(
-        `SELECT type, SUM(COALESCE(amount_local, amount)) as total FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? AND date < ? GROUP BY type`,
+        `SELECT type, SUM(COALESCE(amount_local, amount)) as total FROM transactions WHERE profile_id IN (${inClause}) AND date >= ? AND date < ? GROUP BY type`
       )
       .all(...pids, prevStartDate, prevEndDate);
     const prevSummary = { income: 0, expense: 0 };
     for (const r of prevMonthly) {
-      if (r.type === "income") prevSummary.income = r.total;
-      else if (r.type === "expense") prevSummary.expense = r.total;
+      if (r.type === 'income') prevSummary.income = r.total;
+      else if (r.type === 'expense') prevSummary.expense = r.total;
     }
 
     // Get currency setting
     const currencyRow = db
       .prepare(
-        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`,
+        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
       )
       .get(...pids);
-    const currency = currencyRow ? currencyRow.value : "EUR";
+    const currency = currencyRow ? currencyRow.value : 'EUR';
 
     res.json({
       summary,
       prevSummary,
       recent,
       ytd: ytdSummary,
-      month: m ? `${y}-${String(m).padStart(2, "0")}` : y,
+      month: m ? `${y}-${String(m).padStart(2, '0')}` : y,
       currency,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
+app.get('/api/dashboard/charts', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -4020,8 +4180,8 @@ app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - parseInt(months) + 1);
-    const startStr = startDate.toISOString().split("T")[0];
-    const endStr = endDate.toISOString().split("T")[0];
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
 
     // Use amount_local if available (for imported transactions), otherwise amount
     const byCategory = db
@@ -4033,7 +4193,7 @@ app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
       WHERE t.profile_id IN (${inClause}) AND t.type = 'expense'
       GROUP BY c.id
       ORDER BY total DESC
-    `,
+    `
       )
       .all(...pids);
 
@@ -4045,16 +4205,15 @@ app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
       WHERE profile_id IN (${inClause}) AND date >= ? AND date <= ? AND type IN ('income', 'expense')
       GROUP BY month, type
       ORDER BY month
-    `,
+    `
       )
       .all(...pids, startStr, endStr);
 
     const monthlyMap = {};
     for (const r of monthly) {
-      if (!monthlyMap[r.month])
-        monthlyMap[r.month] = { month: r.month, income: 0, expense: 0 };
-      if (r.type === "income") monthlyMap[r.month].income = r.total;
-      if (r.type === "expense") monthlyMap[r.month].expense = r.total;
+      if (!monthlyMap[r.month]) monthlyMap[r.month] = { month: r.month, income: 0, expense: 0 };
+      if (r.type === 'income') monthlyMap[r.month].income = r.total;
+      if (r.type === 'expense') monthlyMap[r.month].expense = r.total;
     }
 
     const cashFlow = Object.values(monthlyMap);
@@ -4067,10 +4226,10 @@ app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
     // Get currency setting
     const currencyRow = db
       .prepare(
-        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`,
+        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
       )
       .get(...pids);
-    const currency = currencyRow ? currencyRow.value : "EUR";
+    const currency = currencyRow ? currencyRow.value : 'EUR';
 
     res.json({
       byCategory,
@@ -4080,25 +4239,22 @@ app.get("/api/dashboard/charts", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
+app.get('/api/dashboard/net-worth', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     // Get account balances
     const accounts = db
       .prepare(
-        `SELECT id, name, type, currency, balance FROM accounts WHERE profile_id IN (${inClause})`,
+        `SELECT id, name, type, currency, balance FROM accounts WHERE profile_id IN (${inClause})`
       )
       .all(...pids);
-    const totalNetWorth = accounts.reduce(
-      (sum, a) => sum + (a.balance || 0),
-      0,
-    );
+    const totalNetWorth = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
 
     // Get monthly net flow (income - expense) from earliest transaction to now
     const monthly = db
@@ -4109,16 +4265,15 @@ app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
       WHERE profile_id IN (${inClause}) AND type IN ('income', 'expense')
       GROUP BY month, type
       ORDER BY month
-    `,
+    `
       )
       .all(...pids);
 
     const monthlyMap = {};
     for (const r of monthly) {
-      if (!monthlyMap[r.month])
-        monthlyMap[r.month] = { month: r.month, net: 0 };
-      if (r.type === "income") monthlyMap[r.month].net += r.total;
-      if (r.type === "expense") monthlyMap[r.month].net -= r.total;
+      if (!monthlyMap[r.month]) monthlyMap[r.month] = { month: r.month, net: 0 };
+      if (r.type === 'income') monthlyMap[r.month].net += r.total;
+      if (r.type === 'expense') monthlyMap[r.month].net -= r.total;
     }
 
     // Build timeline from earliest transaction to now with running total
@@ -4148,7 +4303,7 @@ app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4158,9 +4313,9 @@ app.get("/api/dashboard/net-worth", apiRateLimiter, (req, res) => {
 // ========================
 const importFiles = {}; // temp storage for reloading specific sheets
 
-app.post("/api/import/upload", apiRateLimiter, uploadImport.single("file"), (req, res) => {
+app.post('/api/import/upload', apiRateLimiter, uploadImport.single('file'), (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const workbook = XLSX.readFile(req.file.path);
     const sheetNames = workbook.SheetNames;
 
@@ -4184,7 +4339,7 @@ app.post("/api/import/upload", apiRateLimiter, uploadImport.single("file"), (req
       sheetName: selectedSheet,
       sheetNames,
       headers: (data[0] || []).map(String),
-      rows: data.slice(1).filter((r) => r.some((c) => c != null && c !== "")),
+      rows: data.slice(1).filter((r) => r.some((c) => c != null && c !== '')),
       totalRows: data.length - 1,
     });
 
@@ -4200,23 +4355,25 @@ app.post("/api/import/upload", apiRateLimiter, uploadImport.single("file"), (req
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     // Check if error is related to invalid file type
     if (err.message && err.message.includes('Invalid file type')) {
       res.status(400).json({ error: err.message });
     } else if (err.message && err.message.includes('Cannot read')) {
-      res.status(400).json({ error: "Invalid file format. Please upload a valid spreadsheet file." });
+      res
+        .status(400)
+        .json({ error: 'Invalid file format. Please upload a valid spreadsheet file.' });
     } else {
-      res.status(500).json({ error: "Import failed. Please try again." });
+      res.status(500).json({ error: 'Import failed. Please try again.' });
     }
   }
 });
 
 // Error handler middleware for import upload
-app.use("/api/import/upload", (err, req, res, next) => {
+app.use('/api/import/upload', (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: "File too large. Maximum size is 50MB." });
+      return res.status(400).json({ error: 'File too large. Maximum size is 50MB.' });
     }
     return res.status(400).json({ error: err.message });
   }
@@ -4226,27 +4383,28 @@ app.use("/api/import/upload", (err, req, res, next) => {
   next(err);
 });
 
-app.post("/api/import/file-sheet", apiRateLimiter, (req, res) => {
+app.post('/api/import/file-sheet', apiRateLimiter, (req, res) => {
   try {
     const { fileId, sheetName, mapping } = req.body;
     const entry = importFiles[fileId];
-    if (!entry)
-      return res
-        .status(400)
-        .json({ error: "File session expired. Please re-upload." });
+    if (!entry) return res.status(400).json({ error: 'File session expired. Please re-upload.' });
 
     const sheetNames = entry.workbook.SheetNames;
-    if (!sheetNames.includes(sheetName))
-      return res.status(400).json({ error: "Sheet not found" });
+    if (!sheetNames.includes(sheetName)) return res.status(400).json({ error: 'Sheet not found' });
 
     const sheet = entry.workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    const rows = data.slice(1).filter((r) => r.some((c) => c != null && c !== ""));
+    const rows = data.slice(1).filter((r) => r.some((c) => c != null && c !== ''));
 
     // Server-side duplicate detection
     let duplicateCount = 0;
     let duplicateIndices = [];
-    if (mapping && mapping.description !== undefined && mapping.amount !== undefined && mapping.date !== undefined) {
+    if (
+      mapping &&
+      mapping.description !== undefined &&
+      mapping.amount !== undefined &&
+      mapping.date !== undefined
+    ) {
       const seen = new Map();
       rows.forEach((row, idx) => {
         const desc = (row[mapping.description] || '').toString().toLowerCase().trim();
@@ -4278,24 +4436,23 @@ app.post("/api/import/file-sheet", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
+app.post('/api/import/googlesheet', apiRateLimiter, (req, res) => {
   const { url, sheetName } = req.body;
-  if (!url) return res.status(400).json({ error: "URL is required" });
+  if (!url) return res.status(400).json({ error: 'URL is required' });
 
   // Extract sheet ID and gid from URL
   // URL can be: /d/ID/edit?gid=N#gid=N or just /d/ID/export?format=csv
-  const idMatch = (url || "").match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch)
-    return res.status(400).json({ error: "Invalid Google Sheets URL or ID" });
+  const idMatch = (url || '').match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) return res.status(400).json({ error: 'Invalid Google Sheets URL or ID' });
 
   const sheetId = idMatch[1];
   // Extract gid from query param ?gid= or URL fragment #gid=
-  const urlWithoutFragment = url.split("#")[0];
+  const urlWithoutFragment = url.split('#')[0];
   const gidMatch = urlWithoutFragment.match(/[?&]gid=([0-9]+)/);
   const gid = gidMatch ? gidMatch[1] : null;
 
@@ -4305,37 +4462,32 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
       const csvUrl = gid
         ? `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
         : `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-      fetch(csvUrl, { headers: { "User-Agent": "Mozilla/5.0" } })
+      fetch(csvUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
         .then((r) => {
-          if (!r.ok) throw new Error("HTTP " + r.status);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
         .then((text) => {
           // Check if it's actually CSV or an error page
-          if (
-            text.trim().startsWith("<!DOCTYPE") ||
-            text.trim().startsWith("<html")
-          ) {
-            throw new Error(
-              "Sheet is not publicly accessible (got HTML instead of CSV)",
-            );
+          if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+            throw new Error('Sheet is not publicly accessible (got HTML instead of CSV)');
           }
           // Parse CSV manually (handles quoted fields, commas in values)
           const rows = [];
-          const lines = text.trim().split("\n");
+          const lines = text.trim().split('\n');
           for (const line of lines) {
             const cols = [];
-            let cur = "";
+            let cur = '';
             let inQuotes = false;
             for (const ch of line) {
               if (ch === '"') {
                 inQuotes = !inQuotes;
-              } else if (ch === "," && !inQuotes) {
-                cols.push(cur.trim().replace(/^"|"$/g, ""));
-                cur = "";
+              } else if (ch === ',' && !inQuotes) {
+                cols.push(cur.trim().replace(/^"|"$/g, ''));
+                cur = '';
               } else cur += ch;
             }
-            cols.push(cur.trim().replace(/^"|"$/g, ""));
+            cols.push(cur.trim().replace(/^"|"$/g, ''));
             rows.push(cols);
           }
           const headers = rows[0] || [];
@@ -4343,7 +4495,7 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
           resolve({
             headers,
             rows: dataRows,
-            sheetName: sheetName || "Sheet1",
+            sheetName: sheetName || 'Sheet1',
           });
         })
         .catch((err) => resolve({ error: err.message }));
@@ -4353,18 +4505,15 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
   // Strategy 2: Get all sheet names via XLSX export, then fetch CSV for specific sheet
   function tryXlsxAndListSheets() {
     return new Promise((resolve) => {
-      fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`,
-        {
-          headers: { "User-Agent": "Mozilla/5.0" },
-        },
-      )
+      fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
         .then((r) => {
-          if (!r.ok) throw new Error("HTTP " + r.status);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.arrayBuffer();
         })
         .then((buf) => {
-          const workbook = XLSX.read(buf, { type: "array" });
+          const workbook = XLSX.read(buf, { type: 'array' });
           resolve({ sheetNames: workbook.SheetNames, workbook });
         })
         .catch((err) => resolve({ error: err.message }));
@@ -4391,7 +4540,7 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
         if (xlsxResult.error) {
           return res.status(500).json({
             error:
-              "Failed to fetch Google Sheet: " +
+              'Failed to fetch Google Sheet: ' +
               xlsxResult.error +
               ". Make sure the sheet is shared as 'Anyone with link can view'.",
           });
@@ -4403,9 +4552,7 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
         const sheet = xlsxResult.workbook.Sheets[targetSheet];
         const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         const headers = (data[0] || []).map(String);
-        const rows = data
-          .slice(1)
-          .filter((r) => r.some((c) => c != null && c !== ""));
+        const rows = data.slice(1).filter((r) => r.some((c) => c != null && c !== ''));
         return res.json({
           headers,
           rows,
@@ -4429,7 +4576,7 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
         if (xlsxResult.error) {
           return res.status(500).json({
             error:
-              "Failed to fetch Google Sheet: " +
+              'Failed to fetch Google Sheet: ' +
               xlsxResult.error +
               ". Make sure the sheet is shared as 'Anyone with link can view'.",
           });
@@ -4440,21 +4587,18 @@ app.post("/api/import/googlesheet", apiRateLimiter, (req, res) => {
         });
       }
     } catch (err) {
-    console.error(err.message);
-    logError("error", err);
-      res
-        .status(500)
-        .json({ error: "Failed to fetch Google Sheet: " + err.message });
+      console.error(err.message);
+      logError('error', err);
+      res.status(500).json({ error: 'Failed to fetch Google Sheet: ' + err.message });
     }
   })();
 });
 
-app.post("/api/import/execute", apiRateLimiter, (req, res) => {
+app.post('/api/import/execute', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { rows, mapping, categoryTypes } = req.body;
-    if (!rows || !mapping)
-      return res.status(400).json({ error: "Missing data" });
+    if (!rows || !mapping) return res.status(400).json({ error: 'Missing data' });
 
     const insert = db.prepare(`
       INSERT INTO transactions (description, amount, date, beneficiary, payor, category_id,
@@ -4463,32 +4607,32 @@ app.post("/api/import/execute", apiRateLimiter, (req, res) => {
     `);
 
     const getCat = db.prepare(
-      "SELECT id, color FROM categories WHERE LOWER(name) = LOWER(?) AND profile_id = ? LIMIT 1",
+      'SELECT id, color FROM categories WHERE LOWER(name) = LOWER(?) AND profile_id = ? LIMIT 1'
     );
     const insertCat = db.prepare(
-      "INSERT INTO categories (name, type, color, icon, profile_id) VALUES (?, ?, ?, ?, ?)",
+      'INSERT INTO categories (name, type, color, icon, profile_id) VALUES (?, ?, ?, ?, ?)'
     );
 
     // Diverse color palette for new categories
     const newCategoryColors = [
-      "#ef4444",
-      "#f97316",
-      "#f59e0b",
-      "#eab308",
-      "#84cc16",
-      "#22c55e",
-      "#14b8a6",
-      "#06b6d4",
-      "#0ea5e9",
-      "#3b82f6",
-      "#6366f1",
-      "#8b5cf6",
-      "#a855f7",
-      "#d946ef",
-      "#ec4899",
-      "#f43f5e",
-      "#64748b",
-      "#78716c",
+      '#ef4444',
+      '#f97316',
+      '#f59e0b',
+      '#eab308',
+      '#84cc16',
+      '#22c55e',
+      '#14b8a6',
+      '#06b6d4',
+      '#0ea5e9',
+      '#3b82f6',
+      '#6366f1',
+      '#8b5cf6',
+      '#a855f7',
+      '#d946ef',
+      '#ec4899',
+      '#f43f5e',
+      '#64748b',
+      '#78716c',
     ];
     let colorIndex = 0;
 
@@ -4496,103 +4640,76 @@ app.post("/api/import/execute", apiRateLimiter, (req, res) => {
     const insertMany = db.transaction((rows) => {
       for (const row of rows) {
         const categoryId = (() => {
-          const catName =
-            row[mapping.category] ||
-            row[mapping.Category] ||
-            row[mapping.CATEGORY];
+          const catName = row[mapping.category] || row[mapping.Category] || row[mapping.CATEGORY];
           if (!catName) return null;
           const existing = getCat.get(String(catName).trim(), pid);
           if (existing) return existing.id;
           // Reuse the same diverse color each time a new category is created (consistent within same import)
-          const color =
-            newCategoryColors[colorIndex % newCategoryColors.length];
+          const color = newCategoryColors[colorIndex % newCategoryColors.length];
           colorIndex++;
-          const icon = "tag";
+          const icon = 'tag';
           // Use user-specified type, or fallback to auto-detected default
-          const catType =
-            (categoryTypes && categoryTypes[catName]) || "expense";
-          const r = insertCat.run(
-            String(catName).trim(),
-            catType,
-            color,
-            icon,
-            pid,
-          );
+          const catType = (categoryTypes && categoryTypes[catName]) || 'expense';
+          const r = insertCat.run(String(catName).trim(), catType, color, icon, pid);
           return r.lastInsertRowid;
         })();
 
         const amountRaw =
-          parseFloat(
-            row[mapping.amount] || row[mapping.Amount] || row[mapping.AMOUNT],
-          ) || 0;
+          parseFloat(row[mapping.amount] || row[mapping.Amount] || row[mapping.AMOUNT]) || 0;
         const amount = Math.abs(amountRaw);
         const dateRaw =
           row[mapping.date] ||
           row[mapping.Date] ||
           row[mapping.DATE] ||
-          new Date().toISOString().split("T")[0];
+          new Date().toISOString().split('T')[0];
         const currency =
-          row[mapping.currency] ||
-          row[mapping.Currency] ||
-          row[mapping.CURRENCY] ||
-          "USD";
+          row[mapping.currency] || row[mapping.Currency] || row[mapping.CURRENCY] || 'USD';
 
         // Determine transaction type
         let validatedType;
         if (mapping.type) {
-          const rawType = String(row[mapping.type] || "")
+          const rawType = String(row[mapping.type] || '')
             .trim()
             .toLowerCase();
-          if (["income", "expense", "transfer"].includes(rawType)) {
+          if (['income', 'expense', 'transfer'].includes(rawType)) {
             validatedType = rawType;
           } else {
             // Auto-detect based on amount sign or common keywords
             validatedType =
               amountRaw < 0 ||
-              rawType.includes("expense") ||
-              rawType.includes("debit") ||
-              rawType.includes("spent")
-                ? "expense"
+              rawType.includes('expense') ||
+              rawType.includes('debit') ||
+              rawType.includes('spent')
+                ? 'expense'
                 : amountRaw > 0 ||
-                    rawType.includes("income") ||
-                    rawType.includes("credit") ||
-                    rawType.includes("received")
-                  ? "income"
-                  : "expense";
+                    rawType.includes('income') ||
+                    rawType.includes('credit') ||
+                    rawType.includes('received')
+                  ? 'income'
+                  : 'expense';
           }
         } else {
           // No type mapped — auto-detect from amount sign
-          validatedType =
-            amountRaw < 0 ? "expense" : amountRaw > 0 ? "income" : "expense";
+          validatedType = amountRaw < 0 ? 'expense' : amountRaw > 0 ? 'income' : 'expense';
         }
 
         insert.run(
-          row[mapping.description] ||
-            row[mapping.Description] ||
-            row[mapping.DESCRIPTION] ||
-            "",
+          row[mapping.description] || row[mapping.Description] || row[mapping.DESCRIPTION] || '',
           amount,
           parseDateString(dateRaw),
-          row[mapping.beneficiary] ||
-            row[mapping.Beneficiary] ||
-            row[mapping.BENEFICIARY] ||
-            "",
-          row[mapping.payor] || row[mapping.Payor] || row[mapping.PAYOR] || "",
+          row[mapping.beneficiary] || row[mapping.Beneficiary] || row[mapping.BENEFICIARY] || '',
+          row[mapping.payor] || row[mapping.Payor] || row[mapping.PAYOR] || '',
           categoryId,
           currency,
-          parseFloat(
-            row[mapping.amount_local] || row[mapping.AmountLocal] || amount,
-          ) || amount,
+          parseFloat(row[mapping.amount_local] || row[mapping.AmountLocal] || amount) || amount,
           row[mapping.means_of_payment] ||
             row[mapping.MeansOfPayment] ||
             row[mapping.MEANS_OF_PAYMENT] ||
-            "",
-          parseFloat(
-            row[mapping.exchange_rate] || row[mapping.ExchangeRate] || 1.0,
-          ) || 1.0,
+            '',
+          parseFloat(row[mapping.exchange_rate] || row[mapping.ExchangeRate] || 1.0) || 1.0,
           validatedType,
-          row[mapping.notes] || row[mapping.Notes] || row[mapping.NOTES] || "",
-          pid,
+          row[mapping.notes] || row[mapping.Notes] || row[mapping.NOTES] || '',
+          pid
         );
         imported++;
       }
@@ -4605,7 +4722,7 @@ app.post("/api/import/execute", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4613,93 +4730,81 @@ app.post("/api/import/execute", apiRateLimiter, (req, res) => {
 // ========================
 // ACCOUNTS (per-profile)
 // ========================
-app.get("/api/accounts", apiRateLimiter, (req, res) => {
+app.get('/api/accounts', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const accounts = db
-      .prepare(
-        "SELECT * FROM accounts WHERE profile_id = ? ORDER BY type, name",
-      )
+      .prepare('SELECT * FROM accounts WHERE profile_id = ? ORDER BY type, name')
       .all(pid);
     res.json(accounts);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/accounts", apiRateLimiter, (req, res) => {
+app.post('/api/accounts', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, type, currency, balance, notes } = req.body;
-    if (!name) return res.status(400).json({ error: "Name is required" });
-    const validTypes = ["giro", "ib", "savings"];
-    const accountType = validTypes.includes(type) ? type : "giro";
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const validTypes = ['giro', 'ib', 'savings'];
+    const accountType = validTypes.includes(type) ? type : 'giro';
     const result = db
       .prepare(
-        "INSERT INTO accounts (name, type, currency, balance, notes, profile_id) VALUES (?, ?, ?, ?, ?, ?)",
+        'INSERT INTO accounts (name, type, currency, balance, notes, profile_id) VALUES (?, ?, ?, ?, ?, ?)'
       )
-      .run(
-        name.trim(),
-        accountType,
-        currency || "USD",
-        parseFloat(balance) || 0,
-        notes || "",
-        pid,
-      );
-    res.json({ id: result.lastInsertRowid, message: "Account created" });
+      .run(name.trim(), accountType, currency || 'USD', parseFloat(balance) || 0, notes || '', pid);
+    res.json({ id: result.lastInsertRowid, message: 'Account created' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/accounts/:id", apiRateLimiter, (req, res) => {
+app.put('/api/accounts/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, type, currency, balance, notes } = req.body;
     const existing = db
-      .prepare("SELECT id FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!existing) return res.status(404).json({ error: "Account not found" });
-    const validTypes = ["giro", "ib", "savings"];
-    const accountType = validTypes.includes(type) ? type : "giro";
+    if (!existing) return res.status(404).json({ error: 'Account not found' });
+    const validTypes = ['giro', 'ib', 'savings'];
+    const accountType = validTypes.includes(type) ? type : 'giro';
     db.prepare(
-      "UPDATE accounts SET name = ?, type = ?, currency = ?, balance = ?, notes = ? WHERE id = ? AND profile_id = ?",
+      'UPDATE accounts SET name = ?, type = ?, currency = ?, balance = ?, notes = ? WHERE id = ? AND profile_id = ?'
     ).run(
       name.trim(),
       accountType,
-      currency || "USD",
+      currency || 'USD',
       parseFloat(balance) || 0,
-      notes || "",
+      notes || '',
       req.params.id,
-      pid,
+      pid
     );
-    res.json({ message: "Account updated" });
+    res.json({ message: 'Account updated' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/accounts/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/accounts/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const existing = db
-      .prepare("SELECT id FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!existing) return res.status(404).json({ error: "Account not found" });
-    db.prepare("DELETE FROM accounts WHERE id = ? AND profile_id = ?").run(
-      req.params.id,
-      pid,
-    );
-    res.json({ message: "Account deleted" });
+    if (!existing) return res.status(404).json({ error: 'Account not found' });
+    db.prepare('DELETE FROM accounts WHERE id = ? AND profile_id = ?').run(req.params.id, pid);
+    res.json({ message: 'Account deleted' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4707,75 +4812,75 @@ app.delete("/api/accounts/:id", apiRateLimiter, (req, res) => {
 // ========================
 // ACCOUNT BALANCE HISTORY
 // ========================
-app.get("/api/accounts/:id/history", apiRateLimiter, (req, res) => {
+app.get('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const account = db
-      .prepare("SELECT id FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!account) return res.status(404).json({ error: "Account not found" });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
     const history = db
       .prepare(
-        "SELECT id, balance, recorded_at FROM account_balance_history WHERE account_id = ? ORDER BY recorded_at DESC",
+        'SELECT id, balance, recorded_at FROM account_balance_history WHERE account_id = ? ORDER BY recorded_at DESC'
       )
       .all(req.params.id);
     res.json(history);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/accounts/:id/history", apiRateLimiter, (req, res) => {
+app.post('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const account = db
-      .prepare("SELECT balance FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT balance FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!account) return res.status(404).json({ error: "Account not found" });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
     // Use balance from request body, or current account balance as fallback
     const balance = parseFloat(req.body.balance ?? account.balance);
     const result = db
       .prepare(
-        "INSERT INTO account_balance_history (account_id, balance, recorded_at) VALUES (?, ?, datetime('now'))",
+        "INSERT INTO account_balance_history (account_id, balance, recorded_at) VALUES (?, ?, datetime('now'))"
       )
       .run(req.params.id, balance);
     res.json({ id: result.lastInsertRowid, balance, recorded_at: new Date().toISOString() });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/accounts/:id/history", apiRateLimiter, (req, res) => {
+app.delete('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const account = db
-      .prepare("SELECT id FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!account) return res.status(404).json({ error: "Account not found" });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    db.prepare("DELETE FROM account_balance_history WHERE account_id = ?").run(req.params.id);
-    res.json({ message: "Balance history deleted" });
+    db.prepare('DELETE FROM account_balance_history WHERE account_id = ?').run(req.params.id);
+    res.json({ message: 'Balance history deleted' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Get reconciliation summary for a specific account
-app.get("/api/accounts/:id/reconciliation-summary", apiRateLimiter, (req, res) => {
+app.get('/api/accounts/:id/reconciliation-summary', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const account = db
-      .prepare("SELECT id, name FROM accounts WHERE id = ? AND profile_id = ?")
+      .prepare('SELECT id, name FROM accounts WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!account) return res.status(404).json({ error: "Account not found" });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
     // Get unreconciled transactions for this account
     // Note: accounts table doesn't directly link to transactions, so we show all profile transactions
@@ -4787,9 +4892,7 @@ app.get("/api/accounts/:id/reconciliation-summary", apiRateLimiter, (req, res) =
       )
       .get(pid);
     const reconciled = db
-      .prepare(
-        `SELECT COUNT(*) as count FROM transactions WHERE profile_id = ? AND reconciled = 1`
-      )
+      .prepare(`SELECT COUNT(*) as count FROM transactions WHERE profile_id = ? AND reconciled = 1`)
       .get(pid);
 
     res.json({
@@ -4798,17 +4901,17 @@ app.get("/api/accounts/:id/reconciliation-summary", apiRateLimiter, (req, res) =
       unreconciled_count: unreconciled.count,
       unreconciled_total: unreconciled.total,
       reconciled_count: reconciled.count,
-      total_transactions: unreconciled.count + reconciled.count
+      total_transactions: unreconciled.count + reconciled.count,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Net worth timeline from balance history
-app.get("/api/accounts/history/timeline", apiRateLimiter, (req, res) => {
+app.get('/api/accounts/history/timeline', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -4819,13 +4922,13 @@ app.get("/api/accounts/history/timeline", apiRateLimiter, (req, res) => {
          JOIN accounts a ON abh.account_id = a.id
          WHERE a.profile_id IN (${inClause})
          GROUP BY date(abh.recorded_at)
-         ORDER BY date ASC`,
+         ORDER BY date ASC`
       )
       .all(...pids);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4833,7 +4936,7 @@ app.get("/api/accounts/history/timeline", apiRateLimiter, (req, res) => {
 // ========================
 // RECURRING TRANSACTIONS
 // ========================
-app.get("/api/recurring", apiRateLimiter, (req, res) => {
+app.get('/api/recurring', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -4844,63 +4947,53 @@ app.get("/api/recurring", apiRateLimiter, (req, res) => {
       LEFT JOIN categories c ON r.category_id = c.id
       WHERE r.profile_id = ? AND r.active = 1
       ORDER BY r.next_date ASC
-    `,
+    `
       )
       .all(pid);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/recurring", apiRateLimiter, (req, res) => {
+app.post('/api/recurring', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const {
-      description,
-      amount,
-      type,
-      category_id,
-      frequency,
-      day_of_month,
-      next_date,
-      notes,
-    } = req.body;
+    const { description, amount, type, category_id, frequency, day_of_month, next_date, notes } =
+      req.body;
     const info = db
       .prepare(
         `INSERT INTO recurring_transactions (profile_id, description, amount, type, category_id, frequency, day_of_month, next_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         pid,
-        description || "",
+        description || '',
         amount,
-        type || "expense",
+        type || 'expense',
         category_id || null,
-        frequency || "monthly",
+        frequency || 'monthly',
         day_of_month || null,
         next_date || null,
-        notes || "",
+        notes || ''
       );
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/recurring/:id", apiRateLimiter, (req, res) => {
+app.put('/api/recurring/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const existing = db
-      .prepare(
-        "SELECT id FROM recurring_transactions WHERE id = ? AND profile_id = ?",
-      )
+      .prepare('SELECT id FROM recurring_transactions WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!existing) return res.status(404).json({ error: "Not found" });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
     const {
       description,
       amount,
@@ -4913,78 +5006,68 @@ app.put("/api/recurring/:id", apiRateLimiter, (req, res) => {
       active,
     } = req.body;
     db.prepare(
-      `UPDATE recurring_transactions SET description=?, amount=?, type=?, category_id=?, frequency=?, day_of_month=?, next_date=?, notes=?, active=? WHERE id=? AND profile_id=?`,
+      `UPDATE recurring_transactions SET description=?, amount=?, type=?, category_id=?, frequency=?, day_of_month=?, next_date=?, notes=?, active=? WHERE id=? AND profile_id=?`
     ).run(
-      description ?? "",
+      description ?? '',
       amount ?? 0,
-      type ?? "expense",
+      type ?? 'expense',
       category_id ?? null,
-      frequency ?? "monthly",
+      frequency ?? 'monthly',
       day_of_month ?? null,
       next_date ?? null,
-      notes ?? "",
+      notes ?? '',
       active ?? 1,
       req.params.id,
-      pid,
+      pid
     );
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/recurring/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/recurring/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare(
-      "DELETE FROM recurring_transactions WHERE id = ? AND profile_id = ?",
-    ).run(req.params.id, pid);
+    db.prepare('DELETE FROM recurring_transactions WHERE id = ? AND profile_id = ?').run(
+      req.params.id,
+      pid
+    );
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/recurring/:id/populate", apiRateLimiter, (req, res) => {
+app.post('/api/recurring/:id/populate', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const r = db
-      .prepare(
-        "SELECT * FROM recurring_transactions WHERE id = ? AND profile_id = ?",
-      )
+      .prepare('SELECT * FROM recurring_transactions WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
-    if (!r) return res.status(404).json({ error: "Not found" });
-    const date = r.next_date || new Date().toISOString().split("T")[0];
+    if (!r) return res.status(404).json({ error: 'Not found' });
+    const date = r.next_date || new Date().toISOString().split('T')[0];
     const info = db
       .prepare(
         `INSERT INTO transactions (profile_id, description, amount, type, category_id, date, notes, beneficiary, payor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(
-        pid,
-        r.description,
-        r.amount,
-        r.type,
-        r.category_id,
-        date,
-        r.notes || "",
-        "",
-        "",
-      );
+      .run(pid, r.description, r.amount, r.type, r.category_id, date, r.notes || '', '', '');
 
     // Advance next_date
     let next = new Date(date);
-    if (r.frequency === "monthly") next.setMonth(next.getMonth() + 1);
-    else if (r.frequency === "weekly") next.setDate(next.getDate() + 7);
-    else if (r.frequency === "yearly") next.setFullYear(next.getFullYear() + 1);
-    const nextStr = next.toISOString().split("T")[0];
-    db.prepare(
-      "UPDATE recurring_transactions SET next_date = ? WHERE id = ?",
-    ).run(nextStr, req.params.id);
+    if (r.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
+    else if (r.frequency === 'weekly') next.setDate(next.getDate() + 7);
+    else if (r.frequency === 'yearly') next.setFullYear(next.getFullYear() + 1);
+    const nextStr = next.toISOString().split('T')[0];
+    db.prepare('UPDATE recurring_transactions SET next_date = ? WHERE id = ?').run(
+      nextStr,
+      req.params.id
+    );
 
     res.json({
       ok: true,
@@ -4993,7 +5076,7 @@ app.post("/api/recurring/:id/populate", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5001,7 +5084,7 @@ app.post("/api/recurring/:id/populate", apiRateLimiter, (req, res) => {
 // ========================
 // RECURRING INSIGHTS
 // ========================
-app.get("/api/recurring/upcoming", apiRateLimiter, (req, res) => {
+app.get('/api/recurring/upcoming', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const now = new Date();
@@ -5009,13 +5092,17 @@ app.get("/api/recurring/upcoming", apiRateLimiter, (req, res) => {
     endDate.setDate(endDate.getDate() + 30);
 
     // Get all active recurring transactions
-    const recurring = db.prepare(`
+    const recurring = db
+      .prepare(
+        `
       SELECT r.id, r.description, r.amount, r.type, r.frequency, r.day_of_month, r.next_date,
              c.name as category_name, c.color as category_color
       FROM recurring_transactions r
       LEFT JOIN categories c ON r.category_id = c.id
       WHERE r.profile_id = ? AND r.active = 1
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
     // Expand each recurring transaction into its upcoming occurrences in the next 30 days
     const upcoming = [];
@@ -5050,7 +5137,9 @@ app.get("/api/recurring/upcoming", apiRateLimiter, (req, res) => {
           cursor.setMonth(cursor.getMonth() + 1);
           // Normalize day of month
           const day = r.day_of_month || cursor.getDate();
-          cursor.setDate(Math.min(day, new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()));
+          cursor.setDate(
+            Math.min(day, new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate())
+          );
         } else if (r.frequency === 'yearly') {
           cursor.setFullYear(cursor.getFullYear() + 1);
         } else {
@@ -5076,9 +5165,9 @@ app.get("/api/recurring/upcoming", apiRateLimiter, (req, res) => {
     }
 
     // Get currency from settings
-    const currencyRow = db.prepare(
-      "SELECT value FROM settings WHERE key = 'local_currency' AND profile_id = ?"
-    ).get(pid);
+    const currencyRow = db
+      .prepare("SELECT value FROM settings WHERE key = 'local_currency' AND profile_id = ?")
+      .get(pid);
     const currency = currencyRow ? currencyRow.value : 'EUR';
 
     res.json({
@@ -5089,48 +5178,55 @@ app.get("/api/recurring/upcoming", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-
 // ========================
 // BILLS API
 // ========================
-app.get("/api/bills", apiRateLimiter, (req, res) => {
+app.get('/api/bills', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT b.*, c.name as category_name, c.color as category_color
       FROM bills b
       LEFT JOIN categories c ON b.category_id = c.id
       WHERE b.profile_id = ?
       ORDER BY b.is_active DESC, b.name ASC
-    `).all(pid);
+    `
+      )
+      .all(pid);
     res.json(rows);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/bills/upcoming", apiRateLimiter, (req, res) => {
+app.get('/api/bills/upcoming', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    const bills = db.prepare(`
+    const bills = db
+      .prepare(
+        `
       SELECT b.*, c.name as category_name, c.color as category_color
       FROM bills b
       LEFT JOIN categories c ON b.category_id = c.id
       WHERE b.profile_id = ? AND b.is_active = 1
       ORDER BY b.name ASC
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
-    const upcoming = bills.map(b => {
+    const upcoming = bills.map((b) => {
       let nextDue = null;
       const lastPaid = b.last_paid ? new Date(b.last_paid) : null;
 
@@ -5139,9 +5235,18 @@ app.get("/api/bills/upcoming", apiRateLimiter, (req, res) => {
         if (lastPaid) {
           nextDue = new Date(lastPaid);
           nextDue.setMonth(nextDue.getMonth() + 1);
-          nextDue.setDate(Math.min(dayOfMonth, new Date(nextDue.getFullYear(), nextDue.getMonth() + 1, 0).getDate()));
+          nextDue.setDate(
+            Math.min(
+              dayOfMonth,
+              new Date(nextDue.getFullYear(), nextDue.getMonth() + 1, 0).getDate()
+            )
+          );
         } else {
-          nextDue = new Date(now.getFullYear(), now.getMonth(), Math.min(dayOfMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()));
+          nextDue = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            Math.min(dayOfMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
+          );
           if (nextDue < now) nextDue.setMonth(nextDue.getMonth() + 1);
         }
       } else if (b.frequency === 'weekly') {
@@ -5195,48 +5300,56 @@ app.get("/api/bills/upcoming", apiRateLimiter, (req, res) => {
     res.json(upcoming);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/bills", apiRateLimiter, (req, res) => {
+app.post('/api/bills', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, amount, frequency, day_of_month, category_id, notes } = req.body;
     if (!name || amount === undefined) {
       return res.status(400).json({ error: 'Name and amount are required' });
     }
-    const info = db.prepare(`
+    const info = db
+      .prepare(
+        `
       INSERT INTO bills (profile_id, name, amount, frequency, day_of_month, category_id, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      pid,
-      name,
-      amount,
-      frequency || 'monthly',
-      day_of_month || null,
-      category_id || null,
-      notes || '',
-    );
+    `
+      )
+      .run(
+        pid,
+        name,
+        amount,
+        frequency || 'monthly',
+        day_of_month || null,
+        category_id || null,
+        notes || ''
+      );
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/bills/:id", apiRateLimiter, (req, res) => {
+app.put('/api/bills/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const existing = db.prepare('SELECT id FROM bills WHERE id = ? AND profile_id = ?').get(req.params.id, pid);
+    const existing = db
+      .prepare('SELECT id FROM bills WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Not found' });
     const { name, amount, frequency, day_of_month, category_id, is_active, notes } = req.body;
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE bills SET name = ?, amount = ?, frequency = ?, day_of_month = ?, category_id = ?, is_active = ?, notes = ?
       WHERE id = ? AND profile_id = ?
-    `).run(
+    `
+    ).run(
       name ?? '',
       amount ?? 0,
       frequency ?? 'monthly',
@@ -5245,54 +5358,52 @@ app.put("/api/bills/:id", apiRateLimiter, (req, res) => {
       is_active ?? 1,
       notes ?? '',
       req.params.id,
-      pid,
+      pid
     );
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/bills/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/bills/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     db.prepare('DELETE FROM bills WHERE id = ? AND profile_id = ?').run(req.params.id, pid);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/bills/:id/mark-paid", apiRateLimiter, (req, res) => {
+app.post('/api/bills/:id/mark-paid', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const bill = db.prepare('SELECT * FROM bills WHERE id = ? AND profile_id = ?').get(req.params.id, pid);
+    const bill = db
+      .prepare('SELECT * FROM bills WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!bill) return res.status(404).json({ error: 'Not found' });
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const info = db.prepare(`
+    const info = db
+      .prepare(
+        `
       INSERT INTO transactions (profile_id, description, amount, type, category_id, date, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      pid,
-      bill.name,
-      bill.amount,
-      'expense',
-      bill.category_id,
-      todayStr,
-      bill.notes || '',
-    );
+    `
+      )
+      .run(pid, bill.name, bill.amount, 'expense', bill.category_id, todayStr, bill.notes || '');
 
     db.prepare('UPDATE bills SET last_paid = ? WHERE id = ?').run(todayStr, req.params.id);
 
     res.json({ ok: true, transactionId: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5300,15 +5411,15 @@ app.post("/api/bills/:id/mark-paid", apiRateLimiter, (req, res) => {
 // ========================
 // STATS (per-profile)
 // ========================
-app.get("/api/stats/monthly", apiRateLimiter, (req, res) => {
+app.get('/api/stats/monthly', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { months = 24 } = req.query;
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - parseInt(months) + 1);
-    const startStr = startDate.toISOString().split("T")[0];
-    const endStr = endDate.toISOString().split("T")[0];
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
 
     // Use amount_local if available (for imported transactions), otherwise amount
     const rows = db
@@ -5320,23 +5431,22 @@ app.get("/api/stats/monthly", apiRateLimiter, (req, res) => {
       WHERE profile_id = ? AND date >= ? AND date <= ? AND type IN ('income', 'expense')
       GROUP BY month, type
       ORDER BY month
-    `,
+    `
       )
       .all(pid, startStr, endStr);
 
     const map = {};
     for (const r of rows) {
-      if (!map[r.month])
-        map[r.month] = { month: r.month, income: 0, expense: 0 };
-      if (r.type === "income") map[r.month].income = r.total;
-      if (r.type === "expense") map[r.month].expense = r.total;
+      if (!map[r.month]) map[r.month] = { month: r.month, income: 0, expense: 0 };
+      if (r.type === 'income') map[r.month].income = r.total;
+      if (r.type === 'expense') map[r.month].expense = r.total;
       map[r.month].net = map[r.month].income - map[r.month].expense;
     }
 
     res.json(Object.values(map));
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5344,14 +5454,14 @@ app.get("/api/stats/monthly", apiRateLimiter, (req, res) => {
 // ========================
 // ANALYTICS - Daily Heatmap
 // ========================
-app.get("/api/analytics/daily-heatmap", apiRateLimiter, (req, res) => {
+app.get('/api/analytics/daily-heatmap', apiRateLimiter, (req, res) => {
   try {
     const year = parseInt(req.query.year);
     if (!year) {
-      res.status(400).json({ error: "year query parameter is required" });
+      res.status(400).json({ error: 'year query parameter is required' });
       return;
     }
-    const type = req.query.type === "income" ? "income" : "expense";
+    const type = req.query.type === 'income' ? 'income' : 'expense';
 
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -5363,7 +5473,7 @@ app.get("/api/analytics/daily-heatmap", apiRateLimiter, (req, res) => {
          WHERE profile_id IN (${inClause})
            AND substr(date, 1, 4) = ?
            AND type = ?
-         GROUP BY date`,
+         GROUP BY date`
       )
       .all(...pids, String(year), type);
 
@@ -5375,7 +5485,7 @@ app.get("/api/analytics/daily-heatmap", apiRateLimiter, (req, res) => {
     res.json({ dates, year, type });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5383,13 +5493,13 @@ app.get("/api/analytics/daily-heatmap", apiRateLimiter, (req, res) => {
 // ========================
 // ANALYTICS
 // ========================
-app.get("/api/analytics/distinct-years", apiRateLimiter, (req, res) => {
+app.get('/api/analytics/distinct-years', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const rows = db
       .prepare(
-        `SELECT DISTINCT substr(date, 1, 4) as year FROM transactions WHERE profile_id IN (${inClause}) ORDER BY year DESC`,
+        `SELECT DISTINCT substr(date, 1, 4) as year FROM transactions WHERE profile_id IN (${inClause}) ORDER BY year DESC`
       )
       .all(...pids);
     const years = rows.map((r) => parseInt(r.year));
@@ -5399,31 +5509,25 @@ app.get("/api/analytics/distinct-years", apiRateLimiter, (req, res) => {
     res.json({ years });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/analytics/weeks", apiRateLimiter, (req, res) => {
+app.get('/api/analytics/weeks', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const year = parseInt(req.query.year);
-    const month = req.query.month
-      ? String(req.query.month).padStart(2, "0")
-      : null;
+    const month = req.query.month ? String(req.query.month).padStart(2, '0') : null;
     if (!year) {
       res.json({ weeks: [] });
       return;
     }
     const weeks = [];
-    const firstDay = month
-      ? new Date(year, parseInt(month) - 1, 1)
-      : new Date(year, 0, 1);
+    const firstDay = month ? new Date(year, parseInt(month) - 1, 1) : new Date(year, 0, 1);
     const last = month ? new Date(year, parseInt(month), 0).getDate() : 31;
-    const lastDay = month
-      ? new Date(year, parseInt(month) - 1, last)
-      : new Date(year, 11, 31);
+    const lastDay = month ? new Date(year, parseInt(month) - 1, last) : new Date(year, 11, 31);
     let w = 1;
     const current = new Date(firstDay);
     while (current <= lastDay) {
@@ -5441,7 +5545,7 @@ app.get("/api/analytics/weeks", apiRateLimiter, (req, res) => {
     res.json({ weeks });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5449,16 +5553,14 @@ app.get("/api/analytics/weeks", apiRateLimiter, (req, res) => {
 // ========================
 // ANALYTICS - Stacked Category Trends
 // ========================
-app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
+app.get('/api/analytics/category-trends', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const year = parseInt(req.query.year) || new Date().getFullYear();
-    const month = req.query.month
-      ? String(req.query.month).padStart(2, "0")
-      : null;
+    const month = req.query.month ? String(req.query.month).padStart(2, '0') : null;
     const week = req.query.week ? parseInt(req.query.week) : null;
-    const type = req.query.type || "expense";
+    const type = req.query.type || 'expense';
 
     // Date range
     let startStr, endStr;
@@ -5468,12 +5570,12 @@ app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
         // Specific week within a month
         const weekStartDay = (week - 1) * 7 + 1;
         const weekEndDay = Math.min(week * 7, lastDay);
-        startStr = `${year}-${month}-${String(weekStartDay).padStart(2, "0")}`;
-        endStr = `${year}-${month}-${String(weekEndDay).padStart(2, "0")}`;
+        startStr = `${year}-${month}-${String(weekStartDay).padStart(2, '0')}`;
+        endStr = `${year}-${month}-${String(weekEndDay).padStart(2, '0')}`;
       } else {
         // Full month
         startStr = `${year}-${month}-01`;
-        endStr = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+        endStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
       }
     } else {
       // Full year
@@ -5491,47 +5593,47 @@ app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
     // Transactions and categories filtered by type (income or expense)
     const transactions = db
       .prepare(
-        `SELECT t.date, COALESCE(t.amount_local, t.amount) as amount, c.id as cat_id, c.name as cat_name, c.color as cat_color FROM transactions t JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.type = ? AND t.date >= ? AND t.date <= ? ORDER BY t.date`,
+        `SELECT t.date, COALESCE(t.amount_local, t.amount) as amount, c.id as cat_id, c.name as cat_name, c.color as cat_color FROM transactions t JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id WHERE t.profile_id IN (${inClause}) AND t.type = ? AND t.date >= ? AND t.date <= ? ORDER BY t.date`
       )
       .all(...pids, type, startStr, endStr);
 
     const categories = db
       .prepare(
-        `SELECT id, name, color FROM categories WHERE profile_id IN (${inClause}) AND type = ? ORDER BY name`,
+        `SELECT id, name, color FROM categories WHERE profile_id IN (${inClause}) AND type = ? ORDER BY name`
       )
       .all(...pids, type);
 
     // Generate labels based on view level
     const labels = [];
     const periodMap = new Map();
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     const monthNamesFull = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
 
     if (week && month) {
@@ -5542,26 +5644,20 @@ app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
       for (let d = weekStartDay; d <= weekEndDay; d++) {
         const date = new Date(year, parseInt(month) - 1, d);
         labels.push(dayNames[date.getDay()]);
-        periodMap.set(
-          `${year}-${month}-${String(d).padStart(2, "0")}`,
-          labels.length - 1,
-        );
+        periodMap.set(`${year}-${month}-${String(d).padStart(2, '0')}`, labels.length - 1);
       }
     } else if (month) {
       // Month view: show day numbers
       const lastDay = new Date(year, parseInt(month), 0).getDate();
       for (let d = 1; d <= lastDay; d++) {
         labels.push(`${monthNamesFull[parseInt(month) - 1]} ${d}`);
-        periodMap.set(
-          `${year}-${month}-${String(d).padStart(2, "0")}`,
-          labels.length - 1,
-        );
+        periodMap.set(`${year}-${month}-${String(d).padStart(2, '0')}`, labels.length - 1);
       }
     } else {
       // Year view: show 12 months
       for (let m = 0; m < 12; m++) {
         labels.push(`${monthNames[m]} ${year}`);
-        periodMap.set(`${year}-${String(m + 1).padStart(2, "0")}`, m);
+        periodMap.set(`${year}-${String(m + 1).padStart(2, '0')}`, m);
       }
     }
 
@@ -5597,7 +5693,7 @@ app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
     res.json({ labels, datasets, numDays });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5605,12 +5701,12 @@ app.get("/api/analytics/category-trends", apiRateLimiter, (req, res) => {
 // ========================
 // ANALYTICS: SANKEY (Budget vs Actual)
 // ========================
-app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
+app.get('/api/analytics/sankey', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const year = parseInt(req.query.year) || new Date().getFullYear();
-    const month = req.query.month ? String(req.query.month).padStart(2, "0") : null;
+    const month = req.query.month ? String(req.query.month).padStart(2, '0') : null;
 
     if (!month) {
       return res.json({ nodes: [], links: [] });
@@ -5618,28 +5714,36 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
 
     const lastDay = new Date(year, parseInt(month), 0).getDate();
     const startStr = `${year}-${month}-01`;
-    const endStr = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    const endStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
     // Get budgets for this month
-    const budgets = db.prepare(`
+    const budgets = db
+      .prepare(
+        `
       SELECT b.category_id, b.amount as budget_amount, c.name as cat_name, c.color as cat_color
       FROM budgets b
       JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
       WHERE b.profile_id IN (${inClause}) AND (b.period = 'month' OR b.period = 'monthly')
       AND strftime('%Y-%m', b.start_date) <= ? AND (b.end_date IS NULL OR strftime('%Y-%m', b.end_date) >= ?)
-    `).all(...pids, `${year}-${month}`, `${year}-${month}`);
+    `
+      )
+      .all(...pids, `${year}-${month}`, `${year}-${month}`);
 
     // Get actual spending for this month
-    const actualSpending = db.prepare(`
+    const actualSpending = db
+      .prepare(
+        `
       SELECT t.category_id, SUM(COALESCE(t.amount_local, t.amount)) as actual_amount
       FROM transactions t
       WHERE t.profile_id IN (${inClause}) AND t.type = 'expense' AND t.date >= ? AND t.date <= ?
       GROUP BY t.category_id
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
     // Create maps for easy lookup
-    const budgetMap = new Map(budgets.map(b => [b.category_id, b]));
-    const actualMap = new Map(actualSpending.map(a => [a.category_id, a]));
+    const budgetMap = new Map(budgets.map((b) => [b.category_id, b]));
+    const actualMap = new Map(actualSpending.map((a) => [a.category_id, a]));
 
     // Build nodes and links for sankey
     const nodes = [];
@@ -5651,7 +5755,7 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
     nodeNames.add('Total Budget');
 
     // Add category nodes and links
-    budgets.forEach(b => {
+    budgets.forEach((b) => {
       if (!nodeNames.has(b.cat_name)) {
         nodes.push({ name: b.cat_name, category: 'category', color: b.cat_color });
         nodeNames.add(b.cat_name);
@@ -5664,20 +5768,20 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
 
     // Budget -> Category links (planned flow)
     let totalBudget = 0;
-    budgets.forEach(b => {
+    budgets.forEach((b) => {
       totalBudget += b.budget_amount;
       links.push({
         source: 'Total Budget',
         target: b.cat_name,
         value: b.budget_amount,
         sourceCategory: 'budget',
-        targetCategory: 'category'
+        targetCategory: 'category',
       });
     });
 
     // Category -> Actual links (actual spent)
     let totalActual = 0;
-    budgets.forEach(b => {
+    budgets.forEach((b) => {
       const actual = actualMap.get(b.category_id);
       const actualAmount = actual ? actual.actual_amount : 0;
       totalActual += actualAmount;
@@ -5686,14 +5790,16 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
         target: 'Total Actual',
         value: actualAmount,
         sourceCategory: 'category',
-        targetCategory: 'actual'
+        targetCategory: 'actual',
       });
     });
 
     // If no budgets, use actual spending as flow
     if (budgets.length === 0) {
-      actualSpending.forEach(a => {
-        const cat = db.prepare('SELECT name, color FROM categories WHERE id = ?').get(a.category_id);
+      actualSpending.forEach((a) => {
+        const cat = db
+          .prepare('SELECT name, color FROM categories WHERE id = ?')
+          .get(a.category_id);
         if (cat) {
           if (!nodeNames.has(cat.name)) {
             nodes.push({ name: cat.name, category: 'category', color: cat.color });
@@ -5704,7 +5810,7 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
             target: 'Total Actual',
             value: a.actual_amount,
             sourceCategory: 'category',
-            targetCategory: 'actual'
+            targetCategory: 'actual',
           });
         }
       });
@@ -5719,14 +5825,14 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
         target: 'Unused Budget',
         value: budgetUnused,
         sourceCategory: 'budget',
-        targetCategory: 'savings'
+        targetCategory: 'savings',
       });
     }
 
     res.json({ nodes, links });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5734,7 +5840,7 @@ app.get("/api/analytics/sankey", apiRateLimiter, (req, res) => {
 // ========================
 // EXPORT (per-profile, multi-profile for combined view)
 // ========================
-app.get("/api/export/:type", apiRateLimiter, (req, res) => {
+app.get('/api/export/:type', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
@@ -5744,58 +5850,82 @@ app.get("/api/export/:type", apiRateLimiter, (req, res) => {
     let data, filename;
     switch (type) {
       case 'transactions': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT t.date, t.description, t.amount, t.type, t.currency, t.means_of_payment, t.beneficiary, t.payor, t.notes, c.name as category
           FROM transactions t
           LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
           WHERE t.profile_id IN (${inClause})
           ORDER BY t.date DESC
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'transactions';
         break;
       }
       case 'categories': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT name, color, icon, type, parent_id FROM categories WHERE profile_id IN (${inClause})
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'categories';
         break;
       }
       case 'accounts': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT name, type, currency, balance, notes FROM accounts WHERE profile_id IN (${inClause})
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'accounts';
         break;
       }
       case 'budgets': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT b.*, c.name as category_name FROM budgets b
           JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
           WHERE b.profile_id IN (${inClause})
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'budgets';
         break;
       }
       case 'loans': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT l.name, l.principal, l.interest_rate, l.start_date, l.term_months,
             (SELECT SUM(amount) FROM loan_prepayments WHERE loan_id = l.id) as total_prepaid
           FROM loans l WHERE l.profile_id IN (${inClause})
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'loans';
         break;
       }
       case 'recurring': {
-        const rows = db.prepare(`
+        const rows = db
+          .prepare(
+            `
           SELECT description, amount, type, frequency, day_of_month, next_date, notes, active
           FROM recurring_transactions WHERE profile_id IN (${inClause})
-        `).all(...pids);
+        `
+          )
+          .all(...pids);
         data = rows;
         filename = 'recurring_transactions';
         break;
@@ -5818,12 +5948,16 @@ app.get("/api/export/:type", apiRateLimiter, (req, res) => {
       const headers = Object.keys(data[0]);
       const csv = [
         headers.join(','),
-        ...data.map(row => headers.map(h => {
-          const val = row[h] == null ? '' : String(row[h]);
-          return val.includes(',') || val.includes('"') || val.includes('\n')
-            ? `"${val.replace(/"/g, '""')}"`
-            : val;
-        }).join(','))
+        ...data.map((row) =>
+          headers
+            .map((h) => {
+              const val = row[h] == null ? '' : String(row[h]);
+              return val.includes(',') || val.includes('"') || val.includes('\n')
+                ? `"${val.replace(/"/g, '""')}"`
+                : val;
+            })
+            .join(',')
+        ),
       ].join('\n');
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
@@ -5831,7 +5965,7 @@ app.get("/api/export/:type", apiRateLimiter, (req, res) => {
     }
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5839,7 +5973,7 @@ app.get("/api/export/:type", apiRateLimiter, (req, res) => {
 // ========================
 // RETIREMENT CALCULATOR
 // ========================
-app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
+app.post('/api/calculator/retire', apiRateLimiter, (req, res) => {
   try {
     const {
       currentAge = 30,
@@ -5851,7 +5985,7 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
       withdrawalRate = 4,
       inflationRate = 2,
       expensesAtRetirement = null,
-      country = "",
+      country = '',
     } = req.body;
 
     // Use direct expenses at retirement if provided, otherwise apply country cost-of-living adjustment
@@ -5864,9 +5998,7 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
     };
     const col = colMultipliers[country] || 1.0;
     const adjustedExpenses =
-      expensesAtRetirement !== null
-        ? expensesAtRetirement
-        : annualExpenses * col;
+      expensesAtRetirement !== null ? expensesAtRetirement : annualExpenses * col;
 
     // FIRE number: how much needed to retire (25x rule, or 100 / withdrawalRate)
     const fireNumber = adjustedExpenses / (withdrawalRate / 100);
@@ -5874,9 +6006,7 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
     // Project savings until retirement
     const monthsToRetirement = (retirementAge - currentAge) * 12;
     if (monthsToRetirement <= 0) {
-      return res
-        .status(400)
-        .json({ error: "Retirement age must be greater than current age" });
+      return res.status(400).json({ error: 'Retirement age must be greater than current age' });
     }
     const monthlyReturn = annualReturn / 100 / 12;
 
@@ -5911,8 +6041,7 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
     if (fireMonth !== null) {
       const annualWithdrawal = adjustedExpenses;
       for (let y = 0; y < 20; y++) {
-        retirementSavings =
-          retirementSavings * (1 + annualReturn / 100) - annualWithdrawal;
+        retirementSavings = retirementSavings * (1 + annualReturn / 100) - annualWithdrawal;
         withdrawalTimeline.push({
           year: y + 1,
           savings: Math.max(0, Math.round(retirementSavings)),
@@ -5930,25 +6059,23 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
       monthsToFire: fireMonth,
       currentNWAtFire: Math.round(savings),
       traditionalRetirementAge: 65,
-      timeline: timeline.filter(
-        (t) => t.year % 5 === 0 || t.year === currentAge,
-      ),
+      timeline: timeline.filter((t) => t.year % 5 === 0 || t.year === currentAge),
       withdrawalTimeline,
       scenarios: [
         {
-          name: "Conservative",
+          name: 'Conservative',
           return: 4,
           fireNumber: Math.round(adjustedExpenses / 0.04),
           fireAge: null,
         },
         {
-          name: "Moderate",
+          name: 'Moderate',
           return: 6,
           fireNumber: Math.round(adjustedExpenses / 0.06),
           fireAge: null,
         },
         {
-          name: "Optimistic",
+          name: 'Optimistic',
           return: 8,
           fireNumber: Math.round(adjustedExpenses / 0.08),
           fireAge: null,
@@ -5984,7 +6111,7 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -5992,19 +6119,19 @@ app.post("/api/calculator/retire", apiRateLimiter, (req, res) => {
 // ========================
 // EMERGENCY FUND TRACKER
 // ========================
-app.get("/api/calculator/emergency-fund", apiRateLimiter, (req, res) => {
+app.get('/api/calculator/emergency-fund', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
 
     // Get monthly expenses from last 12 months
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-    const dateStr = twelveMonthsAgo.toISOString().split("T")[0];
+    const dateStr = twelveMonthsAgo.toISOString().split('T')[0];
 
     const expenseRows = db
       .prepare(
         `SELECT amount, date FROM transactions
-         WHERE profile_id = ? AND type = 'expense' AND date >= ?`,
+         WHERE profile_id = ? AND type = 'expense' AND date >= ?`
       )
       .all(pid, dateStr);
 
@@ -6017,26 +6144,25 @@ app.get("/api/calculator/emergency-fund", apiRateLimiter, (req, res) => {
     const monthsWithData = Object.keys(monthlyTotals).length;
     const avgMonthlyExpenses =
       monthsWithData > 0
-        ? Object.values(monthlyTotals).reduce((a, b) => a + b, 0) /
-          monthsWithData
+        ? Object.values(monthlyTotals).reduce((a, b) => a + b, 0) / monthsWithData
         : 0;
 
     // Get account balances (emergency fund = savings accounts)
     const accounts = db
-      .prepare("SELECT name, type, balance FROM accounts WHERE profile_id = ?")
+      .prepare('SELECT name, type, balance FROM accounts WHERE profile_id = ?')
       .all(pid);
 
     const totalEmergencyFund = accounts
-      .filter((a) => a.type === "savings")
+      .filter((a) => a.type === 'savings')
       .reduce((s, a) => s + a.balance, 0);
 
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
     // Coverage levels
     const coverage = [
-      { months: 3, label: "Starter", ratio: 3 },
-      { months: 6, label: "Standard", ratio: 6 },
-      { months: 12, label: "Conservative", ratio: 12 },
+      { months: 3, label: 'Starter', ratio: 3 },
+      { months: 6, label: 'Standard', ratio: 6 },
+      { months: 12, label: 'Conservative', ratio: 12 },
     ].map((c) => {
       const required = avgMonthlyExpenses * c.months;
       const current = totalEmergencyFund;
@@ -6046,12 +6172,7 @@ app.get("/api/calculator/emergency-fund", apiRateLimiter, (req, res) => {
         required: Math.round(required),
         current: Math.round(current),
         coveragePct: required > 0 ? Math.min(100, Math.round((current / required) * 100)) : 0,
-        status:
-          current >= required
-            ? "complete"
-            : current >= required * 0.5
-            ? "partial"
-            : "low",
+        status: current >= required ? 'complete' : current >= required * 0.5 ? 'partial' : 'low',
       };
     });
 
@@ -6061,11 +6182,11 @@ app.get("/api/calculator/emergency-fund", apiRateLimiter, (req, res) => {
       totalBalance: Math.round(totalBalance),
       monthsWithData,
       coverage,
-      accounts: accounts.filter((a) => a.type === "savings"),
+      accounts: accounts.filter((a) => a.type === 'savings'),
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6073,12 +6194,16 @@ app.get("/api/calculator/emergency-fund", apiRateLimiter, (req, res) => {
 // ========================
 // RETIREMENT ENDPOINTS
 // ========================
-app.get("/api/retirement-goals", apiRateLimiter, (req, res) => {
+app.get('/api/retirement-goals', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const settings = db.prepare("SELECT * FROM settings WHERE key = ? AND profile_id = ?").get('retirement_goals', pid);
+    const settings = db
+      .prepare('SELECT * FROM settings WHERE key = ? AND profile_id = ?')
+      .get('retirement_goals', pid);
 
-    const goals = db.prepare(`
+    const goals = db
+      .prepare(
+        `
       SELECT
         id,
         name,
@@ -6090,25 +6215,29 @@ app.get("/api/retirement-goals", apiRateLimiter, (req, res) => {
       FROM savings_goals
       WHERE profile_id = ?
       ORDER BY deadline ASC
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
     res.json({
       settings: settings ? JSON.parse(settings.value) : null,
-      goals: goals.map(g => ({ ...g, profile_id: pid }))
+      goals: goals.map((g) => ({ ...g, profile_id: pid })),
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/retirement/projection", apiRateLimiter, (req, res) => {
+app.get('/api/retirement/projection', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const params = req.query;
 
-    const settings = db.prepare("SELECT * FROM settings WHERE key = ? AND profile_id = ?").get('retirement_goals', pid);
+    const settings = db
+      .prepare('SELECT * FROM settings WHERE key = ? AND profile_id = ?')
+      .get('retirement_goals', pid);
 
     const result = calculateRetirementProjection(
       db,
@@ -6126,7 +6255,7 @@ app.get("/api/retirement/projection", apiRateLimiter, (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6134,11 +6263,13 @@ app.get("/api/retirement/projection", apiRateLimiter, (req, res) => {
 // ========================
 // HOUSING ENDPOINTS
 // ========================
-app.get("/api/housing", apiRateLimiter, (req, res) => {
+app.get('/api/housing', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
 
-    const housings = db.prepare(`
+    const housings = db
+      .prepare(
+        `
       SELECT
         id,
         name,
@@ -6150,22 +6281,27 @@ app.get("/api/housing", apiRateLimiter, (req, res) => {
       FROM housings
       WHERE profile_id = ?
       ORDER BY due_date ASC
-    `).all(pid);
+    `
+      )
+      .all(pid);
 
-    const totalMonthly = housings.reduce((sum, h) => sum + Math.abs(parseFloat(h.monthly_amount) || 0), 0);
+    const totalMonthly = housings.reduce(
+      (sum, h) => sum + Math.abs(parseFloat(h.monthly_amount) || 0),
+      0
+    );
 
     res.json({
-      housings: housings.map(h => ({ ...h, profile_id: pid })),
-      total_monthly: Math.round(totalMonthly)
+      housings: housings.map((h) => ({ ...h, profile_id: pid })),
+      total_monthly: Math.round(totalMonthly),
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/housing", apiRateLimiter, (req, res) => {
+app.post('/api/housing', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { type, property_name, monthly_amount, due_day, due_month, autopay, notes } = req.body;
@@ -6177,68 +6313,71 @@ app.post("/api/housing", apiRateLimiter, (req, res) => {
     // Calculate due_date from due_day and due_month
     const due_date = `${due_month.toString().padStart(2, '0')}-${due_day.toString().padStart(2, '0')}`;
 
-    const info = db.prepare(`
+    const info = db
+      .prepare(
+        `
       INSERT INTO housings (profile_id, name, monthly_amount, due_date, autopay, notes)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      pid,
-      property_name,
-      parseFloat(monthly_amount),
-      due_date,
-      autopay ? 1 : 0,
-      notes || '',
-    );
+    `
+      )
+      .run(pid, property_name, parseFloat(monthly_amount), due_date, autopay ? 1 : 0, notes || '');
 
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/housing/:id", apiRateLimiter, (req, res) => {
+app.put('/api/housing/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { type, property_name, monthly_amount, due_day, due_month, autopay, notes } = req.body;
 
-    const existing = db.prepare('SELECT id FROM housings WHERE id = ? AND profile_id = ?').get(req.params.id, pid);
+    const existing = db
+      .prepare('SELECT id FROM housings WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     const due_date = `${due_month.toString().padStart(2, '0')}-${due_day.toString().padStart(2, '0')}`;
 
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE housings SET name = ?, monthly_amount = ?, due_date = ?, autopay = ?, notes = ?
       WHERE id = ? AND profile_id = ?
-    `).run(
+    `
+    ).run(
       property_name,
       parseFloat(monthly_amount),
       due_date,
       autopay ? 1 : 0,
       notes || '',
       req.params.id,
-      pid,
+      pid
     );
 
     res.json({ success: true });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/housing/:id", apiRateLimiter, (req, res) => {
+app.delete('/api/housing/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const existing = db.prepare('SELECT id FROM housings WHERE id = ? AND profile_id = ?').get(req.params.id, pid);
+    const existing = db
+      .prepare('SELECT id FROM housings WHERE id = ? AND profile_id = ?')
+      .get(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     db.prepare('DELETE FROM housings WHERE id = ? AND profile_id = ?').run(req.params.id, pid);
     res.json({ success: true });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6247,19 +6386,19 @@ app.delete("/api/housing/:id", apiRateLimiter, (req, res) => {
 // STORAGE MODE MANAGEMENT (Serverless support)
 // ========================
 // Storage mode endpoint - gets current mode
-app.get("/api/storage-mode", (req, res) => {
+app.get('/api/storage-mode', (req, res) => {
   try {
     const mode = req.session.storageMode || 'self-hosted';
     res.json(mode);
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Storage mode endpoint - sets current mode
-app.post("/api/storage-mode", apiRateLimiter, (req, res) => {
+app.post('/api/storage-mode', apiRateLimiter, (req, res) => {
   try {
     const { mode } = req.body;
     if (!mode || !['serverless', 'self-hosted'].includes(mode)) {
@@ -6269,49 +6408,73 @@ app.post("/api/storage-mode", apiRateLimiter, (req, res) => {
     res.json({ mode });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Export all data as JSON (serverless mode support)
-app.get("/api/export", apiRateLimiter, (req, res) => {
+app.get('/api/export', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
 
     // Get all data
-    const transactions = db.prepare(`
+    const transactions = db
+      .prepare(
+        `
       SELECT t.* FROM transactions t
       WHERE t.profile_id IN (${inClause})
       ORDER BY t.date DESC
-    `).all(...pids);
+    `
+      )
+      .all(...pids);
 
-    const categories = db.prepare(`
+    const categories = db
+      .prepare(
+        `
       SELECT c.* FROM categories c
       WHERE c.profile_id IN (${inClause})
-    `).all(...pids);
+    `
+      )
+      .all(...pids);
 
-    const accounts = db.prepare(`
+    const accounts = db
+      .prepare(
+        `
       SELECT a.* FROM accounts a
       WHERE a.profile_id IN (${inClause})
-    `).all(...pids);
+    `
+      )
+      .all(...pids);
 
-    const budgets = db.prepare(`
+    const budgets = db
+      .prepare(
+        `
       SELECT b.* FROM budgets b
       WHERE b.profile_id IN (${inClause})
-    `).all(...pids);
+    `
+      )
+      .all(...pids);
 
-    const loans = db.prepare(`
+    const loans = db
+      .prepare(
+        `
       SELECT l.* FROM loans l
       WHERE l.profile_id IN (${inClause})
-    `).all(...pids);
+    `
+      )
+      .all(...pids);
 
-    const settings = db.prepare(`
+    const settings = db
+      .prepare(
+        `
       SELECT s.key, s.value
       FROM settings s
       WHERE s.profile_id = ? OR s.profile_id IS NULL
-    `).get(getProfileId(req));
+    `
+      )
+      .get(getProfileId(req));
 
     // Build settings object
     const settingsObj = {};
@@ -6335,13 +6498,13 @@ app.get("/api/export", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Import data from JSON (serverless mode support)
-app.post("/api/import", apiRateLimiter, (req, res) => {
+app.post('/api/import', apiRateLimiter, (req, res) => {
   try {
     const data = req.body;
     if (!data || typeof data !== 'object') {
@@ -6351,11 +6514,17 @@ app.post("/api/import", apiRateLimiter, (req, res) => {
     const pid = getProfileId(req);
 
     // Create transaction record ID counter
-    let txId = Math.max(...db.prepare('SELECT MAX(id) as max FROM transactions').get()?.max || [0]);
-    let catId = Math.max(...db.prepare('SELECT MAX(id) as max FROM categories').get()?.max || [0]);
-    let accId = Math.max(...db.prepare('SELECT MAX(id) as max FROM accounts').get()?.max || [0]);
-    let budgetId = Math.max(...db.prepare('SELECT MAX(id) as max FROM budgets').get()?.max || [0]);
-    let loanId = Math.max(...db.prepare('SELECT MAX(id) as max FROM loans').get()?.max || [0]);
+    let txId = Math.max(
+      ...(db.prepare('SELECT MAX(id) as max FROM transactions').get()?.max || [0])
+    );
+    let catId = Math.max(
+      ...(db.prepare('SELECT MAX(id) as max FROM categories').get()?.max || [0])
+    );
+    let accId = Math.max(...(db.prepare('SELECT MAX(id) as max FROM accounts').get()?.max || [0]));
+    let budgetId = Math.max(
+      ...(db.prepare('SELECT MAX(id) as max FROM budgets').get()?.max || [0])
+    );
+    let loanId = Math.max(...(db.prepare('SELECT MAX(id) as max FROM loans').get()?.max || [0]));
 
     // Map category names to IDs for reference
     const categoryMap = new Map();
@@ -6453,7 +6622,7 @@ app.post("/api/import", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     console.error('Import error:', err);
     res.status(500).json({ error: err.message });
   }
@@ -6462,7 +6631,7 @@ app.post("/api/import", apiRateLimiter, (req, res) => {
 // ========================
 // IMPORT PREVIEW
 // ========================
-app.post("/api/import/preview", apiRateLimiter, (req, res) => {
+app.post('/api/import/preview', apiRateLimiter, (req, res) => {
   try {
     const data = req.body;
     if (!data || typeof data !== 'object') {
@@ -6472,12 +6641,16 @@ app.post("/api/import/preview", apiRateLimiter, (req, res) => {
     const pid = getProfileId(req);
 
     // Get existing data for duplicate detection
-    const existingTransactions = db.prepare('SELECT id, date, description, amount FROM transactions WHERE profile_id = ?').all(pid);
-    const existingCategories = db.prepare('SELECT name FROM categories WHERE profile_id = ?').all(pid);
+    const existingTransactions = db
+      .prepare('SELECT id, date, description, amount FROM transactions WHERE profile_id = ?')
+      .all(pid);
+    const existingCategories = db
+      .prepare('SELECT name FROM categories WHERE profile_id = ?')
+      .all(pid);
 
     // Build lookup maps for duplicates
     const existingTransactionMap = new Map();
-    existingTransactions.forEach(tx => {
+    existingTransactions.forEach((tx) => {
       const key = `${tx.date}|${tx.description.toLowerCase().trim()}|${tx.amount}`;
       if (!existingTransactionMap.has(key)) {
         existingTransactionMap.set(key, []);
@@ -6493,7 +6666,7 @@ app.post("/api/import/preview", apiRateLimiter, (req, res) => {
 
     // Check transactions for duplicates
     if (data.transactions && data.transactions.length > 0) {
-      data.transactions.forEach(tx => {
+      data.transactions.forEach((tx) => {
         const key = `${tx.date}|${(tx.description || tx.category_name || '').toLowerCase().trim()}|${parseFloat(tx.amount) || 0}`;
         const existing = existingTransactionMap.get(key);
 
@@ -6511,9 +6684,9 @@ app.post("/api/import/preview", apiRateLimiter, (req, res) => {
     let newCategories = 0;
     let duplicateCategories = 0;
     if (data.categories && data.categories.length > 0) {
-      data.categories.forEach(cat => {
+      data.categories.forEach((cat) => {
         const catName = (cat.name || cat.category_name || '').toLowerCase().trim();
-        const exists = existingCategories.find(c => c.name.toLowerCase() === catName);
+        const exists = existingCategories.find((c) => c.name.toLowerCase() === catName);
         if (exists) {
           duplicateCategories++;
         } else {
@@ -6542,11 +6715,15 @@ app.post("/api/import/preview", apiRateLimiter, (req, res) => {
 });
 
 // Clear all data (dangerous!)
-app.delete("/api/clear-all", apiRateLimiter, (req, res) => {
+app.delete('/api/clear-all', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare('DELETE FROM loan_prepayments WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)').run(pid);
-    db.prepare('DELETE FROM loan_rate_periods WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)').run(pid);
+    db.prepare(
+      'DELETE FROM loan_prepayments WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
+    ).run(pid);
+    db.prepare(
+      'DELETE FROM loan_rate_periods WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
+    ).run(pid);
     db.prepare('DELETE FROM transactions WHERE profile_id = ?').run(pid);
     db.prepare('DELETE FROM budgets WHERE profile_id = ?').run(pid);
     db.prepare('DELETE FROM loans WHERE profile_id = ?').run(pid);
@@ -6558,7 +6735,7 @@ app.delete("/api/clear-all", apiRateLimiter, (req, res) => {
     res.json({ ok: true, message: 'All data cleared' });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6566,7 +6743,7 @@ app.delete("/api/clear-all", apiRateLimiter, (req, res) => {
 // ========================
 // COMPOUND INTEREST PROJECTOR
 // ========================
-app.post("/api/calculator/compound-interest", apiRateLimiter, (req, res) => {
+app.post('/api/calculator/compound-interest', apiRateLimiter, (req, res) => {
   try {
     const {
       principal = 0,
@@ -6601,9 +6778,9 @@ app.post("/api/calculator/compound-interest", apiRateLimiter, (req, res) => {
 
     // Scenario comparisons: vary return rate
     const scenarios = [
-      { name: "Conservative", return: 4, color: "#3b82f6" },
-      { name: "Moderate", return: 6, color: "#10b981" },
-      { name: "Optimistic", return: 8, color: "#8b5cf6" },
+      { name: 'Conservative', return: 4, color: '#3b82f6' },
+      { name: 'Moderate', return: 6, color: '#10b981' },
+      { name: 'Optimistic', return: 8, color: '#8b5cf6' },
     ].map((s) => {
       const r = s.return / 100;
       let bal = principal;
@@ -6639,7 +6816,7 @@ app.post("/api/calculator/compound-interest", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6647,48 +6824,66 @@ app.post("/api/calculator/compound-interest", apiRateLimiter, (req, res) => {
 // ========================
 // MONTHLY PDF REPORT
 // ========================
-app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
+app.get('/api/reports/monthly-pdf', apiRateLimiter, async (req, res) => {
   try {
     const { year, month } = req.query;
     if (!year || !month) {
-      return res.status(400).json({ error: "year and month are required" });
+      return res.status(400).json({ error: 'year and month are required' });
     }
 
     // Validate year format (4 digits)
     if (!/^\d{4}$/.test(String(year))) {
-      return res.status(400).json({ error: "Valid year is required" });
+      return res.status(400).json({ error: 'Valid year is required' });
     }
 
     // Validate month format and range (1-12)
     const monthNum = parseInt(month, 10);
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-      return res.status(400).json({ error: "Valid month (1-12) is required" });
+      return res.status(400).json({ error: 'Valid month (1-12) is required' });
     }
 
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-    const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
-    const endStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const startStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const monthName = monthNames[parseInt(month) - 1] || month;
 
     // Fetch settings for currency
-    const settings = db.prepare(`SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`).get(...pids);
-    const currency = settings ? settings.value : "EUR";
+    const settings = db
+      .prepare(
+        `SELECT value FROM settings WHERE key = 'local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
+      )
+      .get(...pids);
+    const currency = settings ? settings.value : 'EUR';
 
     // Fetch transactions for the month
-    const transactions = db.prepare(`
+    const transactions = db
+      .prepare(
+        `
       SELECT t.date, t.amount, t.description, c.name as cat_name, c.type as cat_type, c.color as cat_color, t.type as tx_type
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date <= ?
       ORDER BY t.date
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
     // Aggregate by category
     const incomeByCat = {};
@@ -6696,18 +6891,20 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
     let totalIncome = 0;
     let totalExpenses = 0;
 
-    transactions.forEach(tx => {
+    transactions.forEach((tx) => {
       const amt = Math.abs(parseFloat(tx.amount) || 0);
       const catName = tx.cat_name || 'Uncategorized';
       const catColor = tx.cat_color || (tx.tx_type === 'income' ? '#059669' : '#dc2626');
 
       if (tx.tx_type === 'income') {
         totalIncome += amt;
-        if (!incomeByCat[catName]) incomeByCat[catName] = { name: catName, color: catColor, total: 0 };
+        if (!incomeByCat[catName])
+          incomeByCat[catName] = { name: catName, color: catColor, total: 0 };
         incomeByCat[catName].total += amt;
       } else {
         totalExpenses += amt;
-        if (!expenseByCat[catName]) expenseByCat[catName] = { name: catName, color: catColor, total: 0 };
+        if (!expenseByCat[catName])
+          expenseByCat[catName] = { name: catName, color: catColor, total: 0 };
         expenseByCat[catName].total += amt;
       }
     });
@@ -6716,7 +6913,7 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
 
     // Prepare data for export page
     const exportData = {
-      yearMonth: `${year}-${String(month).padStart(2, "0")}`,
+      yearMonth: `${year}-${String(month).padStart(2, '0')}`,
       currency,
       summary: { totalIncome, totalExpense: totalExpenses, netSavings },
       incomeByCategory: Object.values(incomeByCat).sort((a, b) => b.total - a.total),
@@ -6727,11 +6924,11 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
     let pdfBuffer = null;
 
     try {
-      const puppeteer = require("puppeteer");
+      const puppeteer = require('puppeteer');
 
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       });
 
       try {
@@ -6743,16 +6940,21 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
         }, exportData);
 
         const baseUrl = `http://localhost:${PORT}`;
-        await exportPage.goto(`${baseUrl}/export-monthly.html`, { waitUntil: 'networkidle0', timeout: 30000 });
+        await exportPage.goto(`${baseUrl}/export-monthly.html`, {
+          waitUntil: 'networkidle0',
+          timeout: 30000,
+        });
 
         // Wait for the page to signal that charts have finished rendering
         await exportPage.waitForFunction(() => window.__RENDER_DONE__ === true, { timeout: 30000 });
 
-        pdfBuffer = Buffer.from(await exportPage.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: { top: '15px', right: '15px', bottom: '15px', left: '15px' }
-        }));
+        pdfBuffer = Buffer.from(
+          await exportPage.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '15px', right: '15px', bottom: '15px', left: '15px' },
+          })
+        );
       } finally {
         await browser.close();
       }
@@ -6762,105 +6964,171 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
 
     // --- Return the PDF directly ---
     if (pdfBuffer && pdfBuffer.length > 1000) {
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="report-${year}-${String(month).padStart(2, "0")}.pdf"`);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="report-${year}-${String(month).padStart(2, '0')}.pdf"`
+      );
       return res.send(pdfBuffer);
     }
 
     // Fallback: text-only PDF
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="report-${year}-${String(month).padStart(2, "0")}.pdf"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="report-${year}-${String(month).padStart(2, '0')}.pdf"`
+    );
 
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     doc.pipe(res);
 
-    const titleColor = "#1e293b";
-    const headerBg = "#1e293b";
-    const incomeColor = "#059669";
-    const expenseColor = "#dc2626";
-    const borderColor = "#e2e8f0";
-    const mutedColor = "#64748b";
+    const titleColor = '#1e293b';
+    const headerBg = '#1e293b';
+    const incomeColor = '#059669';
+    const expenseColor = '#dc2626';
+    const borderColor = '#e2e8f0';
+    const mutedColor = '#64748b';
 
     function formatCurrencyPdf(amount, curr) {
-      const symbols = { EUR: "€", USD: "$", GBP: "£", CHF: "CHF " };
-      const sym = symbols[curr] || curr + " ";
-      return sym + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      const symbols = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF ' };
+      const sym = symbols[curr] || curr + ' ';
+      return sym + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
-    doc.fillColor(titleColor).fontSize(22).font("Helvetica-Bold")
-      .text("Monthly Financial Report", { align: "center" });
+    doc
+      .fillColor(titleColor)
+      .fontSize(22)
+      .font('Helvetica-Bold')
+      .text('Monthly Financial Report', { align: 'center' });
     doc.moveDown(0.3);
-    doc.fillColor(mutedColor).fontSize(13).font("Helvetica")
-      .text(`${monthName} ${year}`, { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(13)
+      .font('Helvetica')
+      .text(`${monthName} ${year}`, { align: 'center' });
     doc.moveDown(0.8);
 
     const boxY = doc.y;
     const boxW = doc.page.width - 100;
     const colW = boxW / 3;
 
-    doc.rect(50, boxY, boxW, 60).fill("#f8fafc");
+    doc.rect(50, boxY, boxW, 60).fill('#f8fafc');
     doc.rect(50, boxY, boxW, 60).stroke(borderColor);
 
-    doc.moveTo(50 + colW, boxY).lineTo(50 + colW, boxY + 60).stroke(borderColor);
-    doc.moveTo(50 + colW * 2, boxY).lineTo(50 + colW * 2, boxY + 60).stroke(borderColor);
+    doc
+      .moveTo(50 + colW, boxY)
+      .lineTo(50 + colW, boxY + 60)
+      .stroke(borderColor);
+    doc
+      .moveTo(50 + colW * 2, boxY)
+      .lineTo(50 + colW * 2, boxY + 60)
+      .stroke(borderColor);
 
-    doc.fillColor(incomeColor).fontSize(10).font("Helvetica-Bold")
-      .text("Total Income", 50, boxY + 10, { width: colW, align: "center" });
-    doc.fillColor(incomeColor).fontSize(14).font("Helvetica-Bold")
-      .text(formatCurrencyPdf(totalIncome, currency), 50, boxY + 28, { width: colW, align: "center" });
+    doc
+      .fillColor(incomeColor)
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .text('Total Income', 50, boxY + 10, { width: colW, align: 'center' });
+    doc
+      .fillColor(incomeColor)
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text(formatCurrencyPdf(totalIncome, currency), 50, boxY + 28, {
+        width: colW,
+        align: 'center',
+      });
 
-    doc.fillColor(expenseColor).fontSize(10).font("Helvetica-Bold")
-      .text("Total Expenses", 50 + colW, boxY + 10, { width: colW, align: "center" });
-    doc.fillColor(expenseColor).fontSize(14).font("Helvetica-Bold")
-      .text(formatCurrencyPdf(totalExpenses, currency), 50 + colW, boxY + 28, { width: colW, align: "center" });
+    doc
+      .fillColor(expenseColor)
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .text('Total Expenses', 50 + colW, boxY + 10, { width: colW, align: 'center' });
+    doc
+      .fillColor(expenseColor)
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text(formatCurrencyPdf(totalExpenses, currency), 50 + colW, boxY + 28, {
+        width: colW,
+        align: 'center',
+      });
 
-    doc.fillColor(netSavings >= 0 ? incomeColor : expenseColor).fontSize(10).font("Helvetica-Bold")
-      .text("Net Savings", 50 + colW * 2, boxY + 10, { width: colW, align: "center" });
-    doc.fillColor(netSavings >= 0 ? incomeColor : expenseColor).fontSize(14).font("Helvetica-Bold")
-      .text(formatCurrencyPdf(netSavings, currency), 50 + colW * 2, boxY + 28, { width: colW, align: "center" });
+    doc
+      .fillColor(netSavings >= 0 ? incomeColor : expenseColor)
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .text('Net Savings', 50 + colW * 2, boxY + 10, { width: colW, align: 'center' });
+    doc
+      .fillColor(netSavings >= 0 ? incomeColor : expenseColor)
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text(formatCurrencyPdf(netSavings, currency), 50 + colW * 2, boxY + 28, {
+        width: colW,
+        align: 'center',
+      });
 
     doc.y = boxY + 70;
 
     if (Object.keys(incomeByCat).length > 0) {
       doc.moveDown(0.5);
-      doc.fillColor(headerBg).fontSize(12).font("Helvetica-Bold").text("Income");
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc.fillColor(headerBg).fontSize(12).font('Helvetica-Bold').text('Income');
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.3);
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font('Helvetica');
       const sortedIncome = Object.entries(incomeByCat).sort((a, b) => b[1].total - a[1].total);
       sortedIncome.forEach(([cat, data]) => {
-        doc.fillColor(incomeColor).text(`${formatCurrencyPdf(data.total, currency)}  `, { continued: true });
+        doc
+          .fillColor(incomeColor)
+          .text(`${formatCurrencyPdf(data.total, currency)}  `, { continued: true });
         doc.fillColor(titleColor).text(cat);
       });
     }
 
     if (Object.keys(expenseByCat).length > 0) {
       doc.moveDown(0.5);
-      doc.fillColor(headerBg).fontSize(12).font("Helvetica-Bold").text("Expenses");
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc.fillColor(headerBg).fontSize(12).font('Helvetica-Bold').text('Expenses');
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.3);
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font('Helvetica');
       const sortedExpenses = Object.entries(expenseByCat).sort((a, b) => b[1].total - a[1].total);
       sortedExpenses.forEach(([cat, data]) => {
-        const pct = totalExpenses > 0 ? ((data.total / totalExpenses) * 100).toFixed(1) : "0.0";
-        doc.fillColor(expenseColor).text(`${formatCurrencyPdf(data.total, currency)}  (${pct}%)  `, { continued: true });
+        const pct = totalExpenses > 0 ? ((data.total / totalExpenses) * 100).toFixed(1) : '0.0';
+        doc
+          .fillColor(expenseColor)
+          .text(`${formatCurrencyPdf(data.total, currency)}  (${pct}%)  `, { continued: true });
         doc.fillColor(titleColor).text(cat);
       });
     }
 
     if (Object.keys(incomeByCat).length === 0 && Object.keys(expenseByCat).length === 0) {
       doc.moveDown(1);
-      doc.fillColor(mutedColor).fontSize(11).font("Helvetica").text("No transactions found for this period.", { align: "center" });
+      doc
+        .fillColor(mutedColor)
+        .fontSize(11)
+        .font('Helvetica')
+        .text('No transactions found for this period.', { align: 'center' });
     }
 
     doc.moveDown(2);
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`Generated by Finance Manager — ${new Date().toLocaleDateString()}`, { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`Generated by Finance Manager — ${new Date().toLocaleDateString()}`, {
+        align: 'center',
+      });
 
     doc.end();
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6869,34 +7137,42 @@ app.get("/api/reports/monthly-pdf", apiRateLimiter, async (req, res) => {
 // =====================
 
 // JSON tax summary
-app.get("/api/reports/tax-summary", apiRateLimiter, (req, res) => {
+app.get('/api/reports/tax-summary', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const { year } = req.query;
-    if (!year) return res.status(400).json({ error: "year is required" });
+    if (!year) return res.status(400).json({ error: 'year is required' });
 
     const startStr = `${year}-01-01`;
     const endStr = `${year}-12-31`;
 
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT t.id, t.date, t.description, t.amount, t.currency, c.name as category_name, c.tax_deductible
       FROM transactions t
       JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date <= ? AND t.type = 'expense'
       ORDER BY c.tax_deductible DESC, c.name, t.date
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
-    const taxDeductible = rows.filter(r => r.tax_deductible);
-    const nonDeductible = rows.filter(r => !r.tax_deductible);
+    const taxDeductible = rows.filter((r) => r.tax_deductible);
+    const nonDeductible = rows.filter((r) => !r.tax_deductible);
 
     const byCategory = (rows) => {
       const map = {};
-      rows.forEach(r => {
+      rows.forEach((r) => {
         if (!map[r.category_name]) map[r.category_name] = { total: 0, transactions: [] };
         map[r.category_name].total += r.amount;
         map[r.category_name].transactions.push({
-          id: r.id, date: r.date, description: r.description, amount: r.amount, currency: r.currency
+          id: r.id,
+          date: r.date,
+          description: r.description,
+          amount: r.amount,
+          currency: r.currency,
         });
       });
       return map;
@@ -6913,17 +7189,17 @@ app.get("/api/reports/tax-summary", apiRateLimiter, (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Year-end tax summary PDF
-app.get("/api/reports/tax-summary-pdf", apiRateLimiter, (req, res) => {
+app.get('/api/reports/tax-summary-pdf', apiRateLimiter, (req, res) => {
   try {
     const { year } = req.query;
     if (!year || !/^\d{4}$/.test(String(year))) {
-      return res.status(400).json({ error: "Valid year is required" });
+      return res.status(400).json({ error: 'Valid year is required' });
     }
 
     const startStr = `${year}-01-01`;
@@ -6931,132 +7207,209 @@ app.get("/api/reports/tax-summary-pdf", apiRateLimiter, (req, res) => {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
 
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT t.id, t.date, t.description, t.amount, t.currency, c.name as category_name, c.tax_deductible
       FROM transactions t
       JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date <= ? AND t.type = 'expense'
       ORDER BY c.tax_deductible DESC, c.name, t.date
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
-    const taxRows = rows.filter(r => r.tax_deductible);
-    const nonRows = rows.filter(r => !r.tax_deductible);
+    const taxRows = rows.filter((r) => r.tax_deductible);
+    const nonRows = rows.filter((r) => !r.tax_deductible);
 
-    const currency = db.prepare(`SELECT value FROM settings WHERE key='local_currency' AND profile_id IN (${inClause}) ORDER BY profile_id DESC LIMIT 1`).get(...pids)?.value || 'USD';
-    const symbols = { EUR: "€", USD: "$", GBP: "£", CHF: "CHF " };
-    const fmt = (amt) => (symbols[currency] || currency + " ") + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const currency =
+      db
+        .prepare(
+          `SELECT value FROM settings WHERE key='local_currency' AND profile_id IN (${inClause}) ORDER BY profile_id DESC LIMIT 1`
+        )
+        .get(...pids)?.value || 'USD';
+    const symbols = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF ' };
+    const fmt = (amt) =>
+      (symbols[currency] || currency + ' ') + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
     const taxTotal = taxRows.reduce((s, r) => s + r.amount, 0);
     const nonTotal = nonRows.reduce((s, r) => s + r.amount, 0);
     const grandTotal = rows.reduce((s, r) => s + r.amount, 0);
 
-    const PDFDocument = require("pdfkit");
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="tax-summary-${year}.pdf"`);
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="tax-summary-${year}.pdf"`);
     doc.pipe(res);
 
     // Colors
-    const titleColor = "#1e293b";
-    const headerBg = "#f1f5f9";
-    const borderColor = "#cbd5e1";
-    const taxColor = "#16a34a";
-    const nonTaxColor = "#94a3b8";
-    const mutedColor = "#64748b";
-    const positiveColor = "#059669";
+    const titleColor = '#1e293b';
+    const headerBg = '#f1f5f9';
+    const borderColor = '#cbd5e1';
+    const taxColor = '#16a34a';
+    const nonTaxColor = '#94a3b8';
+    const mutedColor = '#64748b';
+    const positiveColor = '#059669';
 
     // Header
-    doc.fillColor(titleColor).fontSize(20).font("Helvetica-Bold")
+    doc
+      .fillColor(titleColor)
+      .fontSize(20)
+      .font('Helvetica-Bold')
       .text(`Year-End Tax Summary — ${year}`, 50, 50);
     doc.moveDown(0.5);
-    doc.fillColor(mutedColor).fontSize(10).font("Helvetica")
+    doc
+      .fillColor(mutedColor)
+      .fontSize(10)
+      .font('Helvetica')
       .text(`Generated by Finance Manager — ${new Date().toLocaleDateString()}`, 50, doc.y);
     doc.moveDown(2);
 
     // Summary box
     const colW = (doc.page.width - 100) / 3;
     const boxY = doc.y;
-    doc.rect(50, boxY, doc.page.width - 100, 70).fillColor(headerBg).fill();
-    doc.strokeColor(borderColor).rect(50, boxY, doc.page.width - 100, 70).stroke();
+    doc
+      .rect(50, boxY, doc.page.width - 100, 70)
+      .fillColor(headerBg)
+      .fill();
+    doc
+      .strokeColor(borderColor)
+      .rect(50, boxY, doc.page.width - 100, 70)
+      .stroke();
 
-    doc.fillColor(taxColor).fontSize(9).font("Helvetica-Bold")
-      .text("Tax-Deductible Expenses", 50, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(taxColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(taxTotal), 50, boxY + 28, { width: colW, align: "center" });
-    const taxPct = grandTotal > 0 ? ((taxTotal / grandTotal) * 100).toFixed(1) : "0.0";
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`${taxPct}% of total`, 50, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(taxColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Tax-Deductible Expenses', 50, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(taxColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(taxTotal), 50, boxY + 28, { width: colW, align: 'center' });
+    const taxPct = grandTotal > 0 ? ((taxTotal / grandTotal) * 100).toFixed(1) : '0.0';
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`${taxPct}% of total`, 50, boxY + 50, { width: colW, align: 'center' });
 
-    doc.fillColor(nonTaxColor).fontSize(9).font("Helvetica-Bold")
-      .text("Non-Deductible Expenses", 50 + colW, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(nonTaxColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(nonTotal), 50 + colW, boxY + 28, { width: colW, align: "center" });
-    const nonPct = grandTotal > 0 ? ((nonTotal / grandTotal) * 100).toFixed(1) : "0.0";
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`${nonPct}% of total`, 50 + colW, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(nonTaxColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Non-Deductible Expenses', 50 + colW, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(nonTaxColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(nonTotal), 50 + colW, boxY + 28, { width: colW, align: 'center' });
+    const nonPct = grandTotal > 0 ? ((nonTotal / grandTotal) * 100).toFixed(1) : '0.0';
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`${nonPct}% of total`, 50 + colW, boxY + 50, { width: colW, align: 'center' });
 
-    doc.fillColor(titleColor).fontSize(9).font("Helvetica-Bold")
-      .text("Total Expenses", 50 + colW * 2, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(grandTotal), 50 + colW * 2, boxY + 28, { width: colW, align: "center" });
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`${taxRows.length + nonRows.length} transactions`, 50 + colW * 2, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(titleColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Total Expenses', 50 + colW * 2, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(titleColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(grandTotal), 50 + colW * 2, boxY + 28, { width: colW, align: 'center' });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`${taxRows.length + nonRows.length} transactions`, 50 + colW * 2, boxY + 50, {
+        width: colW,
+        align: 'center',
+      });
 
     doc.y = boxY + 85;
     doc.moveDown(1);
 
     // Tax-deductible section
     const drawSection = (title, color, catRows) => {
-      doc.fillColor(color).fontSize(12).font("Helvetica-Bold").text(title);
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc.fillColor(color).fontSize(12).font('Helvetica-Bold').text(title);
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.3);
 
       if (catRows.length === 0) {
-        doc.fillColor(mutedColor).fontSize(10).font("Helvetica").text("No transactions in this category.");
+        doc
+          .fillColor(mutedColor)
+          .fontSize(10)
+          .font('Helvetica')
+          .text('No transactions in this category.');
         doc.moveDown(1);
         return;
       }
 
       // Group by category
       const byCat = {};
-      catRows.forEach(r => {
+      catRows.forEach((r) => {
         if (!byCat[r.category_name]) byCat[r.category_name] = { total: 0, count: 0 };
         byCat[r.category_name].total += r.amount;
         byCat[r.category_name].count++;
       });
 
       // Table header
-      doc.fillColor(mutedColor).fontSize(9).font("Helvetica-Bold")
-        .text("Category", 50, doc.y, { width: 220 })
-        .text("Transactions", 270, doc.y, { width: 100 })
-        .text("Amount", 370, doc.y, { width: 120 });
+      doc
+        .fillColor(mutedColor)
+        .fontSize(9)
+        .font('Helvetica-Bold')
+        .text('Category', 50, doc.y, { width: 220 })
+        .text('Transactions', 270, doc.y, { width: 100 })
+        .text('Amount', 370, doc.y, { width: 120 });
       doc.moveDown(0.4);
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.4);
 
-      doc.fontSize(10).font("Helvetica");
+      doc.fontSize(10).font('Helvetica');
       Object.entries(byCat).forEach(([cat, data]) => {
-        doc.fillColor(titleColor).text(cat, 50, doc.y, { width: 220 })
-          .fillColor(mutedColor).text(String(data.count), 270, doc.y, { width: 100 })
-          .fillColor(color).text(fmt(data.total), 370, doc.y, { width: 120 });
+        doc
+          .fillColor(titleColor)
+          .text(cat, 50, doc.y, { width: 220 })
+          .fillColor(mutedColor)
+          .text(String(data.count), 270, doc.y, { width: 100 })
+          .fillColor(color)
+          .text(fmt(data.total), 370, doc.y, { width: 120 });
         doc.moveDown(0.3);
       });
 
       doc.moveDown(0.5);
     };
 
-    drawSection("Tax-Deductible Expenses", taxColor, taxRows);
-    drawSection("Non-Deductible Expenses", nonTaxColor, nonRows);
+    drawSection('Tax-Deductible Expenses', taxColor, taxRows);
+    drawSection('Non-Deductible Expenses', nonTaxColor, nonRows);
 
     // Footer
     doc.moveDown(2);
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text("This report is for informational purposes only. Consult a tax professional for official filings.", { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(
+        'This report is for informational purposes only. Consult a tax professional for official filings.',
+        { align: 'center' }
+      );
 
     doc.end();
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -7065,30 +7418,34 @@ app.get("/api/reports/tax-summary-pdf", apiRateLimiter, (req, res) => {
 // =====================
 
 // JSON P&L summary
-app.get("/api/reports/pl-summary", apiRateLimiter, (req, res) => {
+app.get('/api/reports/pl-summary', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
     const { year } = req.query;
-    if (!year) return res.status(400).json({ error: "year is required" });
+    if (!year) return res.status(400).json({ error: 'year is required' });
 
     const startStr = `${year}-01-01`;
     const endStr = `${year}-12-31`;
 
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT t.id, t.date, t.description, t.amount, t.currency, t.type, c.name as category_name
       FROM transactions t
       JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date <= ?
       ORDER BY t.type, c.name, t.date
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
-    const income = rows.filter(r => r.type === 'income');
-    const expenses = rows.filter(r => r.type === 'expense');
+    const income = rows.filter((r) => r.type === 'income');
+    const expenses = rows.filter((r) => r.type === 'expense');
 
     const byCategory = (txs) => {
       const map = {};
-      txs.forEach(r => {
+      txs.forEach((r) => {
         if (!map[r.category_name]) map[r.category_name] = { total: 0, count: 0 };
         map[r.category_name].total += r.amount;
         map[r.category_name].count++;
@@ -7104,22 +7461,25 @@ app.get("/api/reports/pl-summary", apiRateLimiter, (req, res) => {
       income: { total: incomeTotal, byCategory: byCategory(income) },
       expenses: { total: expenseTotal, byCategory: byCategory(expenses) },
       netSavings: incomeTotal - expenseTotal,
-      savingsRate: incomeTotal > 0 ? parseFloat(((incomeTotal - expenseTotal) / incomeTotal * 100).toFixed(1)) : 0,
+      savingsRate:
+        incomeTotal > 0
+          ? parseFloat((((incomeTotal - expenseTotal) / incomeTotal) * 100).toFixed(1))
+          : 0,
       transactionCount: rows.length,
     });
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Year-end P&L PDF
-app.get("/api/reports/pl-summary-pdf", apiRateLimiter, (req, res) => {
+app.get('/api/reports/pl-summary-pdf', apiRateLimiter, (req, res) => {
   try {
     const { year } = req.query;
     if (!year || !/^\d{4}$/.test(String(year))) {
-      return res.status(400).json({ error: "Valid year is required" });
+      return res.status(400).json({ error: 'Valid year is required' });
     }
 
     const startStr = `${year}-01-01`;
@@ -7127,139 +7487,225 @@ app.get("/api/reports/pl-summary-pdf", apiRateLimiter, (req, res) => {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
 
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT t.id, t.date, t.description, t.amount, t.currency, t.type, c.name as category_name
       FROM transactions t
       JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.date >= ? AND t.date <= ?
       ORDER BY t.type, c.name, t.date
-    `).all(...pids, startStr, endStr);
+    `
+      )
+      .all(...pids, startStr, endStr);
 
-    const incomeRows = rows.filter(r => r.type === 'income');
-    const expenseRows = rows.filter(r => r.type === 'expense');
+    const incomeRows = rows.filter((r) => r.type === 'income');
+    const expenseRows = rows.filter((r) => r.type === 'expense');
 
-    const currency = db.prepare(`SELECT value FROM settings WHERE key='local_currency' AND profile_id IN (${inClause}) ORDER BY profile_id DESC LIMIT 1`).get(...pids)?.value || 'USD';
-    const symbols = { EUR: "€", USD: "$", GBP: "£", CHF: "CHF " };
-    const fmt = (amt) => (symbols[currency] || currency + " ") + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const currency =
+      db
+        .prepare(
+          `SELECT value FROM settings WHERE key='local_currency' AND profile_id IN (${inClause}) ORDER BY profile_id DESC LIMIT 1`
+        )
+        .get(...pids)?.value || 'USD';
+    const symbols = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF ' };
+    const fmt = (amt) =>
+      (symbols[currency] || currency + ' ') + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
     const incomeTotal = incomeRows.reduce((s, r) => s + r.amount, 0);
     const expenseTotal = expenseRows.reduce((s, r) => s + r.amount, 0);
     const netSavings = incomeTotal - expenseTotal;
-    const savingsRate = incomeTotal > 0 ? ((incomeTotal - expenseTotal) / incomeTotal * 100) : 0;
+    const savingsRate = incomeTotal > 0 ? ((incomeTotal - expenseTotal) / incomeTotal) * 100 : 0;
 
-    const PDFDocument = require("pdfkit");
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="pl-summary-${year}.pdf"`);
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="pl-summary-${year}.pdf"`);
     doc.pipe(res);
 
-    const titleColor = "#1e293b";
-    const headerBg = "#f1f5f9";
-    const borderColor = "#cbd5e1";
-    const incomeColor = "#059669";
-    const expenseColor = "#dc2626";
-    const mutedColor = "#64748b";
-    const netColor = netSavings >= 0 ? "#059669" : "#dc2626";
+    const titleColor = '#1e293b';
+    const headerBg = '#f1f5f9';
+    const borderColor = '#cbd5e1';
+    const incomeColor = '#059669';
+    const expenseColor = '#dc2626';
+    const mutedColor = '#64748b';
+    const netColor = netSavings >= 0 ? '#059669' : '#dc2626';
 
     // Header
-    doc.fillColor(titleColor).fontSize(20).font("Helvetica-Bold")
+    doc
+      .fillColor(titleColor)
+      .fontSize(20)
+      .font('Helvetica-Bold')
       .text(`Year-End P&L Summary — ${year}`, 50, 50);
     doc.moveDown(0.5);
-    doc.fillColor(mutedColor).fontSize(10).font("Helvetica")
+    doc
+      .fillColor(mutedColor)
+      .fontSize(10)
+      .font('Helvetica')
       .text(`Generated by Finance Manager — ${new Date().toLocaleDateString()}`, 50, doc.y);
     doc.moveDown(2);
 
     // Summary box
     const colW = (doc.page.width - 100) / 3;
     const boxY = doc.y;
-    doc.rect(50, boxY, doc.page.width - 100, 70).fillColor(headerBg).fill();
-    doc.strokeColor(borderColor).rect(50, boxY, doc.page.width - 100, 70).stroke();
+    doc
+      .rect(50, boxY, doc.page.width - 100, 70)
+      .fillColor(headerBg)
+      .fill();
+    doc
+      .strokeColor(borderColor)
+      .rect(50, boxY, doc.page.width - 100, 70)
+      .stroke();
 
-    doc.fillColor(incomeColor).fontSize(9).font("Helvetica-Bold")
-      .text("Total Income", 50, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(incomeColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(incomeTotal), 50, boxY + 28, { width: colW, align: "center" });
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`${incomeRows.length} transactions`, 50, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(incomeColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Total Income', 50, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(incomeColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(incomeTotal), 50, boxY + 28, { width: colW, align: 'center' });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`${incomeRows.length} transactions`, 50, boxY + 50, { width: colW, align: 'center' });
 
-    doc.fillColor(expenseColor).fontSize(9).font("Helvetica-Bold")
-      .text("Total Expenses", 50 + colW, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(expenseColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(expenseTotal), 50 + colW, boxY + 28, { width: colW, align: "center" });
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`${expenseRows.length} transactions`, 50 + colW, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(expenseColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Total Expenses', 50 + colW, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(expenseColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(expenseTotal), 50 + colW, boxY + 28, { width: colW, align: 'center' });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`${expenseRows.length} transactions`, 50 + colW, boxY + 50, {
+        width: colW,
+        align: 'center',
+      });
 
-    doc.fillColor(netColor).fontSize(9).font("Helvetica-Bold")
-      .text("Net Savings", 50 + colW * 2, boxY + 8, { width: colW, align: "center" });
-    doc.fillColor(netColor).fontSize(13).font("Helvetica-Bold")
-      .text(fmt(netSavings), 50 + colW * 2, boxY + 28, { width: colW, align: "center" });
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`Savings rate: ${savingsRate.toFixed(1)}%`, 50 + colW * 2, boxY + 50, { width: colW, align: "center" });
+    doc
+      .fillColor(netColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('Net Savings', 50 + colW * 2, boxY + 8, { width: colW, align: 'center' });
+    doc
+      .fillColor(netColor)
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .text(fmt(netSavings), 50 + colW * 2, boxY + 28, { width: colW, align: 'center' });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`Savings rate: ${savingsRate.toFixed(1)}%`, 50 + colW * 2, boxY + 50, {
+        width: colW,
+        align: 'center',
+      });
 
     doc.y = boxY + 85;
     doc.moveDown(1);
 
     // Helper: draw section
     const drawSection = (title, color, catRows, total) => {
-      doc.fillColor(titleColor).fontSize(12).font("Helvetica-Bold").text(title);
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc.fillColor(titleColor).fontSize(12).font('Helvetica-Bold').text(title);
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.3);
 
       if (catRows.length === 0) {
-        doc.fillColor(mutedColor).fontSize(10).font("Helvetica").text("No transactions.");
+        doc.fillColor(mutedColor).fontSize(10).font('Helvetica').text('No transactions.');
         doc.moveDown(0.5);
         return;
       }
 
       const byCat = {};
-      catRows.forEach(r => {
+      catRows.forEach((r) => {
         if (!byCat[r.category_name]) byCat[r.category_name] = { total: 0, count: 0 };
         byCat[r.category_name].total += r.amount;
         byCat[r.category_name].count++;
       });
 
-      doc.fillColor(mutedColor).fontSize(9).font("Helvetica-Bold")
-        .text("Category", 50, doc.y, { width: 220 })
-        .text("Transactions", 270, doc.y, { width: 100 })
-        .text("Amount", 370, doc.y, { width: 120 })
-        .text("% of Total", 470, doc.y, { width: 70 });
+      doc
+        .fillColor(mutedColor)
+        .fontSize(9)
+        .font('Helvetica-Bold')
+        .text('Category', 50, doc.y, { width: 220 })
+        .text('Transactions', 270, doc.y, { width: 100 })
+        .text('Amount', 370, doc.y, { width: 120 })
+        .text('% of Total', 470, doc.y, { width: 70 });
       doc.moveDown(0.4);
-      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor(borderColor)
+        .stroke();
       doc.moveDown(0.4);
 
-      doc.fontSize(10).font("Helvetica");
-      Object.entries(byCat).sort((a, b) => b[1].total - a[1].total).forEach(([cat, data]) => {
-        const pct = total > 0 ? ((data.total / total) * 100).toFixed(1) : "0.0";
-        doc.fillColor(titleColor).text(cat, 50, doc.y, { width: 220 })
-          .fillColor(mutedColor).text(String(data.count), 270, doc.y, { width: 100 })
-          .fillColor(color).text(fmt(data.total), 370, doc.y, { width: 120 })
-          .fillColor(mutedColor).text(`${pct}%`, 470, doc.y, { width: 70 });
-        doc.moveDown(0.3);
-      });
+      doc.fontSize(10).font('Helvetica');
+      Object.entries(byCat)
+        .sort((a, b) => b[1].total - a[1].total)
+        .forEach(([cat, data]) => {
+          const pct = total > 0 ? ((data.total / total) * 100).toFixed(1) : '0.0';
+          doc
+            .fillColor(titleColor)
+            .text(cat, 50, doc.y, { width: 220 })
+            .fillColor(mutedColor)
+            .text(String(data.count), 270, doc.y, { width: 100 })
+            .fillColor(color)
+            .text(fmt(data.total), 370, doc.y, { width: 120 })
+            .fillColor(mutedColor)
+            .text(`${pct}%`, 470, doc.y, { width: 70 });
+          doc.moveDown(0.3);
+        });
 
       // Total row
       doc.moveDown(0.3);
-      doc.font("Helvetica-Bold");
-      doc.fillColor(titleColor).text("Total", 50, doc.y, { width: 220 })
-        .fillColor(mutedColor).text(String(Object.values(byCat).reduce((s, d) => s + d.count, 0)), 270, doc.y, { width: 100 })
-        .fillColor(color).text(fmt(total), 370, doc.y, { width: 120 })
-        .fillColor(mutedColor).text("100.0%", 470, doc.y, { width: 70 });
-      doc.font("Helvetica");
+      doc.font('Helvetica-Bold');
+      doc
+        .fillColor(titleColor)
+        .text('Total', 50, doc.y, { width: 220 })
+        .fillColor(mutedColor)
+        .text(String(Object.values(byCat).reduce((s, d) => s + d.count, 0)), 270, doc.y, {
+          width: 100,
+        })
+        .fillColor(color)
+        .text(fmt(total), 370, doc.y, { width: 120 })
+        .fillColor(mutedColor)
+        .text('100.0%', 470, doc.y, { width: 70 });
+      doc.font('Helvetica');
       doc.moveDown(1);
     };
 
-    drawSection("Income", incomeColor, incomeRows, incomeTotal);
-    drawSection("Expenses", expenseColor, expenseRows, expenseTotal);
+    drawSection('Income', incomeColor, incomeRows, incomeTotal);
+    drawSection('Expenses', expenseColor, expenseRows, expenseTotal);
 
     // Footer
     doc.moveDown(2);
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`Total: ${rows.length} transactions | Net Savings: ${fmt(netSavings)} (${savingsRate.toFixed(1)}% savings rate)`, { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(
+        `Total: ${rows.length} transactions | Net Savings: ${fmt(netSavings)} (${savingsRate.toFixed(1)}% savings rate)`,
+        { align: 'center' }
+      );
 
     doc.end();
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -7267,50 +7713,60 @@ app.get("/api/reports/pl-summary-pdf", apiRateLimiter, (req, res) => {
 // ANNUAL FINANCIAL REPORT PDF
 // ============================
 // Uses puppeteer to render charts via a dedicated export page, then embeds screenshot in PDF
-app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
+app.get('/api/reports/annual-pdf', apiRateLimiter, async (req, res) => {
   try {
     const { year } = req.query;
 
     if (!year || !/^\d{4}$/.test(String(year))) {
-      return res.status(400).json({ error: "Valid year is required" });
+      return res.status(400).json({ error: 'Valid year is required' });
     }
 
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
 
     // --- Fetch all data server-side ---
-    const currencyRow = db.prepare(
-      `SELECT value FROM settings WHERE key='local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
-    ).get(...pids);
-    const currency = currencyRow?.value || "USD";
+    const currencyRow = db
+      .prepare(
+        `SELECT value FROM settings WHERE key='local_currency' AND (profile_id IN (${inClause}) OR profile_id IS NULL) ORDER BY profile_id DESC LIMIT 1`
+      )
+      .get(...pids);
+    const currency = currencyRow?.value || 'USD';
 
     // Category breakdown (for doughnut chart)
-    const byCategory = db.prepare(`
+    const byCategory = db
+      .prepare(
+        `
       SELECT c.name, c.color, SUM(COALESCE(t.amount_local, t.amount)) as total
       FROM transactions t
       JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
       WHERE t.profile_id IN (${inClause}) AND t.type = 'expense' AND t.date >= ? AND t.date <= ?
       GROUP BY c.id
       ORDER BY total DESC
-    `).all(...pids, `${year}-01-01`, `${year}-12-31`);
+    `
+      )
+      .all(...pids, `${year}-01-01`, `${year}-12-31`);
 
     // Monthly data for bar and line charts + breakdown table
-    const monthly = db.prepare(`
+    const monthly = db
+      .prepare(
+        `
       SELECT strftime('%m', date) as month_num,
              type, SUM(COALESCE(amount_local, amount)) as total
       FROM transactions
       WHERE profile_id IN (${inClause}) AND date >= ? AND date <= ? AND type IN ('income', 'expense')
       GROUP BY month_num, type
       ORDER BY month_num
-    `).all(...pids, `${year}-01-01`, `${year}-12-31`);
+    `
+      )
+      .all(...pids, `${year}-01-01`, `${year}-12-31`);
 
     const monthlyMap = {};
     for (let m = 1; m <= 12; m++) {
       monthlyMap[String(m).padStart(2, '0')] = { income: 0, expense: 0 };
     }
     for (const r of monthly) {
-      if (r.type === "income") monthlyMap[r.month_num].income = r.total;
-      if (r.type === "expense") monthlyMap[r.month_num].expense = r.total;
+      if (r.type === 'income') monthlyMap[r.month_num].income = r.total;
+      if (r.type === 'expense') monthlyMap[r.month_num].expense = r.total;
     }
 
     const monthlyArr = Object.entries(monthlyMap).map(([m, v]) => ({
@@ -7319,7 +7775,8 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
       expense: v.expense,
     }));
 
-    let totalIncome = 0, totalExpenses = 0;
+    let totalIncome = 0,
+      totalExpenses = 0;
     let running = 0;
     const cashFlow = [];
     for (const row of monthlyArr) {
@@ -7346,11 +7803,11 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
     let pdfBuffer = null;
 
     try {
-      const puppeteer = require("puppeteer");
+      const puppeteer = require('puppeteer');
 
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       });
 
       try {
@@ -7363,17 +7820,22 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
         }, exportData);
 
         const baseUrl = `http://localhost:${PORT}`;
-        await exportPage.goto(`${baseUrl}/export.html`, { waitUntil: 'networkidle0', timeout: 30000 });
+        await exportPage.goto(`${baseUrl}/export.html`, {
+          waitUntil: 'networkidle0',
+          timeout: 30000,
+        });
 
         // Wait for the page to signal that charts have finished rendering
         await exportPage.waitForFunction(() => window.__RENDER_DONE__ === true, { timeout: 30000 });
 
         // Generate PDF directly from the rendered page (puppeteer returns Uint8Array, convert to Buffer)
-        pdfBuffer = Buffer.from(await exportPage.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
-        }));
+        pdfBuffer = Buffer.from(
+          await exportPage.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+          })
+        );
       } finally {
         await browser.close();
       }
@@ -7383,37 +7845,50 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
 
     // --- Return the PDF directly ---
     if (pdfBuffer && pdfBuffer.length > 1000) {
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="annual-report-${year}.pdf"`);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="annual-report-${year}.pdf"`);
       return res.send(pdfBuffer);
     }
 
     // Fallback: if puppeteer failed, generate text-only PDF
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="annual-report-${year}.pdf"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="annual-report-${year}.pdf"`);
     doc.pipe(res);
 
-    const titleColor = "#1e293b";
-    const headerBg = "#f1f5f9";
-    const borderColor = "#cbd5e1";
-    const incomeColor = "#059669";
-    const expenseColor = "#dc2626";
-    const mutedColor = "#64748b";
-    const netColor = netSavings >= 0 ? "#059669" : "#dc2626";
+    const titleColor = '#1e293b';
+    const headerBg = '#f1f5f9';
+    const borderColor = '#cbd5e1';
+    const incomeColor = '#059669';
+    const expenseColor = '#dc2626';
+    const mutedColor = '#64748b';
+    const netColor = netSavings >= 0 ? '#059669' : '#dc2626';
     const pageW = doc.page.width - 80;
-    const symbols = { EUR: "€", USD: "$", GBP: "£", CHF: "CHF " };
-    const fmt = (amt) => (symbols[currency] || currency + " ") + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const symbols = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF ' };
+    const fmt = (amt) =>
+      (symbols[currency] || currency + ' ') + amt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
     // Header
-    doc.fillColor(titleColor).fontSize(22).font("Helvetica-Bold")
-      .text(`Annual Financial Report \u2014 ${year}`, 50, 50, { width: pageW, align: "center" });
+    doc
+      .fillColor(titleColor)
+      .fontSize(22)
+      .font('Helvetica-Bold')
+      .text(`Annual Financial Report \u2014 ${year}`, 50, 50, { width: pageW, align: 'center' });
     doc.moveDown(0.3);
-    doc.fillColor(mutedColor).fontSize(11).font("Helvetica")
-      .text(`Finance Manager  |\u00a0 Generated: ${new Date().toLocaleDateString()}`, { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(11)
+      .font('Helvetica')
+      .text(`Finance Manager  |\u00a0 Generated: ${new Date().toLocaleDateString()}`, {
+        align: 'center',
+      });
 
     doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor(borderColor)
+      .stroke();
 
     // P&L Summary box
     const boxH = 65;
@@ -7424,53 +7899,105 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
     doc.strokeColor(borderColor).rect(50, boxY, pageW, boxH).stroke();
 
     doc.y = boxY + 10;
-    doc.fillColor(titleColor).fontSize(12).font("Helvetica-Bold")
-      .text(`${year} Annual Summary`, 50, doc.y, { width: pageW, align: "center" });
+    doc
+      .fillColor(titleColor)
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text(`${year} Annual Summary`, 50, doc.y, { width: pageW, align: 'center' });
     doc.y += 14;
 
-    doc.fontSize(10).font("Helvetica");
-    doc.fillColor(incomeColor).font("Helvetica-Bold").fontSize(10)
-      .text("Total Income", 50 + 10, doc.y, { width: colW, align: "center" });
-    doc.fillColor(incomeColor).fontSize(14)
-      .text(fmt(totalIncome), 50 + 10, doc.y + 14, { width: colW, align: "center" });
+    doc.fontSize(10).font('Helvetica');
+    doc
+      .fillColor(incomeColor)
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .text('Total Income', 50 + 10, doc.y, { width: colW, align: 'center' });
+    doc
+      .fillColor(incomeColor)
+      .fontSize(14)
+      .text(fmt(totalIncome), 50 + 10, doc.y + 14, { width: colW, align: 'center' });
 
-    doc.fillColor(expenseColor).font("Helvetica-Bold").fontSize(10)
-      .text("Total Expenses", 50 + colW + 10, doc.y, { width: colW, align: "center" });
-    doc.fillColor(expenseColor).fontSize(14)
-      .text(fmt(totalExpenses), 50 + colW + 10, doc.y + 14, { width: colW, align: "center" });
+    doc
+      .fillColor(expenseColor)
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .text('Total Expenses', 50 + colW + 10, doc.y, { width: colW, align: 'center' });
+    doc
+      .fillColor(expenseColor)
+      .fontSize(14)
+      .text(fmt(totalExpenses), 50 + colW + 10, doc.y + 14, { width: colW, align: 'center' });
 
-    doc.fillColor(netColor).font("Helvetica-Bold").fontSize(10)
-      .text("Net Savings", 50 + colW * 2 + 10, doc.y, { width: colW, align: "center" });
-    doc.fillColor(netColor).fontSize(14)
-      .text(fmt(netSavings), 50 + colW * 2 + 10, doc.y + 14, { width: colW, align: "center" });
+    doc
+      .fillColor(netColor)
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .text('Net Savings', 50 + colW * 2 + 10, doc.y, { width: colW, align: 'center' });
+    doc
+      .fillColor(netColor)
+      .fontSize(14)
+      .text(fmt(netSavings), 50 + colW * 2 + 10, doc.y + 14, { width: colW, align: 'center' });
 
     // Note about charts
     doc.moveDown(2);
     doc.addPage();
-    doc.fillColor(mutedColor).fontSize(12).font("Helvetica")
-      .text("Note: Charts could not be rendered in this session. Please try again later.", 50, doc.y, { width: pageW, align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(12)
+      .font('Helvetica')
+      .text(
+        'Note: Charts could not be rendered in this session. Please try again later.',
+        50,
+        doc.y,
+        { width: pageW, align: 'center' }
+      );
 
     // Monthly Breakdown Table — start on a fresh page
     doc.addPage();
     doc.y = 50;
     doc.moveDown(0.5);
-    doc.fillColor(titleColor).fontSize(13).font("Helvetica-Bold").text("Monthly Breakdown");
-    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).strokeColor(borderColor).stroke();
+    doc.fillColor(titleColor).fontSize(13).font('Helvetica-Bold').text('Monthly Breakdown');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor(borderColor)
+      .stroke();
     doc.moveDown(0.3);
 
     const tableTop = doc.y;
     const tcol = { month: 90, income: 120, expense: 120, net: 110, balance: 110 };
     const rowH = 18;
-    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
 
     doc.fillColor(headerBg).rect(50, tableTop, pageW, rowH).fill();
     doc.strokeColor(borderColor).rect(50, tableTop, pageW, rowH).stroke();
-    doc.fillColor(titleColor).fontSize(9).font("Helvetica-Bold");
-    doc.text("Month", 54, tableTop + 5, { width: tcol.month, align: "left" });
-    doc.text("Income", 54 + tcol.month, tableTop + 5, { width: tcol.income, align: "right" });
-    doc.text("Expenses", 54 + tcol.month + tcol.income, tableTop + 5, { width: tcol.expense, align: "right" });
-    doc.text("Net", 54 + tcol.month + tcol.income + tcol.expense, tableTop + 5, { width: tcol.net, align: "right" });
-    doc.text("Balance", 54 + tcol.month + tcol.income + tcol.expense + tcol.net, tableTop + 5, { width: tcol.balance, align: "right" });
+    doc.fillColor(titleColor).fontSize(9).font('Helvetica-Bold');
+    doc.text('Month', 54, tableTop + 5, { width: tcol.month, align: 'left' });
+    doc.text('Income', 54 + tcol.month, tableTop + 5, { width: tcol.income, align: 'right' });
+    doc.text('Expenses', 54 + tcol.month + tcol.income, tableTop + 5, {
+      width: tcol.expense,
+      align: 'right',
+    });
+    doc.text('Net', 54 + tcol.month + tcol.income + tcol.expense, tableTop + 5, {
+      width: tcol.net,
+      align: 'right',
+    });
+    doc.text('Balance', 54 + tcol.month + tcol.income + tcol.expense + tcol.net, tableTop + 5, {
+      width: tcol.balance,
+      align: 'right',
+    });
 
     let runningBal = 0;
     for (let m = 1; m <= 12; m++) {
@@ -7481,26 +8008,54 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
       runningBal += net;
 
       const rowY = tableTop + rowH * m;
-      const bg = m % 2 === 0 ? "#f8fafc" : "#ffffff";
+      const bg = m % 2 === 0 ? '#f8fafc' : '#ffffff';
       doc.fillColor(bg).rect(50, rowY, pageW, rowH).fill();
       doc.strokeColor(borderColor).rect(50, rowY, pageW, rowH).stroke();
 
-      doc.fillColor(titleColor).fontSize(9).font("Helvetica");
-      doc.text(monthNames[m - 1], 54, rowY + 4, { width: tcol.month, align: "left" });
-      doc.fillColor(incomeColor).fontSize(9).text(inc.toFixed(2), 54 + tcol.month, rowY + 4, { width: tcol.income, align: "right" });
-      doc.fillColor(expenseColor).fontSize(9).text(exp.toFixed(2), 54 + tcol.month + tcol.income, rowY + 4, { width: tcol.expense, align: "right" });
-      doc.fillColor(net >= 0 ? incomeColor : expenseColor).fontSize(9).text(net.toFixed(2), 54 + tcol.month + tcol.income + tcol.expense, rowY + 4, { width: tcol.net, align: "right" });
-      doc.fillColor(runningBal >= 0 ? incomeColor : expenseColor).fontSize(9).text(runningBal.toFixed(2), 54 + tcol.month + tcol.income + tcol.expense + tcol.net, rowY + 4, { width: tcol.balance, align: "right" });
+      doc.fillColor(titleColor).fontSize(9).font('Helvetica');
+      doc.text(monthNames[m - 1], 54, rowY + 4, { width: tcol.month, align: 'left' });
+      doc
+        .fillColor(incomeColor)
+        .fontSize(9)
+        .text(inc.toFixed(2), 54 + tcol.month, rowY + 4, { width: tcol.income, align: 'right' });
+      doc
+        .fillColor(expenseColor)
+        .fontSize(9)
+        .text(exp.toFixed(2), 54 + tcol.month + tcol.income, rowY + 4, {
+          width: tcol.expense,
+          align: 'right',
+        });
+      doc
+        .fillColor(net >= 0 ? incomeColor : expenseColor)
+        .fontSize(9)
+        .text(net.toFixed(2), 54 + tcol.month + tcol.income + tcol.expense, rowY + 4, {
+          width: tcol.net,
+          align: 'right',
+        });
+      doc
+        .fillColor(runningBal >= 0 ? incomeColor : expenseColor)
+        .fontSize(9)
+        .text(
+          runningBal.toFixed(2),
+          54 + tcol.month + tcol.income + tcol.expense + tcol.net,
+          rowY + 4,
+          { width: tcol.balance, align: 'right' }
+        );
     }
 
     doc.y = Math.max(doc.y, tableTop + rowH * 13) + 20;
-    doc.fillColor(mutedColor).fontSize(9).font("Helvetica")
-      .text(`Generated by Finance Manager \u2014 ${new Date().toLocaleDateString()}`, { align: "center" });
+    doc
+      .fillColor(mutedColor)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(`Generated by Finance Manager \u2014 ${new Date().toLocaleDateString()}`, {
+        align: 'center',
+      });
 
     doc.end();
   } catch (err) {
     console.error(err.message);
-    logError("error", err);
+    logError('error', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -7509,21 +8064,21 @@ app.get("/api/reports/annual-pdf", apiRateLimiter, async (req, res) => {
 // Sanitizes error messages before sending to client
 app.use((err, req, res, next) => {
   console.error(err.message);
-  logError("error", err);
+  logError('error', err);
 
   // Check if this is a known/safe error type
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({ error: "Invalid JSON in request body" });
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
   }
 
   // Log unexpected errors but don't expose details to client
   const isProduction = process.env.NODE_ENV === 'production';
   if (isProduction) {
     // Generic error message in production
-    res.status(500).json({ error: "An unexpected error occurred. Please try again later." });
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
   } else {
     // More details in development for debugging
-    res.status(500).json({ error: err.message || "Internal server error" });
+    res.status(500).json({ error: err.message || 'Internal server error' });
   }
 });
 
@@ -7539,7 +8094,7 @@ if (process.env.NODE_ENV === 'test') {
 
 // Serve index.html for client-side routes (SPA navigation) only
 // Static files (JS, CSS) are served by the middleware above
-app.get("*", (req, res) => {
+app.get('*', (req, res) => {
   // For requests to /frontend/dist/... or /frontend/css/...:
   // These should be handled by Apache (Direct access to static files)
   // Return 404 for these paths since Apache should handle them
@@ -7548,9 +8103,9 @@ app.get("*", (req, res) => {
   }
 
   // For all other paths, serve index.html for SPA routes
-  res.sendFile(path.join(__dirname, "..", "frontend", "index.html"));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Finance Manager running on port ${PORT}`);
 });
