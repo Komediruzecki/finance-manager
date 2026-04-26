@@ -1279,27 +1279,11 @@ function diceCoefficient(a, b) {
 app.post('/api/categories/auto-map', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { transaction_ids } = req.body;
+    const { transaction_ids, description, amount } = req.body;
 
-    // Get categories for matching
-    const categories = db
-      .prepare('SELECT id, name, color, type FROM categories WHERE profile_id = ?')
-      .all(pid);
-
-    // Get learned mappings
-    const learnedMappings = db
-      .prepare(
-        `
-      SELECT pattern, category_id, confidence, use_count
-      FROM category_mappings
-      WHERE profile_id = ?
-    `
-      )
-      .all(pid);
-
-    // Get transactions to auto-map (uncategorized or "Other")
+    // If transaction_ids provided, use those; otherwise filter by description+amount
     let txQuery = `
-      SELECT t.id, t.description, t.beneficiary, t.payor, c.name as category_name
+      SELECT t.id, t.description, t.beneficiary, t.payor, t.amount, c.name as category_name
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.profile_id = ? AND (t.category_id IS NULL OR c.name = 'Other')
@@ -1309,6 +1293,12 @@ app.post('/api/categories/auto-map', apiRateLimiter, (req, res) => {
     if (transaction_ids && transaction_ids.length > 0) {
       txQuery += ' AND t.id IN (' + transaction_ids.map(() => '?').join(',') + ')';
       params = params.concat(transaction_ids);
+    } else if (description && amount) {
+      // Match by description and amount
+      const normalizedDesc = description.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const amountMatch = amount.toString().replace(/[^0-9.]/g, '');
+      txQuery += ' AND (LOWER(t.description) LIKE ? OR LOWER(t.beneficiary) LIKE ?)';
+      params.push('%' + normalizedDesc + '%', '%' + normalizedDesc + '%');
     }
 
     const transactions = db.prepare(txQuery).all(...params);
