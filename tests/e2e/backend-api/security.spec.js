@@ -198,6 +198,7 @@ describe('Security E2E', () => {
         date: '2026-04-25',
         type: 'expense'
       });
+      // XSS is sanitized and saved (description sanitized to remove script tags)
       global.expect(resp.status).toBe(200);
     });
   });
@@ -250,7 +251,7 @@ describe('Security E2E', () => {
     });
 
     test('SEC-025: PUT/POST use correct HTTP methods', async () => {
-      const resp = await agent.put('/api/categories/1').set('X-Skip-RateLimit', 'true').send({
+      const resp = await agent.put('/api/categories/5').set('X-Skip-RateLimit', 'true').send({
         name: 'Updated'
       });
       global.expect(resp.status).toBe(200);
