@@ -830,25 +830,39 @@ app.post("/api/categories", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, color, icon, type, parent_id, tax_deductible } = req.body;
+
+    // Validation: ensure required fields
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Category name is required' });
+    }
+
+    if (!color || typeof color !== 'string' || color.trim() === '') {
+      return res.status(400).json({ error: 'Category color is required' });
+    }
+
+    if (!type || typeof type !== 'string' || type.trim() === '') {
+      return res.status(400).json({ error: 'Category type is required' });
+    }
+
     const info = db
       .prepare(
         "INSERT INTO categories (name, color, icon, type, parent_id, tax_deductible, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
-        name,
-        color || "#6b7280",
+        name.trim(),
+        color.trim(),
         icon || "tag",
-        type || "expense",
+        type.trim(),
         parent_id || null,
         tax_deductible ? 1 : 0,
         pid,
       );
     res.json(toCamelCase({
       id: info.lastInsertRowid,
-      name,
-      color: color || "#6b7280",
+      name: name.trim(),
+      color: color.trim(),
       icon: icon || "tag",
-      type: type || "expense",
+      type: type.trim(),
       parent_id,
       profile_id: pid,
     }));
@@ -1046,6 +1060,14 @@ app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
     const pid = getProfileId(req);
     const { pattern, category_id, confidence, use_count } = req.body;
 
+    // Validation
+    if (!pattern || typeof pattern !== 'string' || pattern.trim() === '') {
+      return res.status(400).json({ error: 'Pattern is required' });
+    }
+    if (!category_id || typeof category_id !== 'number' || category_id <= 0) {
+      return res.status(400).json({ error: 'Valid category_id is required' });
+    }
+
     // Check if mapping already exists
     const existing = db.prepare(
       'SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?'
@@ -1064,7 +1086,7 @@ app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
       const info = db.prepare(`
         INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
         VALUES (?, ?, ?, ?, ?)
-      `).run(pid, pattern, category_id, confidence || 0.9, use_count || 1);
+      `).run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
       res.json(toCamelCase({ ok: true, id: info.lastInsertRowid }));
     }
   } catch (err) {
