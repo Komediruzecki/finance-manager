@@ -180,6 +180,16 @@ function parseDateString(dateStr) {
   return new Date().toISOString().split('T')[0];
 }
 
+// Sanitize input to prevent XSS and SQL injection
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  let sanitized = input.replace(/['";\\]/g, '');
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+  return sanitized;
+}
+
 // Session secret: require env var in production
 const SESSION_SECRET = process.env.SESSION_SECRET;
 if (process.env.NODE_ENV === 'production' && !SESSION_SECRET) {
@@ -1953,7 +1963,13 @@ app.post('/api/transactions', apiRateLimiter, (req, res) => {
       notes,
     } = req.body;
 
-    // Validate required fields
+    // Sanitize description to prevent XSS
+    const sanitizedDescription = sanitizeInput(description);
+    if (!sanitizedDescription || sanitizedDescription.trim().length < 3) {
+      return res.status(400).json({ error: 'Invalid description' });
+    }
+
+    // Validate required fields (use sanitized version for validation)
     if (!description || typeof description !== 'string' || !description.trim()) {
       return res.status(400).json({ error: 'Description is required' });
     }
@@ -1973,7 +1989,7 @@ app.post('/api/transactions', apiRateLimiter, (req, res) => {
     `
       )
       .run(
-        description,
+        sanitizedDescription,
         amount,
         date,
         beneficiary || '',
@@ -1987,7 +2003,7 @@ app.post('/api/transactions', apiRateLimiter, (req, res) => {
         notes || '',
         pid
       );
-    res.json({ id: info.lastInsertRowid, ...req.body, profile_id: pid });
+    res.json({ id: info.lastInsertRowid, description: sanitizedDescription, ...req.body, profile_id: pid });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
