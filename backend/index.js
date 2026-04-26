@@ -10,6 +10,22 @@ const SQLiteStore = require("connect-sqlite3")(session);
 const db = require("./database");
 const loanCalc = require("./models/loanCalculator");
 
+// Helper function to convert snake_case keys to camelCase
+function toCamelCase(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => toCamelCase(item));
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const result = {};
+    Object.keys(obj).forEach(key => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      result[camelKey] = toCamelCase(obj[key]);
+    });
+    return result;
+  }
+  return obj;
+}
+
 // Retirement projection calculation helper function
 function calculateRetirementProjection(
   database,
@@ -384,7 +400,7 @@ app.get("/api/logs", (req, res) => {
 app.post("/api/logs/clear", (req, res) => {
   try {
     fs.writeFileSync(LOGS_FILE, JSON.stringify({ version: "1.0", max_entries: 500, entries: [] }));
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -535,7 +551,7 @@ app.post("/api/auth/login", authRateLimiter, async (req, res) => {
 app.post("/api/auth/logout", apiRateLimiter, (req, res) => {
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ error: "Logout failed" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   });
 });
 
@@ -559,7 +575,7 @@ app.get("/api/app-info", (req, res) => {
 app.post("/api/test/reset-rate-limit", (req, res) => {
   if (global.__rateLimitStore) global.__rateLimitStore.clear();
   if (global.__authRateLimitStore) global.__authRateLimitStore.clear();
-  res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
 });
 
 // ========================
@@ -656,7 +672,7 @@ app.delete("/api/profiles/:id", apiRateLimiter, (req, res) => {
     db.prepare("DELETE FROM categories WHERE profile_id = ?").run(pid);
     db.prepare("DELETE FROM loans WHERE profile_id = ?").run(pid);
     db.prepare("DELETE FROM profiles WHERE id = ?").run(pid);
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -759,7 +775,7 @@ app.put("/api/settings", apiRateLimiter, (req, res) => {
     );
     const entries = Object.entries(req.body);
     for (const [k, v] of entries) upsert.run(k, String(v), pid);
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -802,7 +818,7 @@ app.get("/api/categories", apiRateLimiter, (req, res) => {
     `,
       )
       .all(pid);
-    res.json(rows);
+    res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -827,7 +843,7 @@ app.post("/api/categories", apiRateLimiter, (req, res) => {
         tax_deductible ? 1 : 0,
         pid,
       );
-    res.json({
+    res.json(toCamelCase({
       id: info.lastInsertRowid,
       name,
       color: color || "#6b7280",
@@ -835,7 +851,7 @@ app.post("/api/categories", apiRateLimiter, (req, res) => {
       type: type || "expense",
       parent_id,
       profile_id: pid,
-    });
+    }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -854,7 +870,7 @@ app.get("/api/categories/:id", apiRateLimiter, (req, res) => {
     if (!cat) {
       return res.status(404).json({ error: "Not found" });
     }
-    res.json(cat);
+    res.json(toCamelCase(cat));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -882,7 +898,7 @@ app.put("/api/categories/:id", apiRateLimiter, (req, res) => {
       );
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -898,7 +914,7 @@ app.delete("/api/categories/:id", apiRateLimiter, (req, res) => {
       .run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1016,7 +1032,7 @@ app.get("/api/categories/mappings", apiRateLimiter, (req, res) => {
       WHERE cm.profile_id = ?
       ORDER BY cm.use_count DESC, cm.confidence DESC
     `).all(pid);
-    res.json(rows);
+    res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1042,14 +1058,14 @@ app.post("/api/categories/mappings", apiRateLimiter, (req, res) => {
         SET category_id=?, confidence=?, use_count=?
         WHERE id=?
       `).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
-      res.json({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 });
+      res.json(toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 }));
     } else {
       // Insert new mapping
       const info = db.prepare(`
         INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
         VALUES (?, ?, ?, ?, ?)
       `).run(pid, pattern, category_id, confidence || 0.9, use_count || 1);
-      res.json({ ok: true, id: info.lastInsertRowid });
+      res.json(toCamelCase({ ok: true, id: info.lastInsertRowid }));
     }
   } catch (err) {
     console.error(err.message);
@@ -1067,7 +1083,7 @@ app.delete("/api/categories/mappings/:id", apiRateLimiter, (req, res) => {
     ).run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1331,7 +1347,7 @@ app.put("/api/tags/:id", apiRateLimiter, (req, res) => {
       .prepare("UPDATE tags SET name = ?, color = ? WHERE id = ? AND profile_id = ?")
       .run(name.trim(), color || '#6b7280', req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1349,7 +1365,7 @@ app.delete("/api/tags/:id", apiRateLimiter, (req, res) => {
       .prepare("DELETE FROM tags WHERE id = ? AND profile_id = ?")
       .run(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1375,7 +1391,7 @@ app.post("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
     for (const tagId of tagIds) {
       insertStmt.run(req.params.id, tagId);
     }
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1400,7 +1416,7 @@ app.put("/api/transactions/:id/tags", apiRateLimiter, (req, res) => {
     for (const tagId of tagIds) {
       insertStmt.run(req.params.id, tagId);
     }
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1895,7 +1911,7 @@ app.put("/api/transactions/:id", apiRateLimiter, (req, res) => {
       );
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -1911,7 +1927,7 @@ app.delete("/api/transactions/:id", apiRateLimiter, (req, res) => {
       .run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -2280,7 +2296,7 @@ app.put("/api/budgets/:id", apiRateLimiter, (req, res) => {
       );
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -2296,7 +2312,7 @@ app.delete("/api/budgets/:id", apiRateLimiter, (req, res) => {
       .run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3228,7 +3244,7 @@ app.put("/api/savings-goals/:id", apiRateLimiter, (req, res) => {
       );
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3244,7 +3260,7 @@ app.delete("/api/savings-goals/:id", apiRateLimiter, (req, res) => {
       .run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3394,7 +3410,7 @@ app.put("/api/loans/:id", apiRateLimiter, (req, res) => {
       }
     }
 
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3410,7 +3426,7 @@ app.delete("/api/loans/:id", apiRateLimiter, (req, res) => {
       .run(req.params.id, pid);
     if (result.changes === 0)
       return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3457,7 +3473,7 @@ app.put("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
       req.params.rateId,
       req.params.id,
     );
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3476,7 +3492,7 @@ app.delete("/api/loans/:id/rates/:rateId", apiRateLimiter, (req, res) => {
       req.params.rateId,
       req.params.id,
     );
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -3517,7 +3533,7 @@ app.delete("/api/loans/:id/prepayments/:prepayId", apiRateLimiter, (req, res) =>
       req.params.prepayId,
       req.params.id,
     );
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -4720,7 +4736,7 @@ app.put("/api/recurring/:id", apiRateLimiter, (req, res) => {
       req.params.id,
       pid,
     );
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -4734,7 +4750,7 @@ app.delete("/api/recurring/:id", apiRateLimiter, (req, res) => {
     db.prepare(
       "DELETE FROM recurring_transactions WHERE id = ? AND profile_id = ?",
     ).run(req.params.id, pid);
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -5040,7 +5056,7 @@ app.put("/api/bills/:id", apiRateLimiter, (req, res) => {
       req.params.id,
       pid,
     );
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -5052,7 +5068,7 @@ app.delete("/api/bills/:id", apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     db.prepare('DELETE FROM bills WHERE id = ? AND profile_id = ?').run(req.params.id, pid);
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
     logError("error", err);
@@ -7326,7 +7342,7 @@ if (process.env.NODE_ENV === 'test') {
   app.post('/api/test/reset-rate-limit', (req, res) => {
     if (global.__rateLimitStore) global.__rateLimitStore.clear();
     if (global.__authRateLimitStore) global.__authRateLimitStore.clear();
-    res.json({ ok: true });
+    res.json(toCamelCase({ ok: true }));
   });
 }
 

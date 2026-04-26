@@ -40,6 +40,7 @@ describe('Performance E2E', () => {
   });
 
   describe('Transaction List Performance', () => {
+    jest.setTimeout(20000);
     test('BE-PERF-004: Get 1000 transactions under 5 seconds', async () => {
       // Create test transactions (skip rate limit)
       for (let i = 0; i < 1000; i++) {

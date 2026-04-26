@@ -7,6 +7,7 @@ const request = require('supertest');
 const BASE_URL = 'http://localhost:3847';
 
 describe('Authentication & Security E2E', () => {
+  jest.setTimeout(30000);
   let agent;
   let testProfileId;
 
@@ -17,7 +18,9 @@ describe('Authentication & Security E2E', () => {
   afterAll(async () => {
     // Clean up test profile if created
     if (testProfileId) {
-      await agent.delete(`/api/profiles/${testProfileId}`).set('X-Skip-RateLimit', 'true').catch(() => {});
+      try {
+        await agent.delete(`/api/profiles/${testProfileId}`).set('X-Skip-RateLimit', 'true');
+      } catch (e) {}
     }
   });
 

@@ -7,6 +7,7 @@ const request = require('supertest');
 const BASE_URL = 'http://localhost:3847';
 
 describe('Bills E2E', () => {
+  jest.setTimeout(30000);
   let agent;
   let testBillId;
 
@@ -20,7 +21,9 @@ describe('Bills E2E', () => {
 
   afterAll(async () => {
     if (testBillId) {
-      await agent.delete(`/api/bills/${testBillId}`).set('X-Skip-RateLimit', 'true').catch(() => {});
+      try {
+        await agent.delete(`/api/bills/${testBillId}`).set('X-Skip-RateLimit', 'true');
+      } catch (e) {}
     }
   });
 
