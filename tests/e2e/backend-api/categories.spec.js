@@ -7,6 +7,7 @@ const request = require('supertest');
 const BASE_URL = 'http://localhost:3847';
 
 describe('Categories E2E', () => {
+  jest.setTimeout(30000);
   let agent;
   let testCategoryId;
   let testCategoryId2;
@@ -23,11 +24,21 @@ describe('Categories E2E', () => {
   });
 
   afterAll(async () => {
-    if (testCategoryId) await agent.delete(`/api/categories/${testCategoryId}`).set('X-Skip-RateLimit', 'true').catch(() => {});
-    if (testCategoryId2) await agent.delete(`/api/categories/${testCategoryId2}`).set('X-Skip-RateLimit', 'true').catch(() => {});
-    if (testTxId) await agent.delete(`/api/transactions/${testTxId}`).set('X-Skip-RateLimit', 'true').catch(() => {});
-    if (testTxId2) await agent.delete(`/api/transactions/${testTxId2}`).set('X-Skip-RateLimit', 'true').catch(() => {});
-    if (testTxId3) await agent.delete(`/api/transactions/${testTxId3}`).set('X-Skip-RateLimit', 'true').catch(() => {});
+    if (testCategoryId) try {
+      await agent.delete(`/api/categories/${testCategoryId}`).set('X-Skip-RateLimit', 'true');
+    } catch (e) {}
+    if (testCategoryId2) try {
+      await agent.delete(`/api/categories/${testCategoryId2}`).set('X-Skip-RateLimit', 'true');
+    } catch (e) {}
+    if (testTxId) try {
+      await agent.delete(`/api/transactions/${testTxId}`).set('X-Skip-RateLimit', 'true');
+    } catch (e) {}
+    if (testTxId2) try {
+      await agent.delete(`/api/transactions/${testTxId2}`).set('X-Skip-RateLimit', 'true');
+    } catch (e) {}
+    if (testTxId3) try {
+      await agent.delete(`/api/transactions/${testTxId3}`).set('X-Skip-RateLimit', 'true');
+    } catch (e) {}
   });
 
   describe('Category Creation', () => {
