@@ -3,6 +3,8 @@
  * Migrated from legacy window.handlers, window.receipts, window.transactions
  */
 
+import { api } from './api.js'
+
 export interface ReceiptData {
   id: number
   original_name: string
@@ -293,6 +295,8 @@ export const handlers = {
   },
 }
 
+// Direct function exports for window access
+
 export const receipts = {
   handleFileSelect: (event: Event) => {
     handleReceiptFileSelect(event)
@@ -323,4 +327,169 @@ export const transactions = {
   removeReceipt: () => {
     removeReceiptPreview()
   },
+}
+
+/**
+ * Auth handlers - Login and Logout
+ */
+
+export async function authLogin(username?: string, password?: string): Promise<void> {
+  try {
+    // Use provided credentials or show login prompt
+    if (!username || !password) {
+      // Show custom login dialog
+      const result = showLoginDialog()
+      if (result) {
+        username = result.username
+        password = result.password
+      } else {
+        // User cancelled - don't force login
+        return
+      }
+    }
+    await api.login(username, password)
+    toast('Successfully logged in', 'success')
+  } catch (error) {
+    console.error('Login failed:', error)
+    const errorMsg = error instanceof Error ? error.message : 'Login failed'
+    toast(errorMsg, 'error')
+    throw error
+  }
+}
+
+export async function authLogout(): Promise<void> {
+  try {
+    await api.logout()
+    localStorage.removeItem('currentProfileId')
+    toast('Logged out successfully', 'info')
+  } catch (error) {
+    console.error('Logout failed:', error)
+    // Force clear profile ID even if API call fails
+    localStorage.removeItem('currentProfileId')
+    toast('Logged out', 'info')
+  }
+}
+
+/**
+ * Show custom login dialog
+ */
+function showLoginDialog(): { username: string; password: string } | null {
+  return new Promise((resolve) => {
+    // Create dialog overlay
+    const overlay = document.createElement('div')
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    `
+
+    const dialog = document.createElement('div')
+    dialog.style.cssText = `
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      padding: 24px;
+      border-radius: 12px;
+      width: 320px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    `
+
+    dialog.innerHTML = `
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">Sign In</h3>
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 12px; margin-bottom: 4px;">Username</label>
+        <input type="text" id="login-username" placeholder="maff" style="
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.1);
+          color: #fff;
+          box-sizing: border-box;
+        ">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; margin-bottom: 4px;">Password</label>
+        <input type="password" id="login-password" placeholder="add2" style="
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.1);
+          color: #fff;
+          box-sizing: border-box;
+        ">
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="login-cancel" style="
+          flex: 1;
+          padding: 10px;
+          border-radius: 6px;
+          border: none;
+          background: rgba(255,255,255,0.2);
+          color: #fff;
+          cursor: pointer;
+          font-weight: 500;
+        ">Cancel</button>
+        <button id="login-submit" style="
+          flex: 1;
+          padding: 10px;
+          border-radius: 6px;
+          border: none;
+          background: var(--primary);
+          color: #fff;
+          cursor: pointer;
+          font-weight: 500;
+        ">Sign In</button>
+      </div>
+      <p style="margin: 12px 0 0 0; font-size: 11px; opacity: 0.7;">
+        Demo: username "maff", password "add2"
+      </p>
+    `
+
+    overlay.appendChild(dialog)
+    document.body.appendChild(overlay)
+
+    // Handle cancel
+    document.getElementById('login-cancel')?.addEventListener('click', () => {
+      overlay.remove()
+      resolve(null)
+    })
+
+    // Handle submit
+    document.getElementById('login-submit')?.addEventListener('click', () => {
+      const username = document.getElementById('login-username')?.value || 'maff'
+      const password = document.getElementById('login-password')?.value || 'add2'
+      overlay.remove()
+      resolve({ username, password })
+    })
+
+    // Handle overlay click to cancel
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove()
+        resolve(null)
+      }
+    })
+
+    // Focus username on load
+    setTimeout(() => document.getElementById('login-username')?.focus(), 100)
+  })
+}
+
+/**
+ * Select a profile
+ */
+export async function selectProfile(profileId: number): Promise<void> {
+  try {
+    localStorage.setItem('currentProfileId', profileId.toString())
+  } catch {
+    console.error('Failed to save profile ID to localStorage')
+  }
 }

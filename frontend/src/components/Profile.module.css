@@ -1,0 +1,25 @@
+/* Profile selector styles */
+.profileSelector {
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.profileDropdown {
+  position: relative;
+}
+
+.profileDropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out;
+  z-index: 200;
+}
+
+.profileDropdownMenu.visible {
+  max-height: 200px;
+  overflow-y: auto;
+}

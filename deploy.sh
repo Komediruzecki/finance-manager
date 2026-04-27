@@ -4,19 +4,20 @@
 set -e
 
 FRONTEND_DIR="/tmp/finance-manager-2/frontend"
-DEST_DIR="/var/www/finance-manager.clodhost.com/frontend"
+PUBLIC_DIR="/var/www/html/public"
 
 echo "📦 Building frontend..."
 cd "$FRONTEND_DIR"
 npm run build
 
 echo "🔄 Deploying to production..."
-rm -rf "$DEST_DIR"
-cp -r "$FRONTEND_DIR/dist" "$DEST_DIR"
+mkdir -p "$PUBLIC_DIR"
+rm -rf "$PUBLIC_DIR/*"
+cp -r "$FRONTEND_DIR/dist"/* "$PUBLIC_DIR/"
 
 echo "🔒 Setting permissions..."
-chown -R www-data:www-data "$DEST_DIR"
-chmod -R 755 "$DEST_DIR"
+chown -R www-data:www-data "$PUBLIC_DIR"
+chmod -R 755 "$PUBLIC_DIR"
 
 echo "✅ Deployment complete!"
 
