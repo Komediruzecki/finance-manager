@@ -1,33 +1,15 @@
 /**
  * Sidebar Component
- * Navigation sidebar with profile selector and user menu
+ * Note: This component is imported by App.tsx but uses inline navigation
+ * This file is kept for backward compatibility
  */
 
-import { createSignal, For, onMount } from 'solid-js'
+import { createSignal, onMount } from 'solid-js'
 import styles from '../styles/design/Sidebar.module.css'
 
 export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = createSignal(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = createSignal(false)
-
-  const navItems = [
-    { page: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
-    { page: 'transactions', icon: 'transactions', label: 'Transactions' },
-    { page: 'budgets', icon: 'budgets', label: 'Budgets' },
-    { page: 'loans', icon: 'loans', label: 'Loan Calculator' },
-    { page: 'goals', icon: 'goals', label: 'Savings Goals' },
-    { page: 'bills', icon: 'bills', label: 'Bills' },
-    { page: 'rent-buy', icon: 'home', label: 'Rent vs Buy' },
-    { page: 'compound', icon: 'chart-line', label: 'Compound Interest' },
-    { page: 'emergency', icon: 'shield', label: 'Emergency Fund' },
-    { page: 'import', icon: 'import', label: 'Import' },
-    { page: 'accounts', icon: 'accounts', label: 'Accounts' },
-    { page: 'retirement', icon: 'retirement', label: 'Retirement' },
-    { page: 'housing', icon: 'housing', label: 'Housing Calc' },
-    { page: 'analytics', icon: 'analytics', label: 'Analytics' },
-    { page: 'categories', icon: 'categories', label: 'Categories' },
-    { page: 'settings', icon: 'settings', label: 'Settings' },
-  ]
 
   const handleClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement
