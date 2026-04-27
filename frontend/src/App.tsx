@@ -6,8 +6,8 @@ import { createMemo, createSignal, onMount, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 import { handlers, receipts, transactions } from './core/handlers.js'
 import { pages as allPages } from './router.tsx'
-import Layout from './components/Layout.module.css'
-import { sidebar } from './styles/AppSidebar.module.css'
+import layoutStyles from './components/Layout.module.css'
+import sidebarStyles from './styles/AppSidebar.module.css'
 
 // Mount handlers to window for legacy code compatibility
 window.receipts = receipts
@@ -32,17 +32,17 @@ export function App() {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <main class={`${styles.main} ${sidebar}`}>
-        <nav class={styles.sidebar}>
-          <div class={styles.logo}>
+      <main class={`${layoutStyles.main} ${sidebarStyles.sidebar}`}>
+        <nav class={sidebarStyles.sidebar}>
+          <div class={sidebarStyles.logo}>
             <h1>Finance Manager</h1>
           </div>
-          <ul class={styles.nav}>
+          <ul class={sidebarStyles.nav}>
             {Object.entries(allPages).map(([name, page]) => (
               <li key={name}>
                 <a
                   href={`#${name}`}
-                  class={activePage() === name ? styles.navLinkActive : styles.navLink}
+                  class={activePage() === name ? sidebarStyles.navLinkActive : sidebarStyles.navLink}
                   onClick={(e) => {
                     e.preventDefault()
                     setActivePage(name as PageName)
@@ -55,7 +55,7 @@ export function App() {
             ))}
           </ul>
         </nav>
-        <div class={styles.content}>
+        <div class={layoutStyles.content}>
           {Object.entries(allPages).map(([name, page]) => (
             <Dynamic
               key={name}
@@ -63,7 +63,7 @@ export function App() {
               data-page={name}
               data-testid={`page-${name}`}
               class={{
-                [styles.page]: true,
+                [layoutStyles.page]: true,
                 [page.className || '']: page.className !== undefined,
               }}
             />
