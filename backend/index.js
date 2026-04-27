@@ -434,13 +434,7 @@ app.get('/api/logs', (req, res) => {
       request: entry.request,
     }));
 
-    res.json({
-      logs: paginatedLogs,
-      total: filteredLogs.length,
-      offset,
-      limit,
-      hasMore: offset + limit < filteredLogs.length,
-    });
+    res.json(paginatedLogs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
