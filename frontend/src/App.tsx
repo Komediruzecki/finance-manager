@@ -6,6 +6,7 @@ import { createMemo, createSignal, onMount, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 import { handlers, receipts, transactions } from './core/handlers.js'
 import { pages as allPages } from './router.tsx'
+import Layout from './components/Layout.module.css'
 import { sidebar } from './styles/AppSidebar.module.css'
 
 // Mount handlers to window for legacy code compatibility
