@@ -6,7 +6,7 @@ set -e
 PROJECT_DIR="/tmp/finance-manager-2"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 BACKEND_DIR="$PROJECT_DIR/backend"
-PUBLIC_DIR="/var/www/html/public"
+LIVE_DIR="/var/www/finance-manager.clodhost.com/frontend"
 
 echo "📦 Building frontend..."
 cd "$FRONTEND_DIR"
@@ -25,13 +25,13 @@ if('serviceWorker' in navigator){
 SWREG
 
 echo "🔄 Deploying to production..."
-mkdir -p "$PUBLIC_DIR"
-rm -rf "$PUBLIC_DIR/*"
-cp -r "$FRONTEND_DIR/dist"/* "$PUBLIC_DIR/"
+mkdir -p "$LIVE_DIR"
+rm -rf "$LIVE_DIR/*"
+cp -r "$FRONTEND_DIR/dist"/* "$LIVE_DIR/"
 
 echo "🔒 Setting permissions..."
-chown -R www-data:www-data "$PUBLIC_DIR"
-chmod -R 755 "$PUBLIC_DIR"
+chown -R www-data:www-data "$LIVE_DIR"
+chmod -R 755 "$LIVE_DIR"
 
 echo "🔧 Restarting backend..."
 if systemctl is-active --quiet finance-manager-backend; then
