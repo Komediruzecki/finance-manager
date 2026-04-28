@@ -334,7 +334,7 @@ export async function authLogin(username?: string, password?: string): Promise<v
     // Use provided credentials or show login prompt
     if (!username || !password) {
       // Show custom login dialog
-      const result = showLoginDialog()
+      const result = await showLoginDialog()
       if (result) {
         username = result.username
         password = result.password
@@ -344,7 +344,7 @@ export async function authLogin(username?: string, password?: string): Promise<v
       }
     }
     const { api } = await import('./api.js')
-    await api.login(username, password)
+    await api.login(username!, password!)
     await toast('Successfully logged in', 'success')
   } catch (error) {
     console.error('Login failed:', error)
