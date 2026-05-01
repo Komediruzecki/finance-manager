@@ -1,4 +1,32 @@
 /**
+ * Dashboard Component - EARS Specification
+ *
+ * GIVEN: A user is on the Dashboard page
+ * WHEN: The page loads with valid data
+ * THEN: The header displays "Dashboard" and "Your financial overview"
+ *
+ * GIVEN: A user is viewing the Dashboard with monthly data
+ * WHEN: They navigate to different months or years
+ * THEN: All metrics, charts, and widgets update to reflect the selected period
+ *
+ * GIVEN: A user has spent more than their budget
+ * WHEN: The Dashboard displays Budget Alerts widget
+ * THEN: It shows overdue budgets with amounts and due dates
+ *
+ * GIVEN: A user has savings goals with target amounts
+ * WHEN: The Dashboard displays Savings Rate widget
+ * THEN: It shows current savings rate and progress toward goals
+ *
+ * GIVEN: A user has recurring payments setup
+ * WHEN: The Dashboard displays Recurring Insights widget
+ * THEN: It shows upcoming bill reminders and payment frequency summaries
+ *
+ * GIVEN: A user wants to see transaction history
+ * WHEN: The Dashboard shows Recent Transactions
+ * THEN: It displays up to 5 most recent transactions with amounts and categories
+ */
+
+/**
  * Dashboard Component
  */
 

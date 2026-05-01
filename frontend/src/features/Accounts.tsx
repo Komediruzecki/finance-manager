@@ -1,4 +1,32 @@
 /**
+ * Accounts Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Accounts page
+ * WHEN: The page loads
+ * THEN: The header displays "Accounts" and a grid of all accounts is visible
+ *
+ * GIVEN: A user wants to add a new account
+ * WHEN: They click the "Add Account" button
+ * THEN: An "Add Account" modal opens with form fields for account name, type, and initial balance
+ *
+ * GIVEN: A user has added a new account
+ * WHEN: They save the account form with valid data
+ * THEN: The new account appears in the accounts grid with its balance updated
+ *
+ * GIVEN: A user wants to delete an account
+ * WHEN: They select an account and click delete
+ * THEN: The account is removed from the grid and a confirmation message is shown
+ *
+ * GIVEN: A user has multiple accounts
+ * WHEN: The page displays the accounts grid
+ * THEN: Accounts are grouped by type (Checking, Savings, Credit, Investment)
+ *
+ * GIVEN: A user views an account with transactions
+ * WHEN: They click on a transaction line
+ * THEN: The transaction details are shown and the transaction modal opens
+ */
+
+/**
  * Accounts Component
  * Handles bank accounts, tracking balances and transaction history
  */

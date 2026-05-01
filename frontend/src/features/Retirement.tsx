@@ -1,4 +1,32 @@
 /**
+ * Retirement Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Retirement page
+ * WHEN: The page loads
+ * THEN: The header displays "Retirement" and shows retirement goals with progress
+ *
+ * GIVEN: A user wants to create a retirement goal
+ * WHEN: They click the "Create Goal" button
+ * THEN: A goal creation modal opens with fields for goal name, target amount, and dates
+ *
+ * GIVEN: A user has a retirement goal
+ * WHEN: They view the goal card
+ * THEN: The progress bar shows current amount toward the target with a percentage
+ *
+ * GIVEN: A user views the projection
+ * WHEN: They have valid retirement goal data
+ * THEN: The projection shows projected retirement income and total accumulated wealth
+ *
+ * GIVEN: A user wants to edit a goal
+ * WHEN: They click the edit button on a goal
+ * THEN: The goal details populate the edit form with existing values
+ *
+ * GIVEN: A user wants to delete a goal
+ * WHEN: They select a goal and confirm deletion
+ * THEN: The goal is removed from the list
+ */
+
+/**
  * Retirement Component
  * Tracks retirement savings, calculates projected growth, and sets retirement goals
  */

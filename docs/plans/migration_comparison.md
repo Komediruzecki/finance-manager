@@ -48,16 +48,16 @@
 
 | # | Feature | Old Module | SolidJS Status | Notes |
 |---|---------|-----------|----------------|-------|
-| 9 | Summary stats (Income/Expenses/Balance/Net Worth) | `dashboard.js` | ⚠️ | Calls `api.getDashboard()` — but only 1 API call vs old app's 7. Missing MoM deltas |
-| 10 | Month navigation (prev/next/year/month selects) | `dashboard.js` | ❌ | No month navigator — old app had full prev/next + year/month dropdowns |
-| 11 | Spending by Category chart (Doughnut) | `dashboard.js` | ❌ | No chart rendering in `Dashboard.tsx` |
-| 12 | Income vs Expenses chart (Bar, 12 months) | `dashboard.js` | ❌ | No chart rendering |
-| 13 | Cash Flow chart (Line, cumulative) | `dashboard.js` | ❌ | No chart rendering |
-| 14 | Net Worth Over Time chart (Line) | `dashboard.js` | ❌ | CSS exists but no implementation |
-| 15 | Recent Transactions list | `dashboard.js` | ⚠️ | API returns `recentTransactions` but rendering TBD |
-| 16 | Budget Alerts card | `dashboard.js` | ⚠️ | CSS exists (`DashboardWidgets.module.css`) but minimal implementation |
-| 17 | Savings Rate card | `dashboard.js` | ⚠️ | CSS exists, `DashboardSettings.tsx` has reference but no full implementation |
-| 18 | Recurring Insights card | `dashboard.js` | ❌ | CSS exists but no implementation |
+| 9 | Summary stats (Income/Expenses/Balance/Net Worth) | `dashboard.js` | ✅ | Full implementation with MoM deltas |
+| 10 | Month navigation (prev/next/year/month selects) | `dashboard.js` | ✅ | PeriodNavigator + PeriodPills component |
+| 11 | Spending by Category chart (Doughnut) | `dashboard.js` | ✅ | ChartWrapper implementation |
+| 12 | Income vs Expenses chart (Bar, 12 months) | `dashboard.js` | ✅ | ChartWrapper implementation |
+| 13 | Cash Flow chart (Line, cumulative) | `dashboard.js` | ✅ | ChartWrapper implementation |
+| 14 | Net Worth Over Time chart (Line) | `dashboard.js` | ✅ | ChartWrapper implementation with export |
+| 15 | Recent Transactions list | `dashboard.js` | ✅ | Rendering complete |
+| 16 | Budget Alerts card | `dashboard.js` | ✅ | BudgetAlertsCard component |
+| 17 | Savings Rate card | `dashboard.js` | ✅ | SavingsRateCard component |
+| 18 | Recurring Insights card | `dashboard.js` | ✅ | RecurringInsightsCard component |
 
 ### Transactions
 
@@ -150,9 +150,9 @@
 ## Gap Summary
 
 ### Critical Gaps (Core Functionality)
-1. **Dashboard charts** — No Chart.js rendering at all (4 charts missing)
-2. **Dashboard month navigation** — No time period controls
-3. **Dashboard MoM deltas** — No comparison data
+1. ~~**Dashboard charts**~~ — ✅ All charts implemented (Net Worth, Cash Flow, Category, Income vs Expenses)
+2. ~~**Dashboard month navigation**~~ — ✅ PeriodNavigator + PeriodPills component
+3. ~~**Dashboard MoM deltas**~~ — ✅ MoM delta calculations with visual indicators
 4. **Transaction Tags** — Entire tag system missing
 5. **Bulk Edit** — No multi-select operations
 6. **Budget charts** — No visual charts (3 charts missing)
@@ -191,7 +191,28 @@
 
 ---
 
-## Recommended Porting Priority
+## EARS Specifications
+
+All feature components now include EARS (GIVEN/WHEN/THEN) specifications at the top of each file. This provides testable acceptance criteria for automated testing.
+
+| Feature | Has EARS | Test Cases |
+|---------|----------|------------|
+| Dashboard.tsx | ✅ | 6 test cases covering metrics, charts, widgets, and navigation |
+| Transactions.tsx | ✅ | 6 test cases covering listing, CRUD, receipts, and reconciliation |
+| Accounts.tsx | ✅ | 6 test cases covering CRUD and balance display |
+| Budgets.tsx | ✅ | 6 test cases covering budget creation, progress, rollover, etc. |
+| Categories.tsx | ✅ | 6 test cases covering CRUD operations |
+| Goals.tsx | ✅ | 6 test cases covering progress tracking |
+| Loans.tsx | ✅ | 6 test cases covering loans and amortization |
+| Housing.tsx | ✅ | 5 test cases covering housing expenses |
+| Retirement.tsx | ✅ | 6 test cases covering retirement goals |
+| Import.tsx | ✅ | 6 test cases covering file/import workflows |
+| Settings.tsx | ✅ | 5 test cases covering configuration |
+| Analytics.tsx | ✅ | 5 test cases covering charts and data |
+| CompoundInterestCalculator.tsx | ✅ | 4 test cases covering projections |
+| EmergencyFundCalculator.tsx | ✅ | 3 test cases covering coverage |
+| RentBuyCalculator.tsx | ✅ | 4 test cases comparing rent vs buy |
+| Bills.tsx | ✅ | 7 test cases covering bills CRUD |
 
 ### Phase 1: Charts Foundation
 > All chart-dependent features are blocked on this

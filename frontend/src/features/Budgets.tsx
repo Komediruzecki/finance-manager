@@ -1,4 +1,32 @@
 /**
+ * Budgets Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Budgets page
+ * WHEN: The page loads
+ * THEN: The header displays "Budgets" and shows all budget categories with progress
+ *
+ * GIVEN: A user wants to create a new budget
+ * WHEN: They click the "Create Budget" button
+ * THEN: A budget creation modal opens with form fields for category and amount
+ *
+ * GIVEN: A user creates a budget
+ * WHEN: They enter a category name and monthly amount
+ * THEN: The new budget appears in the budget list with a progress indicator
+ *
+ * GIVEN: A user has spent more than their budget
+ * WHEN: The page displays their spending vs budget
+ * THEN: The progress bar and color indicator show they are over budget (red)
+ *
+ * GIVEN: A user has budget rollover enabled
+ * WHEN: A budget category has unspent remaining budget
+ * THEN: The remaining amount rolls over to the next month
+ *
+ * GIVEN: A user wants to set a budget from expenses
+ * WHEN: They click "Set from Expenses"
+ * THEN: The budget is calculated based on past spending in that category
+ */
+
+/**
  * Budgets Component
  * Includes traditional budgeting view, zero-based budgeting (envelope-style), and forecasting
  */

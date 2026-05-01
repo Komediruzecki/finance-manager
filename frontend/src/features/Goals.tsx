@@ -1,4 +1,32 @@
 /**
+ * Goals Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Goals page
+ * WHEN: The page loads
+ * THEN: The header displays "Goals" and shows all savings goals with progress bars
+ *
+ * GIVEN: A user wants to create a new savings goal
+ * WHEN: They click the "Create Goal" button
+ * THEN: A goal creation modal opens with fields for name, target amount, and target date
+ *
+ * GIVEN: A user has a savings goal
+ * WHEN: They view the goal card
+ * THEN: The progress bar shows current amount toward the target with a percentage
+ *
+ * GIVEN: A user adds a contribution to a goal
+ * WHEN: They enter a contribution amount and save
+ * THEN: The goal's current amount increases and progress percentage updates
+ *
+ * GIVEN: A user wants to edit a goal
+ * WHEN: They click the edit button on a goal
+ * THEN: The goal details populate the edit form with existing values
+ *
+ * GIVEN: A user wants to delete a goal
+ * WHEN: They select a goal and confirm deletion
+ * THEN: The goal is removed from the list
+ */
+
+/**
  * Goals Component
  * Handles savings goals with progress tracking
  */

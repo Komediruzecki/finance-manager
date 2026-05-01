@@ -1,4 +1,28 @@
 /**
+ * Housing Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Housing page
+ * WHEN: The page loads
+ * THEN: The header displays "Housing" and shows monthly housing costs with icons
+ *
+ * GIVEN: A user wants to add a housing expense
+ * WHEN: They click the "Add Expense" button
+ * THEN: An "Add Expense" modal opens with fields for expense type, amount, and due date
+ *
+ * GIVEN: A user has set up autopay
+ * WHEN: They toggle the autopay switch
+ * THEN: The expense is marked with an autopay badge
+ *
+ * GIVEN: A user has multiple housing expenses
+ * WHEN: The page displays the expenses list
+ * THEN: It shows total monthly cost, number of active expenses, and autopay count
+ *
+ * GIVEN: A user wants to delete a housing expense
+ * WHEN: They select an expense and confirm deletion
+ * THEN: The expense is removed from the list
+ */
+
+/**
  * Housing Component
  * Manages housing-related expenses and property information
  */

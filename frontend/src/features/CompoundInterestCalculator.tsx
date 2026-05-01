@@ -1,4 +1,24 @@
 /**
+ * Compound Interest Projector Component - EARS Specification
+ *
+ * GIVEN: A user is on the Compound Interest page
+ * WHEN: The page loads
+ * THEN: The header displays "Compound Interest" and default calculation form appears
+ *
+ * GIVEN: A user enters investment parameters
+ * WHEN: They input principal, monthly contribution, return rate, and years
+ * THEN: The calculator immediately projects the investment growth
+ *
+ * GIVEN: A user views results
+ * WHEN: The calculation completes
+ * THEN: Charts display projected balance over time with contribution and interest breakdown
+ *
+ * GIVEN: A user creates comparison scenarios
+ * WHEN: They add scenarios with different return rates
+ * THEN: Multiple lines are shown on the chart for comparison
+ */
+
+/**
  * Compound Interest Projector Component
  * Calculates investment growth with scenario comparisons
  */
