@@ -2,7 +2,7 @@
  * Transactions Component
  * Handles transaction listing, creation, and management with filtering, sorting, and pagination
  */
-import { createSignal, onMount } from 'solid-js'
+import { createEffect, createSignal, onMount } from 'solid-js'
 import AutoCategorizeModal from '../components/AutoCategorizeModal'
 import CategoryMultiSelect from '../components/CategoryMultiSelect'
 import FilterBar from '../components/FilterBar'
@@ -74,6 +74,23 @@ export default function Transactions() {
   const [filterMonth, _setFilterMonth] = createSignal<string | null>(null)
   const [searchTerm, setSearchTerm] = createSignal<string>('')
   const _today = new Date().toISOString().slice(0, 7)
+  const [totalIncome, setTotalIncome] = createSignal(0)
+  const [totalExpenses, setTotalExpenses] = createSignal(0)
+  const [netBalance, setNetBalance] = createSignal(0)
+
+  // Calculate transaction totals
+  createEffect(() => {
+    const txs = transactions()
+    const income = txs
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    const expenses = txs
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    setTotalIncome(income)
+    setTotalExpenses(expenses)
+    setNetBalance(income - expenses)
+  })
 
   // Load transactions function (exposed to window)
   // @ts-expect-error - Used via event delegation
@@ -411,9 +428,9 @@ export default function Transactions() {
 
       {/* Transaction Summary Bar */}
       <TransactionSummaryBar
-        selectedTransactions={selectedTransactions}
-        onDeselectAll={() => setSelectedTransactions([])}
-        visible={selectedTransactions().length > 0}
+        totalIncome={totalIncome()}
+        totalExpenses={totalExpenses()}
+        netBalance={netBalance()}
       />
 
       {/* Search */}
