@@ -1,4 +1,24 @@
 /**
+ * Rent vs Buy Calculator Component - EARS Specification
+ *
+ * GIVEN: A user is on the Rent vs Buy Calculator page
+ * WHEN: The page loads
+ * THEN: The header displays "Rent vs Buy" and input fields for both scenarios appear
+ *
+ * GIVEN: A user enters rent and buy costs
+ * WHEN: They input rent, home price, loan terms, and maintenance costs
+ * THEN: The calculator computes 30-year cumulative costs for both options
+ *
+ * GIVEN: A user views results
+ * WHEN: They click calculate
+ * THEN: Charts display cumulative costs and the break-even year is highlighted
+ *
+ * GIVEN: A user saves calculator settings
+ * WHEN: They complete calculations
+ * THEN: Settings are saved to localStorage for next visit
+ */
+
+/**
  * Rent vs Buy Calculator Component
  * Compares 30-year costs of renting vs buying a home
  */

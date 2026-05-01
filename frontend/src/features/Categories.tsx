@@ -1,4 +1,32 @@
 /**
+ * Categories Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Categories page
+ * WHEN: The page loads
+ * THEN: The header displays "Categories" and shows all expense and income categories
+ *
+ * GIVEN: A user wants to create a new category
+ * WHEN: They click the "Create Category" button
+ * THEN: A category creation modal opens with fields for name, type (expense/income), and color
+ *
+ * GIVEN: A user creates a category
+ * WHEN: They enter a name, select a type, and choose a color
+ * THEN: The new category appears in the list with its chosen color
+ *
+ * GIVEN: A user wants to edit a category
+ * WHEN: They click the edit button on a category
+ * THEN: The category details populate the edit form with existing values
+ *
+ * GIVEN: A user modifies a category
+ * WHEN: They change the name or color and save
+ * THEN: The category is updated throughout the application with the new values
+ *
+ * GIVEN: A user wants to delete a category
+ * WHEN: They select a category and confirm deletion
+ * THEN: The category is removed from the list
+ */
+
+/**
  * Categories Component
  * Manages expense and income categories with CRUD operations
  */

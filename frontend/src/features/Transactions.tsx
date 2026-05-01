@@ -1,4 +1,32 @@
 /**
+ * Transactions Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Transactions page
+ * WHEN: The page loads
+ * THEN: The header displays "Transactions" and filters/controls are visible
+ *
+ * GIVEN: A user wants to add a transaction
+ * WHEN: They click the "Add Transaction" button
+ * THEN: An "Add Transaction" modal opens with form fields for all transaction details
+ *
+ * GIVEN: A user is viewing transactions with reconciled items
+ * WHEN: They click a checkbox to toggle reconciliation status
+ * THEN: The row highlights and reconciliation state updates
+ *
+ * GIVEN: A user has uploaded a receipt image
+ * WHEN: They view a transaction with a receipt
+ * THEN: A receipt icon displays, clicking it opens the receipt image in a modal
+ *
+ * GIVEN: A user wants to edit a transaction
+ * WHEN: They click the edit button on a transaction row
+ * THEN: The "Add Transaction" modal populates with existing transaction data
+ *
+ * GIVEN: A user wants to delete a transaction
+ * WHEN: They select a transaction and delete it
+ * THEN: The transaction is removed from the list with a confirmation message
+ */
+
+/**
  * Transactions Component
  * Handles transaction listing, creation, and management with filtering, sorting, and pagination
  */

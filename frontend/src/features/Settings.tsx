@@ -1,4 +1,28 @@
 /**
+ * Settings Component - EARS Specification
+ *
+ * GIVEN: A user is on the Settings page
+ * WHEN: The page loads
+ * THEN: The header displays "Settings" and shows current currency and theme settings
+ *
+ * GIVEN: A user wants to change the local currency
+ * WHEN: They select a different currency option
+ * THEN: The new currency is saved and displayed throughout the application
+ *
+ * GIVEN: A user wants to toggle dark mode
+ * WHEN: They click the dark mode toggle
+ * THEN: The theme switches between light and dark modes
+ *
+ * GIVEN: A user changes the storage mode
+ * WHEN: They select between serverless and self-hosted storage
+ * THEN: The storage preference is saved and affects data persistence
+ *
+ * GIVEN: A user wants to export data
+ * WHEN: They access the export section
+ * THEN: Options for CSV or JSON export are displayed
+ */
+
+/**
  * Settings Component
  * Application configuration and preferences with storage switching
  */

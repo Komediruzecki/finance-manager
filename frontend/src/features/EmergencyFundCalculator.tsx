@@ -1,4 +1,20 @@
 /**
+ * Emergency Fund Tracker Component - EARS Specification
+ *
+ * GIVEN: A user is on the Emergency Fund page
+ * WHEN: The page loads
+ * THEN: The header displays "Emergency Fund" and shows monthly expenses and total fund
+ *
+ * GIVEN: A user has emergency fund data
+ * WHEN: The page loads with data
+ * THEN: The coverage chart shows how many months of expenses the fund can cover
+ *
+ * GIVEN: A user expands details
+ * WHEN: They click to show details
+ * THEN: A breakdown by month displays coverage percentages and status
+ */
+
+/**
  * Emergency Fund Tracker Component
  * Calculates monthly expenses and compares against savings account balances
  */

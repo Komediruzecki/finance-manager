@@ -1,4 +1,36 @@
 /**
+ * Import Component - EARS Specification
+ *
+ * GIVEN: A user is on the Import page
+ * WHEN: The page loads
+ * THEN: Two tabs are visible: "File" and "Google Sheets"
+ *
+ * GIVEN: A user wants to import from a CSV/Excel file
+ * WHEN: They select the File tab and upload a file
+ * THEN: The file content is processed and column mapping UI appears
+ *
+ * GIVEN: A user uploads a file with headers matching expected fields
+ * WHEN: They proceed to mapping
+ * THEN: Column select dropdowns auto-populate based on header matches
+ *
+ * GIVEN: A user maps columns
+ * WHEN: They select which columns represent date, description, and amount
+ * THEN: The preview table displays rows with mapped data
+ *
+ * GIVEN: A user uploads a file with duplicate rows
+ * WHEN: They preview the data
+ * THEN: Duplicate rows are flagged with a visual indicator
+ *
+ * GIVEN: A user maps category columns
+ * WHEN: They select categories and select expense/income
+ * THEN: Category type labels (expense/income) are shown next to each category
+ *
+ * GIVEN: A user wants to import data
+ * WHEN: They click "Import all", "Import only new", or "Import selected"
+ * THEN: Data is submitted to the backend and success message displays
+ */
+
+/**
  * Import Component
  * Handles CSV/Excel file and Google Sheets import with full 12-field column mapping, duplicate detection, and category type review
  */

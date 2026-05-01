@@ -1,4 +1,28 @@
 /**
+ * Analytics Component - EARS Specification
+ *
+ * GIVEN: A user is on the Analytics page
+ * WHEN: The page loads
+ * THEN: The header displays "Analytics" and shows category breakdown and savings rate
+ *
+ * GIVEN: A user views the category breakdown
+ * WHEN: They select the "Category Trends" chart
+ * THEN: A doughnut chart displays expense breakdown by category with percentages
+ *
+ * GIVEN: A user views monthly trends
+ * WHEN: They switch to "Monthly Trends" chart
+ * THEN: A bar chart shows income vs expenses for each month
+ *
+ * GIVEN: A user has recent transactions
+ * WHEN: They view the analytics page
+ * THEN: The recent transactions list displays the last 5 transactions
+ *
+ * GIVEN: A user views the savings rate
+ * WHEN: They look at the analytics page
+ * THEN: The savings rate is calculated and displayed as a percentage
+ */
+
+/**
  * Analytics Component
  * Visualizes financial data with charts and insights
  */

@@ -1,4 +1,32 @@
 /**
+ * Loans Component - EARS Specification
+ *
+ * GIVEN: A user is viewing the Loans page
+ * WHEN: The page loads
+ * THEN: The header displays "Loans" and shows all loans with summary cards
+ *
+ * GIVEN: A user wants to add a new loan
+ * WHEN: They click the "Add Loan" button
+ * THEN: An "Add Loan" modal opens with fields for loan name, principal, interest rate, and term
+ *
+ * GIVEN: A user adds a loan with monthly payments
+ * WHEN: They enter loan details and save
+ * THEN: The loan appears in the loans grid showing total borrowed, remaining balance, and monthly payment
+ *
+ * GIVEN: A user wants to view the amortization schedule
+ * WHEN: They click on a loan's "View Schedule" button
+ * THEN: The amortization table modal opens showing all payment periods
+ *
+ * GIVEN: A user makes a payment on a loan
+ * WHEN: They click the "Mark Paid" button on a payment
+ * THEN: The payment status updates and remaining balance decreases
+ *
+ * GIVEN: A user wants to delete a loan
+ * WHEN: They select a loan and confirm deletion
+ * THEN: The loan is removed from the list
+ */
+
+/**
  * Loans Component
  * Manages loans, tracks payments, and calculates remaining balance
  */
