@@ -32,7 +32,7 @@
  */
 import { createEffect, createSignal, onMount } from 'solid-js'
 import AutoCategorizeModal from '../components/AutoCategorizeModal'
-import CategoryMultiSelect from '../components/CategoryMultiSelect'
+import { CategoryMultiSelect } from '../components/CategoryMultiSelect'
 import FilterBar from '../components/FilterBar'
 import Pagination from '../components/Pagination'
 import ReconciliationModal from '../components/ReconciliationModal'
