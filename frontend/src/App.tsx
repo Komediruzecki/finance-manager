@@ -4,12 +4,12 @@
 
 import { createEffect, createSignal, Show, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
-import type { PageName } from './router.tsx'
 import layoutStyles from './components/Layout.module.css'
 import profileStyles from './components/Profile.module.css'
 import { api } from './core/api.js'
 import { authLogin, authLogout, handlers, receipts, transactions } from './core/handlers.js'
 import { pages as allPages } from './router.tsx'
+import type { PageName } from './router.tsx'
 
 // Mount handlers to window for legacy code compatibility
 window.receipts = receipts

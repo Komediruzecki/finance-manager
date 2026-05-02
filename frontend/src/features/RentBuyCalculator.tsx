@@ -24,9 +24,9 @@
  */
 import { createSignal, onMount } from 'solid-js'
 import Chart from '../components/Chart'
-import type * as Models from '../types/models'
 import { formatCurrency } from '../core/api'
 import styles from './RentBuyCalculator.module.css'
+import type * as Models from '../types/models'
 
 interface Result {
   year: number
