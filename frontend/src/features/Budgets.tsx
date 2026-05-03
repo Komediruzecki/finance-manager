@@ -207,9 +207,10 @@ export default function Budgets() {
     <div class={`page page-budgets page-enter ${styles.budgetsPage}`}>
       <div class={styles.pageHeader}>
         <div class={styles.headerTop}>
-          <h1>Budgets</h1>
-          <div class={styles.monthSelector}>
+          <h1 data-test-id="budgets-header">Budgets</h1>
+          <div data-test-id="month-selector" class={styles.monthSelector}>
             <button
+              data-test-id="month-prev-btn"
               class={styles.btnGhost}
               onclick={() => {
                 const date = new Date(`${month()}-01`)
@@ -227,7 +228,7 @@ export default function Budgets() {
                 />
               </svg>
             </button>
-            <span class={styles.monthDisplay}>{month()}</span>
+            <span data-test-id="month-display" class={styles.monthDisplay}>{month()}</span>
             <button
               class={styles.btnGhost}
               onclick={() => {
@@ -248,11 +249,11 @@ export default function Budgets() {
             </button>
           </div>
         </div>
-        <p class={styles.pageSubtitle}>Zero-based budgeting: allocate every dollar to a category</p>
+        <p data-test-id="budgets-subtitle" class={styles.pageSubtitle}>Zero-based budgeting: allocate every dollar to a category</p>
       </div>
 
       {/* Budget Summary Cards */}
-      <div class={styles.budgetSummary}>
+      <div data-test-id="budget-summary" class={styles.budgetSummary}>
         <div class={styles.summaryCard}>
           <div class={styles.summaryLabel}>Income</div>
           <div class={styles.summaryValue}>{formatCurrency(summary()?.income ?? 0)}</div>
@@ -318,7 +319,7 @@ export default function Budgets() {
       </div>
 
       {/* Forecast Toggle Button */}
-      <div class={styles.forecastToggleSection}>
+      <div data-test-id="forecast-toggle-section" class={styles.forecastToggleSection}>
         <button class={`${styles.btnOutline} ${styles.btnLarge}`} onClick={toggleForecast}>
           {showForecast() ? 'Hide Budget Forecast' : 'Show Budget Forecast'}
         </button>
@@ -412,8 +413,8 @@ export default function Budgets() {
       {error() && <div class={styles.toastError}>{error()}</div>}
 
       {/* Allocation Table */}
-      <div class={styles.budgetAllocations}>
-        <div class={styles.tableHeader}>
+      <div data-test-id="budget-allocations" class={styles.budgetAllocations}>
+        <div data-test-id="table-header" class={styles.tableHeader}>
           <h2>Category Allocations</h2>
           <div class={styles.actions}>
             <button
@@ -440,7 +441,7 @@ export default function Budgets() {
         </div>
 
         {loading() ? (
-          <div class={styles.emptyState}>Loading budgets...</div>
+          <div data-test-id="loading-state" class={styles.emptyState}>Loading budgets...</div>
         ) : allocations().length === 0 ? (
           <div class={styles.emptyState}>
             <p>No allocations for this month yet.</p>
@@ -459,7 +460,7 @@ export default function Budgets() {
           </div>
         ) : (
           <div class={styles.tableContainer}>
-            <table class={styles.dataTable}>
+            <table data-test-id="data-table" class={styles.dataTable}>
               <thead>
                 <tr>
                   <th>Category</th>

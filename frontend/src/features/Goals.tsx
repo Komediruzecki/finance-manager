@@ -172,15 +172,15 @@ export default function Goals() {
     <div class={`page page-goals page-enter ${styles.goalsPage}`}>
       <div class={styles.pageHeader}>
         <div class={styles.headerTop}>
-          <h1>Savings Goals</h1>
-          <button class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
+          <h1 data-test-id="goals-header">Savings Goals</h1>
+          <button data-test-id="add-goal-btn" class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             New Goal
           </button>
         </div>
-        <p class={styles.pageSubtitle}>Track your savings progress towards financial goals</p>
+        <p data-test-id="goals-subtitle" class={styles.pageSubtitle}>Track your savings progress towards financial goals</p>
       </div>
 
       {loading() ? (
@@ -194,21 +194,22 @@ export default function Goals() {
           </button>
         </div>
       ) : (
-        <div class={styles.goalsGrid}>
+        <div data-test-id="goals-grid" class={styles.goalsGrid}>
           {goals().map((goal) => {
             const progress = getProgress(goal)
             return (
-              <div class={styles.goalCard}>
+              <div data-test-id="goal-card" class={styles.goalCard}>
                 <div class={styles.goalHeader}>
-                  <div class={styles.goalIcon}>🎯</div>
+                  <div data-test-id="goal-icon" class={styles.goalIcon}>🎯</div>
                   <div class={styles.goalInfo}>
-                    <h3 class={styles.goalName}>{goal.name}</h3>
-                    <p class={styles.goalDate}>
+                    <h3 data-test-id="goal-name" class={styles.goalName}>{goal.name}</h3>
+                    <p data-test-id="goal-date" class={styles.goalDate}>
                       {formatDate(goal.target_date)} • {daysUntil(goal.target_date)}
                     </p>
                   </div>
-                  <div class={styles.goalActions}>
+                  <div data-test-id="goal-actions" class={styles.goalActions}>
                     <button
+                      data-test-id="goal-edit-btn"
                       class={styles.btnSm}
                       onClick={() => {
                         editGoal(goal)
@@ -224,7 +225,7 @@ export default function Goals() {
                         <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button class={styles.btnSm} onClick={() => deleteGoal(goal.id)}>
+                    <button data-test-id="goal-delete-btn" class={styles.btnSm} onClick={() => deleteGoal(goal.id)}>
                       <svg
                         width="16"
                         height="16"
@@ -238,12 +239,12 @@ export default function Goals() {
                   </div>
                 </div>
                 <div class={styles.goalProgress}>
-                  <div class={styles.progressBar}>
+                  <div data-test-id="goal-progress-bar" class={styles.progressBar}>
                     <div class={styles.progressFill} style={{ width: `${progress}%` }} />
                   </div>
                   <div class={styles.progressStats}>
-                    <span class={styles.progressPercent}>{progress}%</span>
-                    <span class={styles.progressCurrent}>
+                    <span data-test-id="goal-progress-percent" class={styles.progressPercent}>{progress}%</span>
+                    <span data-test-id="goal-progress-current" class={styles.progressCurrent}>
                       {formatCurrency(goal.current_amount)} of {formatCurrency(goal.target_amount)}
                     </span>
                   </div>

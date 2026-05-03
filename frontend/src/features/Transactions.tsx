@@ -39,7 +39,7 @@ import ReconciliationModal from '../components/ReconciliationModal'
 import styles from '../components/TransactionsPage.module.css'
 import TransactionSummaryBar from '../components/TransactionSummaryBar'
 import TransactionTable from '../components/TransactionTable'
-import { api } from '../core/api.js'
+import { api } from '../core/api'
 
 type TransactionType = 'income' | 'expense' | 'transfer'
 
@@ -86,6 +86,17 @@ export default function Transactions() {
   const [selectedFile, setSelectedFile] = createSignal<File | null>(null)
   const [receiptPreviewUrl, setReceiptPreviewUrl] = createSignal<string | null>(null)
   const [type, _setType] = createSignal<TransactionType>('expense')
+  // Initialize form date to today's date
+  const today = new Date().toISOString().slice(0, 10)
+  const [formDate, setFormDate] = createSignal(today)
+  const [formDescription, setFormDescription] = createSignal('')
+  const [formAmount, setFormAmount] = createSignal('')
+  const [formCurrency, setFormCurrency] = createSignal('USD')
+  const [formCategory, setFormCategory] = createSignal<number | null>(null)
+  const [formBeneficiary, setFormBeneficiary] = createSignal('')
+  const [formPayor, setFormPayor] = createSignal('')
+  const [formNotes, setFormNotes] = createSignal('')
+  const [formTags, setFormTags] = createSignal<Array<{ id: number; name: string; color: string }>>([])
   const [categories, setCategories] = createSignal<
     Array<{ id: number; name: string; color: string }>
   >([])
@@ -388,16 +399,51 @@ export default function Transactions() {
     setCurrentPage(1)
   }
 
-  // Initial load
-  onMount(() => {
-    _loadTransactions()
+  // Update form values when closing modal
+  createEffect(() => {
+    if (!isTransactionModalOpen()) {
+      setFormDescription('')
+      setFormAmount('')
+      setFormCategory(null)
+      setFormBeneficiary('')
+      setFormPayor('')
+      setFormNotes('')
+      setFormTags([])
+    }
   })
+
+  const openTransactionModal = () => {
+    setTransactionModalOpen(true)
+    // Don't reset form values since they're already initialized with defaults
+  }
+
+  const closeTransactionModal = () => {
+    setTransactionModalOpen(false)
+    setFormDate('')
+    setFormDescription('')
+    setFormAmount('')
+    setFormCategory(null)
+    setFormBeneficiary('')
+    setFormPayor('')
+    setFormNotes('')
+    setFormTags([])
+  }
 
   return (
     <div class={`page page-transactions page-enter ${styles.transactionsPage}`}>
       <div class={styles.pageHeader}>
-        <h1>Transactions</h1>
+        <h1 data-test-id="transactions-header">Transactions</h1>
         <div class={styles.pageHeaderActions}>
+          <button
+            class={`${styles.btnPrimary} ${styles.btnSm}`}
+            onClick={openTransactionModal}
+            data-test-id="add-transaction-btn"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add Transaction
+          </button>
           <button
             class={`${styles.btnSecondary} ${styles.btnSm}`}
             onClick={() => setAutoCategorizeModalOpen(true)}
@@ -424,7 +470,7 @@ export default function Transactions() {
       {/* Filter Bar */}
       <div class={styles.filterSection}>
         <CategoryMultiSelect
-          categories={categories() as any}
+          categories={categories}
           selectedCategoryIds={selectedCategories}
           onChange={(ids) => {
             setSelectedCategories(ids)
@@ -566,12 +612,14 @@ export default function Transactions() {
                     step="0.01"
                     class={styles.formControl}
                     id="tx-amount"
+                    value={formAmount}
+                    onInput={(e) => setFormAmount((e.target as HTMLInputElement).value)}
                     required
                   />
                 </div>
                 <div class={styles.formGroup}>
                   <label class={styles.formLabel}>Currency</label>
-                  <select class={styles.formControl} id="tx-currency">
+                  <select class={styles.formControl} id="tx-currency" value={formCurrency} onInput={(e) => setFormCurrency((e.target as HTMLSelectElement).value)}>
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
                     <option value="GBP">GBP</option>
@@ -587,11 +635,11 @@ export default function Transactions() {
               <div class={styles.formRow}>
                 <div class={styles.formGroup}>
                   <label class={styles.formLabel}>Date</label>
-                  <input type="date" class={styles.formControl} id="tx-date" required />
+                  <input type="date" class={styles.formControl} id="tx-date" value={formDate} required />
                 </div>
                 <div class={styles.formGroup}>
                   <label class={styles.formLabel}>Category</label>
-                  <select class={styles.formControl} id="tx-category"></select>
+                  <select class={styles.formControl} id="tx-category" value={formCategory || ''} onInput={(e) => setFormCategory((e.target as HTMLSelectElement).value ? parseInt((e.target as HTMLSelectElement).value) : null)}></select>
                 </div>
               </div>
               <div class={`${styles.formGroup} ${styles.txTagSelector}`}>
@@ -615,6 +663,8 @@ export default function Transactions() {
                     class={styles.formControl}
                     id="tx-beneficiary"
                     placeholder="Who you paid"
+                    value={formBeneficiary}
+                    onInput={(e) => setFormBeneficiary((e.target as HTMLInputElement).value)}
                   />
                 </div>
                 <div class={styles.formGroup}>
@@ -624,6 +674,8 @@ export default function Transactions() {
                     class={styles.formControl}
                     id="tx-payor"
                     placeholder="Who paid you"
+                    value={formPayor}
+                    onInput={(e) => setFormPayor((e.target as HTMLInputElement).value)}
                   />
                 </div>
               </div>
@@ -742,7 +794,7 @@ export default function Transactions() {
               </div>
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Notes</label>
-                <textarea class={styles.formControl} id="tx-notes" rows="2"></textarea>
+                <textarea class={styles.formControl} id="tx-notes" rows="2" value={formNotes} onInput={(e) => setFormNotes((e.target as HTMLTextAreaElement).value)}></textarea>
               </div>
             </form>
           </div>
@@ -750,7 +802,15 @@ export default function Transactions() {
             <button class={styles.btnSecondary} onclick={_closeModals}>
               Cancel
             </button>
-            <button class={styles.btnPrimary} id="tx-save-btn" data-action="transactions:save">
+            <button
+              class={styles.btnPrimary}
+              id="tx-save-btn"
+              data-action="transactions:save"
+              onclick={(e) => {
+                console.log('Save button clicked, openTransactionModal:', openTransactionModal)
+                openTransactionModal()
+              }}
+            >
               Save Transaction
             </button>
           </div>

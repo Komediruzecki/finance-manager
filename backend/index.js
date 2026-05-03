@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const SQLiteStore = require('connect-sqlite3')(session);
 const db = require('./database');
 const loanCalc = require('./models/loanCalculator');
+const mime = require('mime-types');
 
 // Helper function to convert snake_case keys to camelCase
 function toCamelCase(obj) {
@@ -453,8 +454,35 @@ app.post('/api/logs/clear', (req, res) => {
   }
 });
 
-// Static files
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+// Static files - serve built files from dist if available, otherwise serve source files
+const distPath = path.join(__dirname, '..', 'frontend', 'dist')
+const serveDist = fs.existsSync(distPath) && fs.statSync(distPath).isDirectory()
+
+if (serveDist) {
+  // Serve production build from dist folder
+  app.use(express.static(distPath, {
+    setHeaders: (res, filepath) => {
+      const ext = path.extname(filepath).toLowerCase()
+      // Use correct MIME types for static assets
+      const mimeLookup = require('mime-types')
+      const mimeType = mimeLookup.lookup(ext)
+      if (mimeType) {
+        res.setHeader('Content-Type', mimeType)
+      }
+    }
+  }))
+} else {
+  // In dev mode, serve source files from frontend folder
+  app.use(express.static(path.join(__dirname, '..', 'frontend'), {
+    setHeaders: (res, filepath) => {
+      const ext = path.extname(filepath).toLowerCase()
+      // TypeScript and JSX files should be served as JavaScript
+      if (ext === '.tsx' || ext === '.ts') {
+        res.setHeader('Content-Type', 'application/javascript')
+      }
+    }
+  }))
+}
 
 // Multer for file uploads
 const storage = multer.diskStorage({
