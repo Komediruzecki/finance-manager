@@ -1,112 +1,88 @@
 import { expect, test } from '@playwright/test'
+import { login, navigateToRoute, getByTestId } from './test-helpers'
 
 test.describe('Accounts CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure we're on the accounts page
-    await page.goto('http://localhost:3800/#accounts', { waitUntil: 'networkidle' })
+    // Login first
+    await login(page)
 
-    // Wait for the page header to be visible (accounts page loads even if empty)
-    await page.waitForSelector('[data-test-id="accounts-header"], .emptyState', {
-      state: 'visible',
-      timeout: 10000,
-    })
-
-    // Wait for page content to stabilize
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000)
+    // Navigate to accounts page
+    await navigateToRoute(page, 'accounts')
   })
 
   test('should display accounts header', async ({ page }) => {
-    const header = page.getByTestId('accounts-header')
+    const header = getByTestId(page, 'accounts-header')
     await expect(header).toBeVisible()
   })
 
   test('should have page subtitle', async ({ page }) => {
-    const subtitle = page.getByTestId('accounts-subtitle')
+    const subtitle = getByTestId(page, 'accounts-subtitle')
     await expect(subtitle).toBeVisible()
   })
 
   test('should have add account button', async ({ page }) => {
-    const addBtn = page.getByTestId('add-account-btn')
+    const addBtn = getByTestId(page, 'add-account-btn')
     await expect(addBtn).toBeVisible()
   })
 
   test('should have summary cards', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const summary = page.getByTestId('accounts-summary')
+    const summary = getByTestId(page, 'accounts-summary')
     await expect(summary).toBeVisible()
   })
 
   test('should display total balance', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const balanceLabel = page.getByTestId('summary-total-balance')
+    const balanceLabel = getByTestId(page, 'summary-total-balance')
     await expect(balanceLabel).toBeVisible()
 
-    const balanceValue = page.getByTestId('summary-balance-value')
+    const balanceValue = getByTestId(page, 'summary-balance-value')
     await expect(balanceValue).toBeVisible()
   })
 
   test('should display accounts count', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const countLabel = page.getByTestId('summary-accounts-count')
+    const countLabel = getByTestId(page, 'summary-accounts-count')
     await expect(countLabel).toBeVisible()
 
-    const countValue = page.getByTestId('summary-accounts-value')
+    const countValue = getByTestId(page, 'summary-accounts-value')
     await expect(countValue).toBeVisible()
   })
 
   test('should display monthly income', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const incomeLabel = page.getByTestId('summary-income')
+    const incomeLabel = getByTestId(page, 'summary-income')
     await expect(incomeLabel).toBeVisible()
 
-    const incomeValue = page.getByTestId('summary-income-value')
+    const incomeValue = getByTestId(page, 'summary-income-value')
     await expect(incomeValue).toBeVisible()
   })
 
   test('should display monthly expenses', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const expensesLabel = page.getByTestId('summary-expenses')
+    const expensesLabel = getByTestId(page, 'summary-expenses')
     await expect(expensesLabel).toBeVisible()
 
-    const expensesValue = page.getByTestId('summary-expenses-value')
+    const expensesValue = getByTestId(page, 'summary-expenses-value')
     await expect(expensesValue).toBeVisible()
   })
 
   test('should have accounts grid', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountsGrid = page.getByTestId('accounts-grid')
+    const accountsGrid = getByTestId(page, 'accounts-grid')
     await expect(accountsGrid).toBeVisible()
   })
 
   test('should display account cards', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountCards = page.getByTestId('account-card')
+    const accountCards = getByTestId(page, 'account-card')
     const count = await accountCards.count()
     // Should have at least 0 cards (can be empty)
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should have account card with icon', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountCards = page.getByTestId('account-card')
+    const accountCards = getByTestId(page, 'account-card')
     const icon = accountCards.getByTestId('account-icon')
     const count = await icon.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should have account icons matching account types', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const icons = page.getByTestId('account-icon')
+    const icons = getByTestId(page, 'account-icon')
     const iconCount = await icons.count()
 
     // At least one account icon should be displayed
@@ -117,102 +93,74 @@ test.describe('Accounts CRUD Operations', () => {
   })
 
   test('should display account name', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountName = page.getByTestId('account-name')
+    const accountName = getByTestId(page, 'account-name')
     const count = await accountName.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display bank name', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const bankName = page.getByTestId('account-bank')
+    const bankName = getByTestId(page, 'account-bank')
     const count = await bankName.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display current balance card', async ({ page }) => {
-    await page.waitForTimeout(500)
-
     const balanceLabel = page.getByText('Current Balance').first()
-    const balanceValue = page.getByTestId('account-balance').first()
+    const balanceValue = getByTestId(page, 'account-balance').first()
 
     await expect(balanceLabel).toBeVisible()
     await expect(balanceValue).toBeVisible()
   })
 
   test('should display recent activity section', async ({ page }) => {
-    await page.waitForTimeout(500)
-
     const activityHeader = page.getByText('Recent Activity').first()
     await expect(activityHeader).toBeVisible()
   })
 
   test('should have activity header with view all link', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const activitySection = page.getByTestId('activity-section')
+    const activitySection = getByTestId(page, 'activity-section')
     const count = await activitySection.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should have "View All" link', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    // Find the link with "View All →"
     const viewAllLink = page.locator('a', { hasText: 'View All →' })
     const count = await viewAllLink.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display activity list', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const activityList = page.getByTestId('activity-list')
+    const activityList = getByTestId(page, 'activity-list')
     const count = await activityList.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display activity items', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const activityItems = page.getByTestId('activity-item')
+    const activityItems = getByTestId(page, 'activity-item')
     const count = await activityItems.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display activity description', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const description = page.getByTestId('activity-desc')
+    const description = getByTestId(page, 'activity-desc')
     const count = await description.count()
-    // May be 0 if no transactions exist
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display activity date', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const date = page.getByTestId('activity-date')
+    const date = getByTestId(page, 'activity-date')
     const count = await date.count()
-    // May be 0 if no transactions exist
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should display activity amount with +/-', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const amount = page.getByTestId('activity-amount')
+    const amount = getByTestId(page, 'activity-amount')
     const count = await amount.count()
-    // May be 0 if no transactions exist
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should have account type badge', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountCards = page.getByTestId('account-card')
+    const accountCards = getByTestId(page, 'account-card')
     const cardCount = await accountCards.count()
 
     if (cardCount > 0) {
@@ -223,18 +171,14 @@ test.describe('Accounts CRUD Operations', () => {
   })
 
   test('should have account type badge text', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountCards = page.getByTestId('account-card')
+    const accountCards = getByTestId(page, 'account-card')
     const typeBadges = accountCards.getByTestId('account-type')
     const count = await typeBadges.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
 
   test('should have account actions button', async ({ page }) => {
-    await page.waitForTimeout(500)
-
-    const accountCards = page.getByTestId('account-card')
+    const accountCards = getByTestId(page, 'account-card')
     const deleteBtns = accountCards.locator('button').filter({
       has: accountCards.locator('svg path[d*="M19 7l-.867"]'),
     })

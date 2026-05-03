@@ -192,15 +192,15 @@ export default function Categories() {
     <div class={`page page-categories page-enter ${styles.categoriesPage}`}>
       <div class={styles.pageHeader}>
         <div class={styles.headerTop}>
-          <h1>Categories</h1>
-          <button class={styles.addCategoryBtn} onClick={() => setShowAddModal(true)}>
+          <h1 data-test-id="categories-header">Categories</h1>
+          <button data-test-id="add-category-btn" class={styles.addCategoryBtn} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Add Category
           </button>
         </div>
-        <p class={styles.pageSubtitle}>
+        <p data-test-id="categories-subtitle" class={styles.pageSubtitle}>
           Organize your transactions with expense and income categories
         </p>
       </div>
@@ -223,7 +223,7 @@ export default function Categories() {
       </div>
 
       {loading() ? (
-        <div class={styles.emptyState}>Loading categories...</div>
+        <div data-test-id="loading-state" class={styles.emptyState}>Loading categories...</div>
       ) : categories().length === 0 ? (
         <div class={styles.emptyState}>
           <p>No categories yet</p>

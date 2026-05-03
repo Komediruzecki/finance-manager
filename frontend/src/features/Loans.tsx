@@ -238,15 +238,15 @@ export default function Loans() {
     <div class={`page page-loans page-enter ${styles.loansPage}`}>
       <div class={styles.pageHeader}>
         <div class={styles.headerTop}>
-          <h1>Loans</h1>
-          <button class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
+          <h1 data-test-id="loans-header">Loans</h1>
+          <button data-test-id="add-loan-btn" class={styles.btnPrimary} onClick={() => setShowAddModal(true)}>
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Add Loan
           </button>
         </div>
-        <p class={styles.pageSubtitle}>Track your loans and manage payments</p>
+        <p data-test-id="loans-subtitle" class={styles.pageSubtitle}>Track your loans and manage payments</p>
       </div>
 
       {/* Summary Cards */}
@@ -272,7 +272,7 @@ export default function Loans() {
       </div>
 
       {loading() ? (
-        <div class={styles.emptyState}>Loading loans...</div>
+        <div data-test-id="loading-state" class={styles.emptyState}>Loading loans...</div>
       ) : loans().length === 0 ? (
         <div class={styles.emptyState}>
           <p>No loans yet</p>

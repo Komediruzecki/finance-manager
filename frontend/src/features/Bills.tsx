@@ -262,7 +262,7 @@ export default function Bills() {
         <div class={styles.headerTop}>
           <h1 data-test-id="bills-header">Bills</h1>
           <button
-            data-test-id="bills-add-btn"
+            data-test-id="add-bill-btn"
             class={styles.btnPrimary}
             onClick={() => setShowAddModal(true)}
           >
@@ -375,7 +375,7 @@ export default function Bills() {
           <span class={styles.sectionSubtitle}>{bills().length} total</span>
         </h2>
         {loading() ? (
-          <div data-test-id="bills-loading" class={styles.emptyState}>
+          <div data-test-id="loading-state" class={styles.emptyState}>
             Loading bills...
           </div>
         ) : bills().length === 0 ? (
