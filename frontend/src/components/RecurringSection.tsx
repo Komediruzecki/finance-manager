@@ -2,9 +2,9 @@
  * RecurringSection Component
  * Manages recurring transactions — list, create, edit, delete, populate
  */
-import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from './RecurringSection.module.css'
+import { createSignal, For, onMount } from 'solid-js'
 import { api } from '../core/api'
+import styles from './RecurringSection.module.css'
 import type { Category } from '../types/models'
 
 interface RecurringItem {
@@ -235,7 +235,7 @@ export default function RecurringSection(props: RecurringSectionProps) {
       {/* Modal */}
       {isModalOpen() && (
         <div class={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
-          <div class={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div class={styles.modal} onClick={(e) => { e.stopPropagation() }}>
             <div class={styles.modalHeader}>
               <h3>{editingId() ? 'Edit Recurring' : 'Add Recurring'}</h3>
               <button class={styles.closeBtn} onClick={() => setIsModalOpen(false)}>

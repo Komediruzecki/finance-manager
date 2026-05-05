@@ -30,7 +30,7 @@
  * Budgets Component
  * Includes traditional budgeting view, zero-based budgeting (envelope-style), and forecasting
  */
-import { createEffect, createSignal, For, onMount } from 'solid-js'
+import { createEffect, createSignal, For } from 'solid-js'
 import Badge from '../components/Badge'
 import styles from '../components/BudgetsPage.module.css'
 import Button from '../components/Button'
