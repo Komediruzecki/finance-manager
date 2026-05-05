@@ -35,7 +35,7 @@
  * Handles CSV/Excel file and Google Sheets import with full 12-field column mapping, duplicate detection, and category type review
  */
 
-import { createSignal, onMount } from 'solid-js'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import styles from './Import.module.css'
 
 // Column field names for mapping
@@ -183,7 +183,7 @@ export default function Import() {
   const goToPreview = () => {
     const rows = currentRows()
     if (rows.length === 0) return
-    setActiveStep('mapping')
+    setActiveStep('preview')
     setSelectedRows(new Set<number>(rows.map((_, i) => i)))
     setCurrentPage(1)
   }
@@ -501,21 +501,23 @@ export default function Import() {
             <div class={styles.sheetsUrlRow}>
               <label class={styles.sheetsInfo}>Available sheets:</label>
               <div class={styles.sheetTabs}>
-                {uploadResult()!.sheetNames.map((name) => (
-                  <button
-                    class={`${styles.sheetTab} ${selectedSheet() === name ? styles.active : ''}`}
-                    onClick={() => setSelectedSheet(name)}
-                  >
-                    {name}
-                  </button>
-                ))}
+                <For each={uploadResult()!.sheetNames}>
+                  {(name) => (
+                    <button
+                      class={`${styles.sheetTab} ${selectedSheet() === name ? styles.active : ''}`}
+                      onClick={() => setSelectedSheet(name)}
+                    >
+                      {name}
+                    </button>
+                  )}
+                </For>
               </div>
             </div>
           )}
 
           {/* Upload data button */}
           {uploadResult() && (
-            <button class="btn btn-primary" onClick={goToMapping}>
+            <button class={`${styles.btn} ${styles.btnPrimary}`} onClick={goToMapping}>
               Continue to Mapping
             </button>
           )}
@@ -523,7 +525,7 @@ export default function Import() {
           {/* Template download */}
           <div class={styles.templateSection}>
             <p class={styles.dropzoneHint}>Need a template?</p>
-            <a href="#" class="btn btn-outline" onClick={(e) => { e.preventDefault(); }}>
+            <a href="#" class={`${styles.btn} ${styles.btnOutline}`} onClick={(e) => { e.preventDefault(); }}>
               Download Sample Template
             </a>
           </div>
@@ -541,7 +543,7 @@ export default function Import() {
               value={sheetUrl()}
               onInput={(e) => setSheetUrl(e.target.value)}
             />
-            <button class="btn btn-primary" onClick={fetchGoogleSheet} disabled={loading()}>
+            <button class={`${styles.btn} ${styles.btnPrimary}`} onClick={fetchGoogleSheet} disabled={loading()}>
               Fetch
             </button>
           </div>
@@ -552,16 +554,18 @@ export default function Import() {
             <div class={styles.sheetsUrlRow}>
               <label class={styles.sheetsInfo}>Available sheets:</label>
               <div class={styles.sheetTabs}>
-                {sheetNames().map((name) => (
-                  <button
-                    class={`${styles.sheetTab} ${selectedSheet() === name ? styles.active : ''}`}
-                    onClick={() => {
-                      handleSheetTabClick(name);
-                    }}
-                  >
-                    {name}
-                  </button>
-                ))}
+                <For each={sheetNames()}>
+                  {(name) => (
+                    <button
+                      class={`${styles.sheetTab} ${selectedSheet() === name ? styles.active : ''}`}
+                      onClick={() => {
+                        handleSheetTabClick(name);
+                      }}
+                    >
+                      {name}
+                    </button>
+                  )}
+                </For>
               </div>
             </div>
           )}
@@ -611,21 +615,23 @@ export default function Import() {
         <div class={styles.categoryReview}>
           <h3 class={styles.categoryReviewTitle}>Category Types</h3>
           <div class={styles.categoryChips}>
-            {detectCategories().map((category) => (
-              <div class={styles.categoryChip}>
-                <span class={styles.categoryChipName}>{category}</span>
-                <select
-                  class={styles.categoryChipSelect}
-                  value={categoryTypes()[category] || 'expense'}
-                  onChange={(e) => {
-                    handleCategoryTypeToggle(category, e.target.value as 'income' | 'expense');
-                  }}
-                >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </div>
-            ))}
+            <For each={detectCategories()}>
+              {(category) => (
+                <div class={styles.categoryChip}>
+                  <span class={styles.categoryChipName}>{category}</span>
+                  <select
+                    class={styles.categoryChipSelect}
+                    value={categoryTypes()[category] || 'expense'}
+                    onChange={(e) => {
+                      handleCategoryTypeToggle(category, e.target.value as 'income' | 'expense');
+                    }}
+                  >
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                  </select>
+                </div>
+              )}
+            </For>
           </div>
         </div>
 
@@ -634,10 +640,10 @@ export default function Import() {
             Total Rows: {currentRows().length} | Mapped: {Object.keys(columnMapping()).length}/12
           </span>
           <div class={styles.previewActions}>
-            <button class="btn btn-outline" onClick={resetForm}>
+            <button class={`${styles.btn} ${styles.btnOutline}`} onClick={resetForm}>
               Cancel
             </button>
-            <button class="btn btn-primary" onClick={goToPreview} disabled={loading()}>
+            <button class={`${styles.btn} ${styles.btnPrimary}`} onClick={goToPreview} disabled={loading()}>
               Continue to Preview
             </button>
           </div>
@@ -674,7 +680,7 @@ export default function Import() {
             )}
           </div>
           <div class={styles.previewActions}>
-            <button class="btn btn-outline" onClick={resetForm}>
+            <button class={`${styles.btn} ${styles.btnOutline}`} onClick={resetForm}>
               Cancel
             </button>
           </div>
@@ -698,15 +704,11 @@ export default function Import() {
               </tr>
             </thead>
             <tbody>
-              {currentRows()
-                .slice(startRow(), endRow())
-                .map((row, idx) => {
-                  const actualIndex = startRow() + idx
+              <For each={currentRows().slice(startRow(), endRow())}>
+                {(row, idx) => {
+                  const actualIndex = startRow() + idx()
                   return (
-                    <tr
-                      key={idx}
-                      {...({} as any)}
-                    >
+                    <tr>
                       <td class={styles.selectCol}>
                         <input
                           type="checkbox"
@@ -716,12 +718,13 @@ export default function Import() {
                           }}
                         />
                       </td>
-                      {row.map((cell) => (
-                        <td>{cell ?? ''}</td>
-                      ))}
+                      <For each={row}>
+                        {(cell) => <td>{cell ?? ''}</td>}
+                      </For>
                     </tr>
                   )
-                })}
+                }}
+              </For>
             </tbody>
           </table>
         </div>
@@ -730,7 +733,7 @@ export default function Import() {
         {total > rowsPerPage() && (
           <div class={styles.pagination}>
             <button
-              class="btn btn-sm btn-ghost"
+              class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
               disabled={currentPage() === 1}
               onClick={() => setCurrentPage((p) => p - 1)}
             >
@@ -740,7 +743,7 @@ export default function Import() {
               Page {currentPage()} of {totalPages()}
             </span>
             <button
-              class="btn btn-sm btn-ghost"
+              class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
               disabled={currentPage() === totalPages()}
               onClick={() => setCurrentPage((p) => p + 1)}
             >
@@ -765,7 +768,7 @@ export default function Import() {
         <div class={styles.actionBar}>
           <div class={styles.importButtons}>
             <button
-              class="btn btn-primary"
+              class={`${styles.btn} ${styles.btnPrimary}`}
               onClick={() => handleImport('selected')}
               disabled={selectedRows().size === 0}
             >
@@ -773,13 +776,13 @@ export default function Import() {
             </button>
             {duplicates > 0 && (
               <button
-                class="btn btn-secondary"
+                class={`${styles.btn} ${styles.btnSecondary}`}
                 onClick={() => handleImport('new')}
               >
                 Import Only New (Skip {duplicates} Duplicates)
               </button>
             )}
-            <button class="btn btn-outline" onClick={() => handleImport('all')}>
+            <button class={`${styles.btn} ${styles.btnOutline}`} onClick={() => handleImport('all')}>
               Import All
             </button>
           </div>
@@ -789,45 +792,51 @@ export default function Import() {
   }
 
   return (
-    <div class="page page-import page-enter">
-      <div class="page-header">
+    <div class={`${styles.container} ${styles.pageImport}`}>
+      <div class={styles.pageHeader}>
         <h1>Import Transactions</h1>
         <p>Import transactions from CSV, Excel, or Google Sheets</p>
       </div>
 
       {/* Error message */}
-      {error() && (
+      <Show when={error()}>
         <div class={`${styles.resultMessage} ${styles.error}`}>{error()}</div>
-      )}
+      </Show>
 
       {/* Success message */}
-      {resultMessage() && (
+      <Show when={resultMessage()}>
         <div class={`${styles.resultMessage} ${styles.success}`}>{resultMessage()!.text}</div>
-      )}
+      </Show>
 
       {/* Loading overlay */}
-      {loading() && (
+      <Show when={loading()}>
         <div class={styles.loadingOverlay}>
           <div class={styles.spinner}></div>
           <p class={styles.loadingText}>Processing...</p>
         </div>
-      )}
+      </Show>
 
       {/* Form content */}
-      {activeStep() === 'upload' && fileUploadStep()}
-      {activeStep() === 'mapping' && mappingStep()}
-      {activeStep() === 'preview' && previewStep()}
+      <Show when={activeStep() === 'upload'}>
+        {fileUploadStep()}
+      </Show>
+      <Show when={activeStep() === 'mapping'}>
+        {mappingStep()}
+      </Show>
+      <Show when={activeStep() === 'preview'}>
+        {previewStep()}
+      </Show>
 
       {/* Done state */}
-      {activeStep() === 'done' && (
+      <Show when={activeStep() === 'done'}>
         <div class={styles.settingsCard}>
           <h2 class={styles.settingsCardTitle}>Import Complete!</h2>
           <p>Transactions have been successfully imported.</p>
-          <button class="btn btn-primary" style={{ 'margin-top': '16px' }} onClick={resetForm}>
+          <button class={`${styles.btn} ${styles.btnPrimary} ${styles.settingsCardActions}`} onClick={resetForm}>
             Import More
           </button>
         </div>
-      )}
+      </Show>
     </div>
   )
 }

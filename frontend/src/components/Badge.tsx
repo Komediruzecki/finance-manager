@@ -3,6 +3,7 @@
  */
 
 import { mergeProps } from 'solid-js'
+import styles from './Badge.module.css'
 import type { JSX } from 'solid-js'
 
 interface BadgeProps {
@@ -11,14 +12,20 @@ interface BadgeProps {
   class?: string
 }
 
+const statusClassMap: Record<string, string> = {
+  ok: styles['badge-ok'],
+  warning: styles['badge-warning'],
+  over: styles['badge-over'],
+  income: styles['badge-income'],
+  expense: styles['badge-expense'],
+  transfer: styles['badge-transfer'],
+}
+
 export default function Badge(props: BadgeProps) {
   const merged = mergeProps({ status: 'default' }, props)
 
-  const baseClass = 'badge'
-  const statusClass = merged.status !== 'default' ? `badge-${merged.status}` : ''
-
   return (
-    <span class={`${baseClass} ${statusClass} ${merged.class ?? ''}`.trim()}>
+    <span class={`${styles.badge} ${statusClassMap[merged.status] ?? ''} ${merged.class ?? ''}`.trim()}>
       {merged.children}
     </span>
   )

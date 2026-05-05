@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 /**
  * Event Handler Utilities
  * Migrated from legacy window.handlers, window.receipts, window.transactions
@@ -342,15 +344,17 @@ export async function authLogin(username?: string, password?: string): Promise<v
         password = result.password
       } else {
         // User cancelled - don't force login
+        logger.info('Login cancelled by user', {}, 'AuthHandler')
         return
       }
     }
     const { api } = await import('./api.js')
     await api.login(username!, password!)
+    logger.info('User logged in successfully', { username: username! }, 'AuthHandler')
     await toast('Successfully logged in', 'success')
   } catch (error) {
-    console.error('Login failed:', error)
     const errorMsg = error instanceof Error ? error.message : 'Login failed'
+    logger.error('Login failed', { username: username || 'prompt' }, 'AuthHandler')
     await toast(errorMsg, 'error')
     throw error
   }
@@ -361,9 +365,10 @@ export async function authLogout(): Promise<void> {
     const { api } = await import('./api.js')
     await api.logout()
     localStorage.removeItem('currentProfileId')
+    logger.info('User logged out', {}, 'AuthHandler')
     await toast('Logged out successfully', 'info')
-  } catch (error) {
-    console.error('Logout failed:', error)
+  } catch (_error) {
+    logger.error('Logout API call failed', {}, 'AuthHandler')
     // Force clear profile ID even if API call fails
     localStorage.removeItem('currentProfileId')
     await toast('Logged out', 'info')
@@ -489,7 +494,7 @@ function showLoginDialog(): Promise<{ username: string; password: string } | nul
 export async function selectProfile(profileId: number): Promise<void> {
   try {
     localStorage.setItem('currentProfileId', profileId.toString())
-  } catch {
+  } catch (_error) {
     console.error('Failed to save profile ID to localStorage')
   }
 }

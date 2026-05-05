@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('API Endpoint Verification', () => {
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async () => {
     // Use request context to test API endpoints directly
   })
 

@@ -3319,6 +3319,7 @@ app.get('/api/budgets/zero-based', apiRateLimiter, (req, res) => {
       const percentUsed = budget && budget.amount > 0 ? (spentAmt / budget.amount) * 100 : 0;
 
       return {
+        budget_id: budget?.id ?? null,
         category_id: cat.id,
         category_name: cat.name,
         category_color: cat.color,
@@ -3329,6 +3330,7 @@ app.get('/api/budgets/zero-based', apiRateLimiter, (req, res) => {
         percent_used: Math.min(100, Math.round(percentUsed)),
         is_budgeted: !!budget,
         can_allocate: unassignedBudget > 0,
+        rollover_enabled: budget?.rollover_enabled ?? false,
       };
     });
 
@@ -3451,6 +3453,7 @@ app.get('/api/budgets/zero-based/summary', apiRateLimiter, (req, res) => {
     const zero_based_remaining = income - totalBudget;
 
     const summary = budgets.map((b) => ({
+      budget_id: b.id,
       category_id: b.category_id,
       category_name: b.category_name,
       category_color: b.category_color,
@@ -3461,6 +3464,7 @@ app.get('/api/budgets/zero-based/summary', apiRateLimiter, (req, res) => {
       percent_used: b.amount > 0 ? ((spentMap[b.category_id] || 0) / b.amount) * 100 : 0,
       status: (spentMap[b.category_id] || 0) > b.amount ? 'over' : 'ok',
       is_fully_allocated: b.amount > 0 && (spentMap[b.category_id] || 0) <= b.amount,
+      rollover_enabled: b.rollover_enabled ?? false,
       alerts: [],
     }));
 

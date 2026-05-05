@@ -35,7 +35,7 @@ import Chart from '../components/Chart'
 import LoanAmortizationTable from '../components/LoanAmortizationTable'
 import styles from '../components/LoansPage.module.css'
 import { api as _api, formatCurrency } from '../core/api'
-import { apiDelete, apiGet, apiPost, showToast } from '../utils/api'
+import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 
 interface Loan {
   id: number
@@ -59,6 +59,12 @@ export default function Loans() {
   const [editingLoan, setEditingLoan] = createSignal<Loan | null>(null)
   const [showAmortization, setShowAmortization] = createSignal(false)
   const [showAmortizationId, setShowAmortizationId] = createSignal<number>(0)
+  interface RatePeriod {
+    rate: number
+    start_month: number
+    end_month: number | null
+  }
+
   const [formData, setFormData] = createSignal({
     name: '',
     principal: '',
@@ -66,6 +72,17 @@ export default function Loans() {
     term_months: '',
     start_date: '',
     status: 'active' as Loan['status'],
+    rate_periods: [] as RatePeriod[],
+  })
+
+  const emptyForm = () => ({
+    name: '',
+    principal: '',
+    interest_rate: '',
+    term_months: '',
+    start_date: '',
+    status: 'active' as Loan['status'],
+    rate_periods: [] as RatePeriod[],
   })
 
   // Load loans
@@ -106,11 +123,12 @@ export default function Loans() {
       term_months: parseInt(formData().term_months),
       start_date: formData().start_date,
       status: formData().status,
+      rate_periods: formData().rate_periods,
     }
 
     try {
       if (editingLoan()) {
-        await apiPost(`/api/loans/${editingLoan()!.id}`, data)
+        await apiPut(`/api/loans/${editingLoan()!.id}`, data)
         showToast('Loan updated successfully', 'success')
       } else {
         await apiPost('/api/loans', data)
@@ -118,14 +136,7 @@ export default function Loans() {
       }
       setShowAddModal(false)
       setEditingLoan(null)
-      setFormData({
-        name: '',
-        principal: '',
-        interest_rate: '',
-        term_months: '',
-        start_date: '',
-        status: 'active',
-      })
+      setFormData(emptyForm())
       loadLoans()
     } catch (err) {
       console.error('Failed to save loan:', err)
@@ -161,8 +172,17 @@ export default function Loans() {
   }
 
   // Open edit modal
-  const editLoan = (loan: Loan) => {
+  const editLoan = async (loan: Loan) => {
     setEditingLoan(loan)
+    let ratePeriods: RatePeriod[] = []
+    try {
+      const full = await apiGet<any>(`/api/loans/${loan.id}`)
+      ratePeriods = (full.rate_periods || []).map((rp: any) => ({
+        rate: rp.rate,
+        start_month: rp.start_month,
+        end_month: rp.end_month || null,
+      }))
+    } catch { /* use empty rate periods */ }
     setFormData({
       name: loan.name,
       principal: loan.principal.toString(),
@@ -170,6 +190,7 @@ export default function Loans() {
       term_months: loan.term_months.toString(),
       start_date: loan.start_date.slice(0, 10),
       status: loan.status,
+      rate_periods: ratePeriods,
     })
     setShowAddModal(true)
   }
@@ -390,59 +411,108 @@ export default function Loans() {
         </div>
       )}
 
-      {/* Loan Amortization Chart */}
+      {/* Loan Charts */}
       {loans().length > 0 && (
         <div class={styles.loanAmortizationSection}>
-          <h3>Loan Amortization Summary</h3>
-          <div class={styles.amortizationChartWrapper}>
-            <Chart
-              type="line"
-              data={{
-                labels: loans().map((l) => l.name),
-                datasets: [
-                  {
-                    label: 'Principal',
-                    data: loans().map((l) => l.principal),
-                    borderColor: '#22c55e',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                  },
-                  {
-                    label: 'Remaining',
-                    data: loans().map((l) => calculateRemaining(l)),
-                    borderColor: '#dc2626',
-                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value: any) => formatAmount(value),
+          <h3>Loan Overview</h3>
+          <div style={{ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px' }}>
+            <div class={styles.amortizationChartWrapper}>
+              <h4 style={{ 'font-size': '13px', 'font-weight': 600, margin: '0 0 12px 0', color: 'var(--text-secondary)' }}>Principal vs Remaining</h4>
+              <Chart
+                type="line"
+                data={{
+                  labels: loans().map((l) => l.name),
+                  datasets: [
+                    {
+                      label: 'Principal',
+                      data: loans().map((l) => l.principal),
+                      borderColor: '#22c55e',
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      fill: true,
+                      tension: 0.4,
+                    },
+                    {
+                      label: 'Remaining',
+                      data: loans().map((l) => calculateRemaining(l)),
+                      borderColor: '#dc2626',
+                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                      fill: true,
+                      tension: 0.4,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        callback: (value: any) => formatAmount(value),
+                      },
                     },
                   },
-                },
-                plugins: {
-                  legend: {
-                    position: 'top',
-                    labels: {
-                      usePointStyle: true,
-                      padding: 15,
-                      font: { size: 12 },
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                      labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 12 },
+                      },
                     },
                   },
-                },
-              }}
-              height={250}
-              width="100%"
-            />
+                }}
+                height={250}
+                width="100%"
+              />
+            </div>
+            <div class={styles.amortizationChartWrapper}>
+              <h4 style={{ 'font-size': '13px', 'font-weight': 600, margin: '0 0 12px 0', color: 'var(--text-secondary)' }}>Debt Distribution</h4>
+              <Chart
+                type="doughnut"
+                data={{
+                  labels: loans().map((l) => l.name),
+                  datasets: [
+                    {
+                      data: loans().map((l) => l.principal),
+                      backgroundColor: [
+                        '#22c55e', '#3b82f6', '#f59e0b', '#ef4444',
+                        '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+                      ],
+                      borderColor: 'var(--card-bg)',
+                      borderWidth: 2,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 11 },
+                      },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (ctx: any) => {
+                          const val = ctx.parsed
+                          const total = ctx.dataset.data.reduce((a: number, b: number) => a + b, 0)
+                          const pct = total > 0 ? `${Math.round((val / total) * 100)}%` : '0%'
+                          return ` ${formatAmount(val)} (${pct})`
+                        },
+                      },
+                    },
+                  },
+                }}
+                height={250}
+                width="100%"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -455,14 +525,7 @@ export default function Loans() {
             if (e.target === e.currentTarget) {
               setShowAddModal(false)
               setEditingLoan(null)
-              setFormData({
-                name: '',
-                principal: '',
-                interest_rate: '',
-                term_months: '',
-                start_date: '',
-                status: 'active',
-              })
+              setFormData(emptyForm())
             }
           }}
         >
@@ -486,6 +549,7 @@ export default function Loans() {
                     term_months: '',
                     start_date: '',
                     status: 'active',
+                    rate_periods: [],
                   })
                 }}
               >
@@ -565,6 +629,80 @@ export default function Loans() {
                   <option value="paid">Paid Off</option>
                 </select>
               </div>
+              {/* Rate Periods */}
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Rate Periods</label>
+                <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px', 'margin-bottom': '8px' }}>
+                  {formData().rate_periods.map((rp: RatePeriod, idx: number) => (
+                    <div style={{ display: 'flex', 'align-items': 'center', gap: '8px', padding: '8px', background: 'var(--bg)', 'border-radius': '8px', 'font-size': '13px' }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Rate %"
+                        value={rp.rate}
+                        style={{ width: '80px', padding: '6px', border: '1px solid var(--border)', 'border-radius': '4px', background: 'var(--bg)', color: 'var(--text)', 'font-size': '13px' }}
+                        oninput={(e) => {
+                          const updated = [...formData().rate_periods]
+                          updated[idx] = { ...updated[idx], rate: parseFloat(e.target.value) || 0 }
+                          setFormData({ ...formData(), rate_periods: updated })
+                        }}
+                      />
+                      <span style={{ 'font-size': '12px', color: 'var(--text-secondary)' }}>from month</span>
+                      <input
+                        type="number"
+                        placeholder="Start"
+                        value={rp.start_month}
+                        style={{ width: '60px', padding: '6px', border: '1px solid var(--border)', 'border-radius': '4px', background: 'var(--bg)', color: 'var(--text)', 'font-size': '13px' }}
+                        oninput={(e) => {
+                          const updated = [...formData().rate_periods]
+                          updated[idx] = { ...updated[idx], start_month: parseInt(e.target.value) || 0 }
+                          setFormData({ ...formData(), rate_periods: updated })
+                        }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="End (opt)"
+                        value={rp.end_month ?? ''}
+                        style={{ width: '70px', padding: '6px', border: '1px solid var(--border)', 'border-radius': '4px', background: 'var(--bg)', color: 'var(--text)', 'font-size': '13px' }}
+                        oninput={(e) => {
+                          const val = e.target.value
+                          const updated = [...formData().rate_periods]
+                          updated[idx] = { ...updated[idx], end_month: val ? parseInt(val) : null }
+                          setFormData({ ...formData(), rate_periods: updated })
+                        }}
+                      />
+                      <button
+                        type="button"
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', 'border-radius': '4px' }}
+                        onClick={() => {
+                          const updated = formData().rate_periods.filter((_: RatePeriod, i: number) => i !== idx)
+                          setFormData({ ...formData(), rate_periods: updated })
+                        }}
+                      >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  style={{ display: 'flex', 'align-items': 'center', gap: '6px', padding: '6px 12px', 'font-size': '12px', background: 'var(--bg)', border: '1px solid var(--border)', 'border-radius': 'var(--radius)', color: 'var(--text)', cursor: 'pointer' }}
+                  onClick={() => {
+                    setFormData({
+                      ...formData(),
+                      rate_periods: [...formData().rate_periods, { rate: parseFloat(formData().interest_rate) || 0, start_month: 1, end_month: null }],
+                    })
+                  }}
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Rate Period
+                </button>
+              </div>
+
               <div class={styles.modalFooter}>
                 <button
                   type="button"
@@ -572,14 +710,7 @@ export default function Loans() {
                   onClick={() => {
                     setShowAddModal(false)
                     setEditingLoan(null)
-                    setFormData({
-                      name: '',
-                      principal: '',
-                      interest_rate: '',
-                      term_months: '',
-                      start_date: '',
-                      status: 'active',
-                    })
+                    setFormData(emptyForm())
                   }}
                 >
                   Cancel

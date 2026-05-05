@@ -26,7 +26,8 @@
  * Settings Component
  * Application configuration and preferences with storage switching
  */
-import { createEffect, createSignal, onMount } from 'solid-js'
+import { createEffect, createSignal, onMount, Show } from 'solid-js'
+import { LogViewer } from '../components/LogViewer'
 import styles from '../components/SettingsPage.module.css'
 import { setStorageMode } from '../core/storage/storageFactory'
 
@@ -222,6 +223,48 @@ export default function Settings() {
                 </div>
               </div>
             </div>
+
+            <div class={styles.card} style="margin-top: 24px;">
+              <div class={styles.settingsSection}>
+                <div class={styles.settingsSectionTitle}>Developer Tools</div>
+                <div class={styles.formGroup} style="margin-top: 16px;">
+                  <button
+                    class={styles.btnSecondary}
+                    onclick={() => {
+                      const hash = window.location.hash.replace('#', '')
+                      if (hash === 'settings') {
+                        window.location.hash = '#logs'
+                      } else {
+                        window.location.hash = '#settings#logs'
+                      }
+                    }}
+                  >
+                    View Logs
+                  </button>
+                  <p style="margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
+                    Access log viewer to debug issues on mobile devices or when console is not available.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Show when={window.location.hash.includes('#logs')}>
+              <div class={styles.card} style="margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <div class={styles.settingsSectionTitle} style="margin-bottom: 0;">Application Logs</div>
+                  <button
+                    class={styles.btnSecondary}
+                    style="padding: 4px 10px; font-size: 12px;"
+                    onclick={() => window.location.hash = '#settings'}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;">
+                  <LogViewer />
+                </div>
+              </div>
+            </Show>
           </div>
 
           <div class={styles.settingsCol}>

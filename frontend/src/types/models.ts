@@ -13,7 +13,7 @@ export type GoalId = number
 export type BillId = number
 
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY'
-export type TransactionType = 'income' | 'expense'
+export type TransactionType = 'income' | 'expense' | 'transfer'
 export type BudgetPeriod = 'monthly' | 'weekly' | 'yearly'
 export type AccountType = 'giro' | 'savings' | 'ib'
 
@@ -62,6 +62,10 @@ export interface Transaction {
   category_name?: string
   category_color?: string
   reconciled?: boolean
+  means_of_payment?: string
+  tags?: Array<{ id: number; name: string; color: string }>
+  receipt_id?: number | null
+  receipt_name?: string
 }
 
 // ============ CATEGORIES ============

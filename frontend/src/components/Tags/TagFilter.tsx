@@ -17,7 +17,7 @@ export function TagFilter(props: TagFilterProps) {
   const [filterText, setFilterText] = createSignal('')
   const tags = props.availableTags()
   const tagsResult = props.selectedTags()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const selectedTags: Set<string> = (tagsResult as any)[0]
 
   const filteredTags = () => {

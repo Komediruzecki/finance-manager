@@ -2,14 +2,17 @@
  * Main App Component - Root component for the application
  */
 
-import { createEffect, createSignal, Show, Suspense } from 'solid-js'
+import { createSignal, For, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 import layoutStyles from './components/Layout.module.css'
 import profileStyles from './components/Profile.module.css'
-import { api } from './core/api.js'
+import QuickAddModal from './components/QuickAddModal'
+import { api, toast } from './core/api.js'
 import { authLogin, authLogout, handlers, receipts, transactions } from './core/handlers.js'
+import { logger } from './core/logger.js'
 import { pages as allPages } from './router.tsx'
 import type { PageName } from './router.tsx'
+import type { Category } from './types/models'
 
 // Mount handlers to window for legacy code compatibility
 window.receipts = receipts
@@ -25,6 +28,8 @@ export function App() {
   const [profiles, setProfiles] = createSignal<any[]>([])
   const [currentProfile, setCurrentProfile] = createSignal<any>(null)
   const [showDropdown, setShowDropdown] = createSignal(false)
+  const [isQuickAddOpen, setIsQuickAddOpen] = createSignal(false)
+  const [quickAddCategories, setQuickAddCategories] = createSignal<Category[]>([])
 
   const loadProfiles = async (autoSelect = false) => {
     try {
@@ -98,7 +103,10 @@ export function App() {
     }
   }
 
-  createEffect(async () => {
+  onMount(async () => {
+    // Initialize logging system
+    logger.init()
+
     // Initialize theme
     const savedDarkMode = localStorage.getItem('darkMode')
     if (savedDarkMode === 'true') {
@@ -128,29 +136,42 @@ export function App() {
       setActivePage('dashboard')
     }
 
-    // Listen for hash changes (back/forward buttons, manual URL edits)
-    const handleHashChange = () => {
-      const newHash = window.location.hash.slice(1)
-      if (newHash && allPages[newHash as PageName]) {
-        setActivePage(newHash as PageName)
+    // Load categories for Quick Add
+    try {
+      const cats = await api.getCategories()
+      if (Array.isArray(cats)) setQuickAddCategories(cats as Category[])
+    } catch { /* non-critical */ }
+
+    // Quick Add keyboard shortcut: Ctrl/Cmd+Shift+T
+    const handleQuickAddKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+        e.preventDefault()
+        setIsQuickAddOpen(true)
       }
     }
-    window.addEventListener('hashchange', handleHashChange)
-
-    // Listen for unauthorized API calls
-    const handleAuthRequired = () => {
-      // Clear profile state and prompt login
-      setCurrentProfile(null)
-      localStorage.removeItem('currentProfileId')
-      handleLogin()
-    }
-    window.addEventListener('auth:required', handleAuthRequired)
-
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange)
-      window.removeEventListener('auth:required', handleAuthRequired)
-    }
+    document.addEventListener('keydown', handleQuickAddKey)
+    onCleanup(() => { document.removeEventListener('keydown', handleQuickAddKey) })
   })
+
+  // Listen for hash changes (back/forward buttons, manual URL edits)
+  const handleHashChange = () => {
+    const newHash = window.location.hash.slice(1)
+    if (newHash && allPages[newHash as PageName]) {
+      setActivePage(newHash as PageName)
+    }
+  }
+  window.addEventListener('hashchange', handleHashChange)
+  onCleanup(() => { window.removeEventListener('hashchange', handleHashChange); })
+
+  // Listen for unauthorized API calls
+  const handleAuthRequired = () => {
+    // Clear profile state and prompt login
+    setCurrentProfile(null)
+    localStorage.removeItem('currentProfileId')
+    handleLogin()
+  }
+  window.addEventListener('auth:required', handleAuthRequired)
+  onCleanup(() => { window.removeEventListener('auth:required', handleAuthRequired); })
 
   _setIsLoading?.(false)
 
@@ -202,7 +223,7 @@ export function App() {
       ),
     },
     {
-      name: 'rent-buy' as PageName,
+      name: 'rentBuy' as PageName,
       label: 'Rent vs Buy',
       icon: (
         <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -301,15 +322,17 @@ export function App() {
             <div class={`${profileStyles.profileDropdownMenu} ${showDropdown() ? profileStyles.visible : ''}`}>
               <div class={profileStyles.profileDropdownHeader}>Switch Profile</div>
               {profiles().length > 0 ? (
-                profiles().map((profile) => (
-                  <div
-                    class={`${profileStyles.profileDropdownItem} ${currentProfile()?.id === profile.id ? profileStyles.active : ''}`}
-                    onClick={() => selectProfile(profile.id)}
-                  >
-                    <div style={{ width: '8px', height: '8px', 'border-radius': '50%', background: currentProfile()?.id === profile.id ? 'var(--primary)' : 'transparent', border: currentProfile()?.id === profile.id ? 'none' : '1px solid var(--border)', 'margin-right': '8px' }}></div>
-                    {profile.name}
-                  </div>
-                ))
+                <For each={profiles()}>
+                  {(profile) => (
+                    <div
+                      class={`${profileStyles.profileDropdownItem} ${currentProfile()?.id === profile.id ? profileStyles.active : ''}`}
+                      onClick={() => selectProfile(profile.id)}
+                    >
+                      <div style={{ width: '8px', height: '8px', 'border-radius': '50%', background: currentProfile()?.id === profile.id ? 'var(--primary)' : 'transparent', border: currentProfile()?.id === profile.id ? 'none' : '1px solid var(--border)', 'margin-right': '8px' }}></div>
+                      {profile.name}
+                    </div>
+                  )}
+                </For>
               ) : (
                 <div class={profileStyles.profileDropdownItem} onClick={handleLogin}>
                   Sign In
@@ -428,6 +451,15 @@ export function App() {
           </Show>
         ))}
       </main>
+
+      <QuickAddModal
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        categories={() => quickAddCategories()}
+        onSave={(_transaction) => {
+          toast('Transaction added', 'success')
+        }}
+      />
     </Suspense>
   )
 }

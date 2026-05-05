@@ -824,3 +824,41 @@
 .empty-state p {
   margin: 8px 0;
 }
+
+/* Rollover toggle */
+.rollover-on,
+.rollover-off {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rollover-on {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.rollover-on:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.rollover-off {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-secondary);
+}
+
+.rollover-off:hover {
+  background: rgba(107, 114, 128, 0.25);
+}
+
+/* Chart section headings */
+.category-chart-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--text);
+}

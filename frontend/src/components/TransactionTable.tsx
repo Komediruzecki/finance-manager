@@ -4,23 +4,7 @@
  */
 import { createEffect, createSignal, For } from 'solid-js'
 import styles from './TransactionTable.module.css'
-
-export interface Transaction {
-  id: number
-  date: string
-  description: string
-  amount: number
-  currency: string
-  type: 'income' | 'expense' | 'transfer'
-  category_name: string
-  category_id?: number
-  beneficiary?: string
-  payor?: string
-  reconciled: boolean
-  tags?: Array<{ id: number; name: string; color: string }>
-  means_of_payment?: string
-  notes?: string
-}
+import type { Transaction } from '../types/models'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -30,6 +14,7 @@ interface TransactionTableProps {
   sortField?: string
   sortOrder?: 'asc' | 'desc'
   loading?: boolean
+  onEdit?: (transaction: Transaction) => void
 }
 
 export default function TransactionTable(props: TransactionTableProps) {
@@ -243,7 +228,7 @@ export default function TransactionTable(props: TransactionTableProps) {
                 <td class={styles.actionsCol}>
                   <button
                     class={styles.actionBtn}
-                    data-action={`transaction:edit:${transaction.id}`}
+                    onClick={() => props.onEdit?.(transaction)}
                   >
                     <svg
                       width="14"

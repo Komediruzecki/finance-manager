@@ -42,5 +42,5 @@
       }
     ]
   },
-  "include": ["src/**/*", "css-modules.d.ts"]
+  "include": ["src/**/*", "tests/**/*", "css-modules.d.ts"]
 }

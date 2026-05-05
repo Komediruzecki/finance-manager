@@ -152,7 +152,7 @@ test.describe('Housing', () => {
   test('should have notes textarea', async ({ page }) => {
     await page.waitForTimeout(500)
 
-    const textareas = page.getByRole('textbox', { multiline: true })
+    const textareas = page.locator('textarea')
     const count = await textareas.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })

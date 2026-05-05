@@ -139,7 +139,7 @@ test.describe('Edge Cases & Error Handling', () => {
     await page.waitForLoadState('networkidle')
 
     // Check if form fields handle long text
-    const textarea = page.getByRole('textbox', { multiline: true })
+    const textarea = page.locator('textarea')
     const count = await textarea.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })
@@ -217,7 +217,7 @@ test.describe('Edge Cases & Error Handling', () => {
       const overlay = page.locator('[class*="overlay"], [class*="backdrop"]')
       const overlayCount = await overlay.count()
       if (overlayCount > 0) {
-        await overlay.first().click({ position: 'center' })
+        await overlay.first().click()
         await page.waitForTimeout(200)
       }
     }

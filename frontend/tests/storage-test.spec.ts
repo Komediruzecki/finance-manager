@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   // Add localStorage data before page loads
