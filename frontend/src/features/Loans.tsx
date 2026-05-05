@@ -61,6 +61,14 @@ export default function Loans() {
   const [editingLoan, setEditingLoan] = createSignal<Loan | null>(null)
   const [showAmortization, setShowAmortization] = createSignal(false)
   const [showAmortizationId, setShowAmortizationId] = createSignal<number>(0)
+  const [showPrepayments, setShowPrepayments] = createSignal(false)
+  const [prepaymentsLoanId, setPrepaymentsLoanId] = createSignal<number>(0)
+  const [prepayments, setPrepayments] = createSignal<any[]>([])
+  const [prepaymentForm, setPrepaymentForm] = createSignal({
+    month: '',
+    amount: '',
+    note: '',
+  })
   interface RatePeriod {
     rate: number
     start_month: number
@@ -112,6 +120,48 @@ export default function Loans() {
       showToast('Failed to load loans', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Prepayment management
+  const loadPrepayments = async (loanId: number) => {
+    try {
+      const full = await apiGet<any>(`/api/loans/${loanId}`)
+      setPrepayments(full.prepayments || [])
+    } catch {
+      setPrepayments([])
+    }
+  }
+
+  const addPrepayment = async (loanId: number) => {
+    const f = prepaymentForm()
+    const month = parseInt(f.month)
+    const amount = parseFloat(f.amount)
+    if (!month || !amount) {
+      showToast('Month and amount are required', 'error')
+      return
+    }
+    try {
+      await apiPost(`/api/loans/${loanId}/prepayments`, {
+        month,
+        amount,
+        note: f.note || '',
+      })
+      showToast('Prepayment added', 'success')
+      setPrepaymentForm({ month: '', amount: '', note: '' })
+      loadPrepayments(loanId)
+    } catch (e: any) {
+      showToast(e.message || 'Failed to add prepayment', 'error')
+    }
+  }
+
+  const deletePrepayment = async (loanId: number, prepayId: number) => {
+    try {
+      await apiDelete(`/api/loans/${loanId}/prepayments/${prepayId}`)
+      showToast('Prepayment deleted', 'success')
+      loadPrepayments(loanId)
+    } catch (e: any) {
+      showToast(e.message || 'Failed to delete prepayment', 'error')
     }
   }
 
@@ -334,6 +384,25 @@ export default function Loans() {
                       </Badge>
                     </div>
                     <div class={styles.loanActions}>
+                      <button
+                        class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
+                        title="Prepayments"
+                        onClick={() => {
+                          setPrepaymentsLoanId(loan.id)
+                          loadPrepayments(loan.id)
+                          setShowPrepayments(true)
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
                       <button
                         class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
                         title="View Amortization"
@@ -856,6 +925,157 @@ export default function Loans() {
           const loan = loans().find((l) => l.id === showAmortizationId())
           if (!loan) return null
           return <LoanAmortizationTable loanId={loan.id} loan={loan} showDetailed={false} />
+        })()}
+
+      {/* Prepayments Modal */}
+      {showPrepayments() &&
+        (() => {
+          const loan = loans().find((l) => l.id === prepaymentsLoanId())
+          if (!loan) return null
+          return (
+            <div
+              class={styles.modalOverlay}
+              onclick={(e) => {
+                if (e.target === e.currentTarget) setShowPrepayments(false)
+              }}
+            >
+              <div class={styles.modal} onclick={(e) => { e.stopPropagation() }}>
+                <div class={styles.modalHeader}>
+                  <h3 class={styles.modalTitle}>Prepayments - {loan.name}</h3>
+                  <button class={styles.modalClose} onClick={() => setShowPrepayments(false)}>
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div class={styles.modalBody}>
+                  {/* Existing Prepayments */}
+                  {prepayments().length > 0 ? (
+                    <div style={{ 'margin-bottom': '16px' }}>
+                      <label class={styles.formLabel}>Existing Prepayments</label>
+                      <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px' }}>
+                        {prepayments().map((p: any) => (
+                          <div
+                            style={{
+                              display: 'flex',
+                              'align-items': 'center',
+                              'justify-content': 'space-between',
+                              padding: '10px 12px',
+                              background: 'var(--bg)',
+                              'border-radius': '8px',
+                              'font-size': '13px',
+                              border: '1px solid var(--border)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: '16px', 'align-items': 'center' }}>
+                              <span style={{ 'font-weight': 600, color: 'var(--text)' }}>
+                                Month {p.month}
+                              </span>
+                              <span style={{ color: 'var(--primary)' }}>
+                                {formatCurrency(p.amount)}
+                              </span>
+                              {p.note ? (
+                                <span
+                                  style={{ color: 'var(--text-secondary)', 'font-size': '12px' }}
+                                >
+                                  {p.note}
+                                </span>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--danger)',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                'border-radius': '4px',
+                              }}
+                              onClick={() => deletePrepayment(loan.id, p.id)}
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p
+                      style={{
+                        color: 'var(--text-secondary)',
+                        'font-size': '13px',
+                        'margin-bottom': '16px',
+                      }}
+                    >
+                      No prepayments recorded yet.
+                    </p>
+                  )}
+
+                  {/* Add Prepayment Form */}
+                  <div style={{ 'border-top': '1px solid var(--border)', 'padding-top': '16px' }}>
+                    <label class={styles.formLabel}>Add Prepayment</label>
+                    <div style={{ display: 'flex', gap: '8px', 'margin-bottom': '8px' }}>
+                      <input
+                        type="number"
+                        min="1"
+                        class={styles.formControl}
+                        placeholder="Month #"
+                        value={prepaymentForm().month}
+                        style={{ width: '100px' }}
+                        oninput={(e) =>
+                          setPrepaymentForm({ ...prepaymentForm(), month: e.target.value })
+                        }
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        class={styles.formControl}
+                        placeholder="Amount"
+                        value={prepaymentForm().amount}
+                        style={{ width: '140px' }}
+                        oninput={(e) =>
+                          setPrepaymentForm({ ...prepaymentForm(), amount: e.target.value })
+                        }
+                      />
+                      <input
+                        type="text"
+                        class={styles.formControl}
+                        placeholder="Note (optional)"
+                        value={prepaymentForm().note}
+                        style={{ flex: 1 }}
+                        oninput={(e) =>
+                          setPrepaymentForm({ ...prepaymentForm(), note: e.target.value })
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      class={styles.btnPrimary}
+                      style={{ 'font-size': '13px' }}
+                      onClick={() => addPrepayment(loan.id)}
+                    >
+                      Add Prepayment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
         })()}
     </div>
   )
