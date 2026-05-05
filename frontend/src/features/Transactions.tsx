@@ -53,7 +53,8 @@ export default function Transactions() {
   const [isReconciliationModalOpen, setReconciliationModalOpen] = createSignal(false)
   const [selectedFile, setSelectedFile] = createSignal<File | null>(null)
   const [receiptPreviewUrl, setReceiptPreviewUrl] = createSignal<string | null>(null)
-  const [type, _setType] = createSignal<TransactionType>('expense')
+  const [formId, setFormId] = createSignal<string | null>(null)
+  const [type, setType] = createSignal<TransactionType>('expense')
   const [formDate, setFormDate] = createSignal(new Date().toISOString().slice(0, 10))
   const [formAmount, setFormAmount] = createSignal('')
   const [formCurrency, setFormCurrency] = createSignal('USD')
@@ -62,6 +63,9 @@ export default function Transactions() {
   const [formBeneficiary, setFormBeneficiary] = createSignal('')
   const [formPayor, setFormPayor] = createSignal('')
   const [formNotes, setFormNotes] = createSignal('')
+  const [formDescription, setFormDescription] = createSignal('')
+  const [formMeans, setFormMeans] = createSignal('')
+  const [formAmountLocal, setFormAmountLocal] = createSignal('')
   const [categories, setCategories] = createSignal<Category[]>([])
   const [tags] = createSignal<Array<{ id: number; name: string; color: string }>>([])
   const [selectedCategories, setSelectedCategories] = createSignal<number[]>([])
@@ -127,8 +131,6 @@ export default function Transactions() {
   // Close all modals
   const _closeModals = () => {
     setTransactionModalOpen(false)
-    const quickaddModal = document.getElementById('quickadd-modal') as HTMLElement
-    if (quickaddModal) quickaddModal.classList.remove('show')
   }
 
   // Close receipt modal
@@ -309,20 +311,31 @@ export default function Transactions() {
   // Update form values when closing modal
   createEffect(() => {
     if (!isTransactionModalOpen()) {
+      setFormId(null)
+      setFormDescription('')
       setFormAmount('')
       setFormCategory(null)
       setFormBeneficiary('')
       setFormPayor('')
       setFormNotes('')
+      setFormMeans('')
+      setFormAmountLocal('')
     }
   })
 
   const openTransactionModal = () => {
+    setFormId(null)
+    setFormDescription('')
+    setFormAmount('')
+    setFormMeans('')
+    setFormAmountLocal('')
     setTransactionModalOpen(true)
   }
 
   const handleEditTransaction = (transaction: Transaction) => {
-    _setType(transaction.type)
+    setType(transaction.type)
+    setFormId(transaction.id.toString())
+    setFormDescription(transaction.description)
     setFormAmount(transaction.amount.toString())
     setFormCurrency(transaction.currency || 'USD')
     setFormExchangeRate('1')
@@ -331,16 +344,8 @@ export default function Transactions() {
     setFormPayor(transaction.payor || '')
     setFormNotes(transaction.notes || '')
     setFormDate(transaction.date)
+    setFormMeans(transaction.means_of_payment || '')
     setTransactionModalOpen(true)
-    // Set DOM-only fields after render
-    setTimeout(() => {
-      const idInput = document.getElementById('tx-id') as HTMLInputElement
-      const descInput = document.getElementById('tx-description') as HTMLInputElement
-      const meansSelect = document.getElementById('tx-means') as HTMLSelectElement
-      if (idInput) idInput.value = transaction.id.toString()
-      if (descInput) descInput.value = transaction.description
-      if (meansSelect && transaction.means_of_payment) meansSelect.value = transaction.means_of_payment
-    })
   }
 
   onMount(async () => {
@@ -495,7 +500,6 @@ export default function Transactions() {
       {/* Transaction Modal */}
       <div
         class={`modal-overlay ${isTransactionModalOpen() ? 'show' : ''}`}
-        id="tx-modal"
         onclick={(e) => {
           if ((e.target as HTMLElement).classList.contains('modal-overlay')) {
             _closeModals()
@@ -515,28 +519,28 @@ export default function Transactions() {
           </div>
           <div class={styles.modalBody}>
             <form id="tx-form">
-              <input type="hidden" id="tx-id" />
+              <input type="hidden" value={formId() ?? ''} />
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Type</label>
-                <div class={styles.typeSelector} id="tx-type-selector">
+                <div class={styles.typeSelector}>
                   <button
                     type="button"
                     class={`expense ${type() === 'expense' ? 'active' : ''}`}
-                    onClick={() => _setType('expense')}
+                    onClick={() => setType('expense')}
                   >
                     Expense
                   </button>
                   <button
                     type="button"
                     class={`income ${type() === 'income' ? 'active' : ''}`}
-                    onClick={() => _setType('income')}
+                    onClick={() => setType('income')}
                   >
                     Income
                   </button>
                   <button
                     type="button"
                     class={`transfer ${type() === 'transfer' ? 'active' : ''}`}
-                    onClick={() => _setType('transfer')}
+                    onClick={() => setType('transfer')}
                   >
                     Transfer
                   </button>
@@ -544,7 +548,13 @@ export default function Transactions() {
               </div>
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Description</label>
-                <input type="text" class={styles.formControl} id="tx-description" required />
+                <input
+                  type="text"
+                  class={styles.formControl}
+                  value={formDescription()}
+                  onInput={(e) => setFormDescription((e.target as HTMLInputElement).value)}
+                  required
+                />
               </div>
               <div class={styles.formRow}>
                 <div class={styles.formGroup}>
@@ -553,7 +563,6 @@ export default function Transactions() {
                     type="number"
                     step="0.01"
                     class={styles.formControl}
-                    id="tx-amount"
                     value={formAmount()}
                     onInput={(e) => setFormAmount((e.target as HTMLInputElement).value)}
                     required
@@ -563,7 +572,6 @@ export default function Transactions() {
                   <label class={styles.formLabel}>Currency</label>
                   <select
                     class={styles.formControl}
-                    id="tx-currency"
                     value={formCurrency()}
                     onInput={(e) => setFormCurrency((e.target as HTMLSelectElement).value)}
                   >
@@ -585,7 +593,6 @@ export default function Transactions() {
                   <input
                     type="date"
                     class={styles.formControl}
-                    id="tx-date"
                     value={formDate()}
                     required
                   />
@@ -594,7 +601,6 @@ export default function Transactions() {
                   <label class={styles.formLabel}>Category</label>
                   <select
                     class={styles.formControl}
-                    id="tx-category"
                     value={formCategory() ?? ''}
                     onchange={(e) => {
                       const value = (e.target as HTMLSelectElement).value
@@ -612,12 +618,11 @@ export default function Transactions() {
               </div>
               <div class={`${styles.formGroup} ${styles.txTagSelector}`}>
                 <label class={styles.formLabel}>Tags</label>
-                <div class={styles.txTagChips} id="tx-tag-chips"></div>
+                <div class={styles.txTagChips}></div>
                 <div class={styles.txTagInputRow}>
                   <input
                     type="text"
                     class={styles.txTagNewInput}
-                    id="tx-tag-new-input"
                     placeholder="Type tag name, press Enter to create..."
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter') {
@@ -644,7 +649,6 @@ export default function Transactions() {
                   <input
                     type="text"
                     class={styles.formControl}
-                    id="tx-beneficiary"
                     placeholder="Who you paid"
                     value={formBeneficiary()}
                     onInput={(e) => setFormBeneficiary((e.target as HTMLInputElement).value)}
@@ -655,7 +659,6 @@ export default function Transactions() {
                   <input
                     type="text"
                     class={styles.formControl}
-                    id="tx-payor"
                     placeholder="Who paid you"
                     value={formPayor()}
                     onInput={(e) => setFormPayor((e.target as HTMLInputElement).value)}
@@ -669,7 +672,8 @@ export default function Transactions() {
                     type="number"
                     step="0.01"
                     class={styles.formControl}
-                    id="tx-amount-local"
+                    value={formAmountLocal()}
+                    onInput={(e) => setFormAmountLocal((e.target as HTMLInputElement).value)}
                   />
                 </div>
                 <div class={styles.formGroup}>
@@ -678,7 +682,6 @@ export default function Transactions() {
                     type="number"
                     step="0.0001"
                     class={styles.formControl}
-                    id="tx-exchange-rate"
                     value={formExchangeRate()}
                     onInput={(e) => setFormExchangeRate((e.target as HTMLInputElement).value)}
                   />
@@ -686,7 +689,11 @@ export default function Transactions() {
               </div>
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Means of Payment</label>
-                <select class={styles.formControl} id="tx-means">
+                <select
+                  class={styles.formControl}
+                  value={formMeans()}
+                  onInput={(e) => setFormMeans((e.target as HTMLSelectElement).value)}
+                >
                   <option value="">Select...</option>
                   <option value="Cash">Cash</option>
                   <option value="Credit Card">Credit Card</option>
@@ -708,7 +715,6 @@ export default function Transactions() {
                   </label>
                   <input
                     type="file"
-                    id="tx-receipt"
                     class={styles.receiptInput}
                     accept="image/*,.pdf"
                     onChange={_handleReceiptFileSelect}
@@ -783,7 +789,6 @@ export default function Transactions() {
                 <label class={styles.formLabel}>Notes</label>
                 <textarea
                   class={styles.formControl}
-                  id="tx-notes"
                   rows="2"
                   value={formNotes()}
                   onInput={(e) => setFormNotes((e.target as HTMLTextAreaElement).value)}
@@ -797,46 +802,30 @@ export default function Transactions() {
             </button>
             <button
               class={styles.btnPrimary}
-              id="tx-save-btn"
-              onclick={async (_e) => {
-                const descInput = document.getElementById('tx-description') as HTMLInputElement
-                const amountInput = document.getElementById('tx-amount') as HTMLInputElement
-                const dateInput = document.getElementById('tx-date') as HTMLInputElement
-                const categorySelect = document.getElementById('tx-category') as HTMLSelectElement
-                const meansSelect = document.getElementById('tx-means') as HTMLSelectElement
-                const notesInput = document.getElementById('tx-notes') as HTMLTextAreaElement
-                const idInput = document.getElementById('tx-id') as HTMLInputElement
-                const beneficiaryInput = document.getElementById('tx-beneficiary') as HTMLInputElement
-                const payorInput = document.getElementById('tx-payor') as HTMLInputElement
-                const currencySelect = document.getElementById('tx-currency') as HTMLSelectElement
-                const exchangeRateInput = document.getElementById('tx-exchange-rate') as HTMLInputElement
-                const amountLocalInput = document.getElementById('tx-amount-local') as HTMLInputElement
-
+              onclick={async () => {
                 const txData: Record<string, unknown> = {
-                  description: descInput?.value || '',
-                  amount: parseFloat(amountInput?.value || '0'),
-                  date: dateInput?.value || new Date().toISOString().slice(0, 10),
+                  description: formDescription(),
+                  amount: parseFloat(formAmount() || '0'),
+                  date: formDate() || new Date().toISOString().slice(0, 10),
                   type: type(),
-                  category_id: categorySelect?.value ? parseInt(categorySelect.value) : null,
-                  currency: currencySelect?.value || 'USD',
-                  means_of_payment: meansSelect?.value || undefined,
-                  notes: notesInput?.value || undefined,
-                  beneficiary: beneficiaryInput?.value || undefined,
-                  payor: payorInput?.value || undefined,
-                  exchange_rate: exchangeRateInput?.value ? parseFloat(exchangeRateInput.value) : undefined,
-                  amount_local: amountLocalInput?.value ? parseFloat(amountLocalInput.value) : undefined,
+                  category_id: formCategory() ?? null,
+                  currency: formCurrency() || 'USD',
+                  means_of_payment: formMeans() || undefined,
+                  notes: formNotes() || undefined,
+                  beneficiary: formBeneficiary() || undefined,
+                  payor: formPayor() || undefined,
+                  exchange_rate: formExchangeRate() ? parseFloat(formExchangeRate()) : undefined,
+                  amount_local: formAmountLocal() ? parseFloat(formAmountLocal()) : undefined,
                 }
 
                 try {
-                  const txId = idInput?.value
+                  const txId = formId()
                   if (txId) {
                     await api.updateTransaction(parseInt(txId), txData as Parameters<typeof api.updateTransaction>[1])
                   } else {
                     await api.createTransaction(txData as Parameters<typeof api.createTransaction>[0])
                   }
-                  // Refresh transactions list
                   await refreshTransactions()
-                  // Close modal
                   setTransactionModalOpen(false)
                 } catch (error) {
                   console.error('Failed to save transaction:', error)
