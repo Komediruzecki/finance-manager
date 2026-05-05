@@ -1,332 +1,131 @@
-.loans-page {
+/* ===== Loans Page ===== */
+
+.loansPage {
   padding: 24px;
 }
-.loans-page .page-header {
+
+/* Page Header */
+.pageHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
 }
-.loans-page .header-top {
+
+.headerTop {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.loans-page h1 {
+
+.pageHeader h1 {
   font-size: 24px;
   font-weight: 700;
 }
-.loans-page .page-subtitle {
+
+.pageSubtitle {
   color: var(--text-secondary);
   font-size: 14px;
 }
-.loans-page .loans-summary {
+
+/* Summary Cards */
+.loansSummary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
-.loans-page .summary-card {
+
+.summaryCard {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
 }
-.loans-page .summary-card.highlighted {
+
+.summaryCard.highlighted {
   border-color: var(--primary);
 }
-.loans-page .summary-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-.loans-page .summary-value {
-  font-size: 20px;
-  font-weight: 700;
-  margin-top: 4px;
-}
-.loans-page .loans-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-.loans-page .loan-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-.loans-page .loan-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.loans-page .loan-icon {
-  font-size: 32px;
-}
-.loans-page .loan-info {
-  flex: 1;
-  min-width: 0;
-}
-.loans-page .loan-name {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.loans-page .loan-actions {
-  display: flex;
-  gap: 4px;
-}
-.loans-page .loan-balance {
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  margin-top: 12px;
-}
-.loans-page .balance-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 2px;
-}
-.loans-page .balance-amount {
-  font-size: 20px;
-  font-weight: 700;
-}
-.loans-page .loan-details {
-  padding-top: 12px;
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.loans-page .detail-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-.loans-page .detail-label {
-  color: var(--text-secondary);
-}
-.loans-page .detail-value {
-  font-weight: 500;
-}
-.loans-page .loan-progress {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.loans-page .progress-bar {
-  display: flex;
-  align-items: center;
-  height: 8px;
-  background: var(--bg);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.loans-page .progress-fill {
-  height: 100%;
-  background: var(--primary);
-  transition: width 0.3s;
-}
-.loans-page .progress-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  margin-top: 4px;
-}
-.loans-page .progress-percent {
-  font-weight: 600;
-}
-.loans-page .progress-current {
-  color: var(--text-secondary);
-}
-.loans-page .loan-amortization-section {
-  margin-top: 24px;
-}
-.loans-page .loan-amortization-section h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-.loans-page .amortization-chart-wrapper {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
 
-.amort-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.amort-table th,
-.amort-table td {
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-.amort-table th {
-  background: var(--bg);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.amort-table td {
-  color: var(--text);
-}
-
-.amort-table td.income {
-  color: var(--income);
-}
-
-.amort-table td.expense {
-  color: var(--expense);
-}
-
-.amort-table td.td-amount {
-  text-align: right;
-  font-weight: 500;
-}
-
-.amort-detailed-wrap {
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.amort-detailed-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.amort-detailed-table th,
-.amort-detailed-table td {
-  padding: 6px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-.amort-detailed-table th {
-  background: var(--bg);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.amort-detailed-table td {
-  color: var(--text);
-}
-
-.amort-detailed-table td.td-amount {
-  text-align: right;
-  font-weight: 500;
-}
-
-.prepayment-row {
-  background: rgba(16, 185, 129, 0.05);
-}
-
-.rate-change-row {
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.year-marker {
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.totals-row {
-  background: var(--bg);
-  font-weight: 600;
-}
-
-/* legacy class mappings for loans page */
-.loans-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.summary-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-
-.summary-label {
+.summaryLabel {
   font-size: 12px;
   color: var(--text-secondary);
   text-transform: uppercase;
 }
 
-.summary-value {
+.summaryValue {
   font-size: 20px;
   font-weight: 700;
   margin-top: 4px;
 }
 
-.loans-grid {
+/* Loan Cards Grid */
+.loansGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
-.loan-card {
+.loanCard {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
 }
 
-.loan-header {
+.loanHeader {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
 
-.loan-icon {
-  font-size: 32px;
+.loanIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
-.loan-info {
+.loanInfo {
   flex: 1;
   min-width: 0;
 }
 
-.loan-name {
+.loanName {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 2px;
 }
 
-.loan-actions {
+.loanActions {
   display: flex;
   gap: 4px;
 }
 
-.loan-balance {
+.loanBalance {
   padding-top: 12px;
   border-top: 1px solid var(--border);
   margin-top: 12px;
 }
 
-.balance-label {
+.balanceLabel {
   font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 2px;
 }
 
-.balance-amount {
+.balanceAmount {
   font-size: 20px;
   font-weight: 700;
 }
 
-.loan-details {
+.loanDetails {
   padding-top: 12px;
   margin-top: 12px;
   display: flex;
@@ -334,27 +133,28 @@
   gap: 8px;
 }
 
-.detail-row {
+.detailRow {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
 }
 
-.detail-label {
+.detailLabel {
   color: var(--text-secondary);
 }
 
-.detail-value {
+.detailValue {
   font-weight: 500;
 }
 
-.loan-progress {
+/* Progress Bar */
+.loanProgress {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-.progress-bar {
+.progressBar {
   display: flex;
   align-items: center;
   height: 8px;
@@ -363,13 +163,13 @@
   overflow: hidden;
 }
 
-.progress-fill {
+.progressFill {
   height: 100%;
   background: var(--primary);
   transition: width 0.3s;
 }
 
-.progress-stats {
+.progressStats {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -377,226 +177,146 @@
   margin-top: 4px;
 }
 
-/* legacy class mappings for loans page */
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.progressPercent {
+  font-weight: 600;
 }
 
-/* page subtitle */
-.page-subtitle {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-/* summary labels */
-.summary-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-/* summary values */
-.summary-value {
-  font-size: 20px;
-  font-weight: 700;
-  margin-top: 4px;
-}
-
-/* loan icon */
-.loan-icon {
-  font-size: 32px;
-}
-
-/* detail row */
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.detail-label {
+.progressCurrent {
   color: var(--text-secondary);
 }
 
-.detail-value {
-  font-weight: 500;
-}
-
-/* loan amortization section */
-.loan-amortization-section {
+/* Loan Amortization / Charts Section */
+.loanAmortizationSection {
   margin-top: 24px;
 }
 
-.loan-amortization-section h3 {
+.loanAmortizationSection h3 {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
 }
 
-.amortization-chart-wrapper {
+.amortizationChartWrapper {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
 }
 
-/* modal form classes */
-.form-group {
-  margin-bottom: 16px;
+/* Amortization Table */
+.amortTable {
+  max-height: 320px;
+  overflow-y: auto;
 }
 
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.page-loans {
-  display: block;
-}
-
-/* camel-case module classes */
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.detail-label {
-  color: var(--text-secondary);
-}
-
-.detail-value {
-  font-weight: 500;
-}
-
-.loan-amortization-section {
-  margin-top: 24px;
-}
-
-.loan-amortization-section h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-.amortization-chart-wrapper {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-
-.amort-table {
+.amortTable table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.amort-table th,
-.amort-table td {
+.amortTable th,
+.amortTable td {
   padding: 8px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 
-.amort-table th {
-  background: var(--bg);
+.amortTable th {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
   font-weight: 600;
   color: var(--text-secondary);
+  z-index: 1;
 }
 
-.amort-table td {
+.amortTable td {
   color: var(--text);
 }
 
-.amort-table td.income {
+.amortTable td.income {
   color: var(--income);
 }
 
-.amort-table td.expense {
+.amortTable td.expense {
   color: var(--expense);
 }
 
-.amort-table td.td-amount {
+.amortTable td.tdAmount {
   text-align: right;
   font-weight: 500;
 }
 
-.amort-detailed-wrap {
+/* Special amortization rows */
+.prepaymentRow {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.prepaymentRow td:first-child {
+  border-left: 3px solid #10b981;
+}
+
+.rateChangeRow {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.rateChangeRow td:first-child {
+  border-left: 3px solid #f59e0b;
+}
+
+.yearMarker {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.totalsRow {
+  background: var(--bg);
+  font-weight: 600;
+}
+
+/* Detailed Amortization Table */
+.amortDetailedWrap {
   max-height: 500px;
   overflow-y: auto;
 }
 
-.amort-detailed-table {
+.amortDetailedTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
 
-.amort-detailed-table th,
-.amort-detailed-table td {
+.amortDetailedTable th,
+.amortDetailedTable td {
   padding: 6px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 
-.amort-detailed-table th {
-  background: var(--bg);
+.amortDetailedTable th {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
   font-weight: 600;
   color: var(--text-secondary);
+  z-index: 1;
 }
 
-.amort-detailed-table td {
+.amortDetailedTable td {
   color: var(--text);
 }
 
-.amort-detailed-table td.td-amount {
+.amortDetailedTable td.tdAmount {
   text-align: right;
   font-weight: 500;
 }
 
-.prepayment-row {
-  background: rgba(16, 185, 129, 0.05);
-}
-
-.rate-change-row {
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.year-marker {
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.totals-row {
-  background: var(--bg);
-  font-weight: 600;
-}
-
-.form-group {
+/* Form Elements */
+.formGroup {
   margin-bottom: 16px;
 }
 
-.form-label {
+.formLabel {
   display: block;
   font-size: 13px;
   font-weight: 500;
@@ -604,7 +324,7 @@
   margin-bottom: 6px;
 }
 
-.form-control {
+.formControl {
   width: 100%;
   padding: 10px;
   border: 1px solid var(--border);
@@ -612,14 +332,53 @@
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
+  box-sizing: border-box;
 }
 
-.form-control:focus {
+.formControl:focus {
   outline: none;
   border-color: var(--primary);
 }
 
-.btn-sm {
+/* Buttons */
+.btnPrimary {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  padding: 8px 16px;
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnSecondary:hover {
+  background: var(--bg);
+}
+
+.btnSm {
   padding: 4px 8px;
   font-size: 12px;
   background: transparent;
@@ -629,11 +388,11 @@
   transition: all 0.2s;
 }
 
-.btn-sm:hover {
+.btnSm:hover {
   background: var(--bg);
 }
 
-.btn-ghost {
+.btnGhost {
   background: transparent;
   color: var(--text-secondary);
   border: none;
@@ -643,7 +402,102 @@
   transition: background 0.2s;
 }
 
-.btn-ghost:hover {
+.btnGhost:hover {
   background: var(--btn-ghost-hover);
   color: var(--text);
+}
+
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 520px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modalClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.modalBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Page Wrapper */
+.pageLoans {
+  display: block;
+}
+
+/* Income/Expense Colors */
+.income {
+  color: var(--income);
+}
+
+.expense {
+  color: var(--expense);
+}
+
+.tdAmount {
+  text-align: right;
+  font-weight: 500;
 }
