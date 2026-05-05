@@ -1,0 +1,21 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--page-padding);
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}

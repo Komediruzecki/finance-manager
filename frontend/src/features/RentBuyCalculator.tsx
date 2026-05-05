@@ -25,6 +25,7 @@
 import { createSignal, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import { formatCurrency } from '../core/api'
+import sharedStyles from './CalculatorShared.module.css'
 import styles from './RentBuyCalculator.module.css'
 import type * as Models from '../types/models'
 
@@ -229,8 +230,8 @@ export default function RentBuyCalculator(props: Props) {
   }
 
   return (
-    <div class={styles.page}>
-      <div class={styles.pageHeader}>
+    <div class={sharedStyles.page}>
+      <div class={sharedStyles.pageHeader}>
         <h1>💰 Rent vs Buy Calculator</h1>
         <p>Compare 30-year costs between renting and buying</p>
       </div>
