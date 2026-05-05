@@ -232,14 +232,14 @@ export default function RentBuyCalculator(props: Props) {
   return (
     <div class={sharedStyles.page}>
       <div class={sharedStyles.pageHeader}>
-        <h1>💰 Rent vs Buy Calculator</h1>
+        <h1>Rent vs Buy Calculator</h1>
         <p>Compare 30-year costs between renting and buying</p>
       </div>
 
       <div class={styles.calcContainer}>
         {/* Rent Inputs */}
         <div class={styles.calcSection}>
-          <h3 class={styles.calcTitle}>🏠 Rent Scenario</h3>
+          <h3 class={styles.calcTitle}>Rent Scenario</h3>
           <div class={styles.formGrid}>
             <div class={styles.formGroup}>
               <label>Monthly Rent</label>
@@ -279,7 +279,7 @@ export default function RentBuyCalculator(props: Props) {
 
         {/* Buy Inputs */}
         <div class={styles.calcSection}>
-          <h3 class={styles.calcTitle}>🏡 Buy Scenario</h3>
+          <h3 class={styles.calcTitle}>Buy Scenario</h3>
           <div class={styles.formGrid}>
             <div class={styles.formGroup}>
               <label>Home Price</label>
