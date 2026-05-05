@@ -13,7 +13,7 @@
  *       - Days until due (with special messages: "Due today", "Due tomorrow", "X days overdue", "Due in X days")
  *       - Amount in currency
  *       - Frequency (Monthly, Weekly, Biweekly)
- *       - Icon (📝 for regular, 🤖 for autopay)
+ *       - Icon (regular or autopay badge)
  *       - Mark as Paid button
  *
  * GIVEN: The user has paid bills
@@ -281,7 +281,9 @@ export default function Bills() {
       {upcoming().length > 0 && (
         <div data-test-id="bills-upcoming-section" class={styles.billsSection}>
           <h2 class={styles.sectionTitle}>
-            <span>🔔</span> Upcoming Bills
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
+              </svg> Upcoming Bills
             <span class={styles.sectionSubtitle}>{upcoming().length} bills</span>
           </h2>
           <div data-test-id="bills-list" class={styles.billsList}>
@@ -293,9 +295,17 @@ export default function Bills() {
                 >
                   <div class={styles.billMain}>
                     <div data-test-id="bill-icon" class={styles.billIcon}>
-                      {bill.autopay ? '🤖' : '📝'}
+                      {bill.autopay ? (
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
                     </div>
-                    <div class={styles.billInfo}>
+  <div class={styles.billInfo}>
                       <h3 data-test-id="bill-name" class={styles.billName}>
                         {bill.name}
                       </h3>
@@ -335,7 +345,7 @@ export default function Bills() {
       {paid().length > 0 && (
         <div data-test-id="bills-paid-section" class={styles.billsSection}>
           <h2 class={styles.sectionTitle}>
-            <span>✅</span> Paid Bills
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Paid Bills
             <span class={styles.sectionSubtitle}>{paid().length} bills</span>
           </h2>
           <div data-test-id="bills-list" class={styles.billsList}>
@@ -344,7 +354,7 @@ export default function Bills() {
                 <div data-test-id="bill-card" class={`${styles.billCard} ${styles.paid}`}>
                   <div class={styles.billMain}>
                     <div data-test-id="bill-icon" class={styles.billIcon}>
-                      ✅
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                     <div class={styles.billInfo}>
                       <h3 data-test-id="bill-name" class={styles.billName}>
@@ -383,7 +393,7 @@ export default function Bills() {
       {/* All Bills Section */}
       <div data-test-id="bills-all-section" class={styles.billsSection}>
         <h2 class={styles.sectionTitle}>
-          <span>📋</span> All Bills
+          <span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></span> All Bills
           <span class={styles.sectionSubtitle}>{bills().length} total</span>
         </h2>
         {loading() ? (
@@ -409,9 +419,17 @@ export default function Bills() {
                 <div class={styles.billCard}>
                   <div class={styles.billMain}>
                     <div data-test-id="bill-icon" class={styles.billIcon}>
-                      {bill.autopay ? '🤖' : '📝'}
+                      {bill.autopay ? (
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
                     </div>
-                    <div class={styles.billInfo}>
+  <div class={styles.billInfo}>
                       <h3 data-test-id="bill-name" class={styles.billName}>
                         {bill.name}
                       </h3>
@@ -556,7 +574,7 @@ export default function Bills() {
               </div>
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>
-                  <span>🤖 Autopay</span>
+                  <span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Autopay</span>
                   <span style="font-size: 14px; color: var(--text-secondary)">
                     Automatically pay this bill
                   </span>
