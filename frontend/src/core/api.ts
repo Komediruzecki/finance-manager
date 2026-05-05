@@ -2,6 +2,7 @@
  * API Client - Type-safe HTTP client for backend API
  */
 
+import { logger } from './logger.js'
 import type * as ApiTypes from '../types/api.js'
 import type * as Models from '../types/models.js'
 
@@ -109,7 +110,9 @@ export class ApiClient {
         const errorData = await response.json().catch(() => ({
           error: `HTTP ${response.status}`,
         }))
-        throw new Error((errorData.error || errorData.message) ?? `HTTP ${response.status}`)
+        const errorMsg = (errorData.error || errorData.message) ?? `HTTP ${response.status}`
+        logger.error('API Error', { status: response.status, endpoint, message: errorMsg }, 'ApiClient')
+        throw new Error(errorMsg)
       }
 
       const contentType = response.headers.get('content-type')
@@ -120,6 +123,7 @@ export class ApiClient {
       return await response.json()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Network error'
+      logger.error('API Request Failed', { endpoint, method, message }, 'ApiClient')
       throw new Error(message)
     }
   }
@@ -906,6 +910,16 @@ export class ApiClient {
     return this.request(`/transactions/reconcile-batch`, {
       method: 'PUT',
       body: { transaction_ids: transactionIds },
+    })
+  }
+
+  /**
+   * Create a new tag
+   */
+  async createTag(name: string, color?: string): Promise<{ id: number; name: string; color: string }> {
+    return this.request('/tags', {
+      method: 'POST',
+      body: { name, color },
     })
   }
 }

@@ -58,6 +58,7 @@ export default defineConfig(
       'import-x/no-duplicates': 'off',
       'import-x/no-empty-named-blocks': 'error',
       'import-x/no-named-as-default': 'off',
+      'import-x/no-named-as-default-member': 'off',
       'import-x/namespace': 'off',
       'import-x/default': 'off',
 

@@ -136,7 +136,7 @@ test.describe('Goals', () => {
   test('should display goal target date picker', async ({ page }) => {
     await page.waitForTimeout(500)
 
-    const dateInputs = page.getByRole('date')
+    const dateInputs = page.locator('input[type="date"]')
     const count = await dateInputs.count()
     expect(count).toBeGreaterThanOrEqual(0)
   })

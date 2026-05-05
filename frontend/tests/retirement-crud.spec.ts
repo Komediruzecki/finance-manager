@@ -443,7 +443,6 @@ test.describe('Retirement Planning CRUD Operations', () => {
     await page.waitForTimeout(500)
 
     const emptyState = page.getByTestId('empty-state')
-    const emptyText = emptyState.textContent()
     const hasEmptyText = await emptyState.isVisible({ timeout: 2000 }).catch(() => false)
     expect(hasEmptyText).toBeFalsy()
   })

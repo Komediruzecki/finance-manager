@@ -32,13 +32,13 @@ export async function getContextState(page: any): Promise<any> {
  */
 export async function login(page: any) {
   try {
-    // Navigate to the app
-    await page.goto('http://localhost:3847/', { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.addInitScript(() => {
+    // addInitScript must be called BEFORE navigation so localStorage is set when app initializes
+    await page.context().addInitScript(() => {
       localStorage.setItem('currentProfileId', '1')
       localStorage.setItem('darkMode', 'false')
     })
-    await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+    await page.goto('http://localhost:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
   } catch (error) {
     console.error('Login failed:', error)
     throw error
@@ -49,16 +49,13 @@ export async function login(page: any) {
  * Navigate to a hash route and wait for content to load
  */
 export async function navigateToRoute(page: any, route: string) {
-  // Navigate to the app
-  await page.goto(`http://localhost:3847/#${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-
-  // Set localStorage values
-  await page.addInitScript(() => {
+  // addInitScript must be called BEFORE navigation so localStorage is set when app initializes
+  await page.context().addInitScript(() => {
     localStorage.setItem('currentProfileId', '1')
     localStorage.setItem('darkMode', 'false')
   })
-
-  await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+  await page.goto(`http://localhost:3800/#${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
 }
 
 /**

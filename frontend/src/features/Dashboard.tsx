@@ -30,7 +30,7 @@
  * Dashboard Component
  */
 
-import { createSignal, onMount } from 'solid-js'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import ChartWrapper from '../components/ChartWrapper'
 import BudgetAlertsCard from '../components/Dashboard/BudgetAlertsCard'
 import { PeriodNavigator } from '../components/Dashboard/PeriodNavigator'
@@ -46,10 +46,10 @@ export default function Dashboard() {
   const [month, setMonth] = createSignal(5)
   const [year, setYear] = createSignal(2026)
   const [metrics, setMetrics] = createSignal<Models.DashboardMetrics | null>(null)
-  const [momMetrics, _setMomMetrics] = createSignal<Models.DashboardMetrics | null>(null)
   const [monthlyData, setMonthlyData] = createSignal<Models.DashboardChartData | null>(null)
   const [loading, setLoading] = createSignal(true)
   const [pillPeriod, setPillPeriod] = createSignal('month')
+  const [showSettingsModal, setShowSettingsModal] = createSignal(false)
 
   onMount(() => {
     void loadDashboard()
@@ -121,20 +121,11 @@ export default function Dashboard() {
     void loadMonthlyData()
   }
 
-  const showSettings = () => {
-    const settings = document.getElementById('dashboard-settings-modal')
-    if (settings) {
-      const overlay = settings.parentElement
-      if (overlay) {
-        overlay.classList.add('visible')
-        overlay.style.display = 'block'
-      }
-    }
-  }
+  const showSettings = () => setShowSettingsModal(true)
 
   return (
-    <div class={`page page-dashboard page-enter ${styles.dashboardPage}`}>
-      <div class={styles.pageHeader}>
+    <div data-test-id="dashboard-container">
+      <div class={styles.pageHeader} data-test-id="dashboard-header">
         <div class={styles.pageTitle}>
           <h2>Dashboard</h2>
           <p>Your financial overview</p>
@@ -209,11 +200,11 @@ export default function Dashboard() {
                 {formatCurrency(metrics()!.balance)}
               </div>
               <div class={styles.metricSubtext}>Total available</div>
-              {momMetrics() && (
+              {metrics() && (
                 <div class={styles.metricDelta}>
-                  <span class={momMetrics()!.momBalanceDelta! > 0 ? styles.positive : momMetrics()!.momBalanceDelta! < 0 ? styles.negative : styles.neutral}>
-                    {momMetrics()!.momBalanceDelta! > 0 ? '↑' : momMetrics()!.momBalanceDelta! < 0 ? '↓' : '→'}
-                    {Math.abs(momMetrics()!.momBalanceDelta!).toFixed(2)}
+                  <span class={metrics()!.momBalanceDelta! > 0 ? styles.positive : metrics()!.momBalanceDelta! < 0 ? styles.negative : styles.neutral}>
+                    {metrics()!.momBalanceDelta! > 0 ? '↑' : metrics()!.momBalanceDelta! < 0 ? '↓' : '→'}
+                    {Math.abs(metrics()!.momBalanceDelta!).toFixed(2)}
                   </span>
                   <span class={styles.metricDeltaLabel}>vs last month</span>
                 </div>
@@ -225,11 +216,11 @@ export default function Dashboard() {
                 {formatCurrency(metrics()!.totalIncome)}
               </div>
               <div class={styles.metricSubtext}>For this period</div>
-              {momMetrics() && (
+              {metrics() && (
                 <div class={styles.metricDelta}>
-                  <span class={momMetrics()!.momIncomeDelta! > 0 ? styles.positive : momMetrics()!.momIncomeDelta! < 0 ? styles.negative : styles.neutral}>
-                    {momMetrics()!.momIncomeDelta! > 0 ? '↑' : momMetrics()!.momIncomeDelta! < 0 ? '↓' : '→'}
-                    {Math.abs(momMetrics()!.momIncomeDelta!).toFixed(2)}
+                  <span class={metrics()!.momIncomeDelta! > 0 ? styles.positive : metrics()!.momIncomeDelta! < 0 ? styles.negative : styles.neutral}>
+                    {metrics()!.momIncomeDelta! > 0 ? '↑' : metrics()!.momIncomeDelta! < 0 ? '↓' : '→'}
+                    {Math.abs(metrics()!.momIncomeDelta!).toFixed(2)}
                   </span>
                   <span class={styles.metricDeltaLabel}>vs last month</span>
                 </div>
@@ -241,11 +232,11 @@ export default function Dashboard() {
                 {formatCurrency(metrics()!.totalExpenses)}
               </div>
               <div class={styles.metricSubtext}>For this period</div>
-              {momMetrics() && (
+              {metrics() && (
                 <div class={styles.metricDelta}>
-                  <span class={momMetrics()!.momExpenseDelta! > 0 ? styles.positive : momMetrics()!.momExpenseDelta! < 0 ? styles.negative : styles.neutral}>
-                    {momMetrics()!.momExpenseDelta! > 0 ? '↑' : momMetrics()!.momExpenseDelta! < 0 ? '↓' : '→'}
-                    {Math.abs(momMetrics()!.momExpenseDelta!).toFixed(2)}
+                  <span class={metrics()!.momExpenseDelta! > 0 ? styles.positive : metrics()!.momExpenseDelta! < 0 ? styles.negative : styles.neutral}>
+                    {metrics()!.momExpenseDelta! > 0 ? '↑' : metrics()!.momExpenseDelta! < 0 ? '↓' : '→'}
+                    {Math.abs(metrics()!.momExpenseDelta!).toFixed(2)}
                   </span>
                   <span class={styles.metricDeltaLabel}>vs last month</span>
                 </div>
@@ -254,7 +245,7 @@ export default function Dashboard() {
           </div>
 
           {/* Charts Section */}
-          <div class={styles.chartsGrid}>
+          <div class={styles.chartsGrid} role="region" aria-label="charts overview">
             <div class={styles.card}>
               <div class={styles.cardHeader}>
                 <div class={styles.cardTitle}>Net Worth Over Time</div>
@@ -441,9 +432,8 @@ export default function Dashboard() {
                 </a>
               </div>
               <div class={styles.transactionList}>
-                {metrics()!
-                  .recentTransactions.slice(0, 5)
-                  .map((tx) => (
+                <For each={metrics()!.recentTransactions.slice(0, 5)}>
+                  {(tx) => (
                     <div class={styles.transactionItem}>
                       <div
                         class={styles.transactionIcon}
@@ -461,13 +451,14 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div
-                        class={`transaction-amount ${tx.type === 'expense' ? 'expense' : 'income'}`}
+                        class={`${styles.transactionAmount} ${tx.type === 'expense' ? styles.expense : styles.income}`}
                       >
                         {tx.type === 'expense' ? '-' : '+'}
                         {formatCurrency(tx.amount)}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </For>
               </div>
             </div>
           )}
@@ -482,9 +473,8 @@ export default function Dashboard() {
                 </a>
               </div>
               <div class={styles.transactionList}>
-                {metrics()!
-                  .upcomingBills.slice(0, 5)
-                  .map((bill: any) => (
+                <For each={metrics()!.upcomingBills.slice(0, 5)}>
+                  {(bill: any) => (
                     <div class={styles.transactionItem}>
                       <div
                         class={styles.transactionIcon}
@@ -508,38 +498,33 @@ export default function Dashboard() {
                         {formatCurrency(bill.amount)}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </For>
               </div>
             </div>
           )}
 
           {/* Widget Settings Modal */}
-          <div class={styles.modalOverlay} id="dashboard-settings-modal">
-            <div class={`${styles.modal} ${styles.modalMd}`}>
-              <div class={styles.modalHeader}>
-                <div class={styles.modalTitle}>Dashboard Settings</div>
-                <button
-                  class={styles.modalClose}
-                  onClick={() => {
-                    const modal = document.getElementById('dashboard-settings-modal')
-                    if (modal) {
-                      const overlay = modal.parentElement
-                      if (overlay) {
-                        overlay.style.display = 'none'
-                      }
-                    }
-                  }}
-                >
-                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div class={styles.modalBody}>
-                <DashboardSettings />
+          <Show when={showSettingsModal()}>
+            <div class={styles.modalOverlay} onClick={() => setShowSettingsModal(false)}>
+              <div class={`${styles.modal} ${styles.modalMd}`} onClick={(e) => { e.stopPropagation(); }}>
+                <div class={styles.modalHeader}>
+                  <div class={styles.modalTitle}>Dashboard Settings</div>
+                  <button
+                    class={styles.modalClose}
+                    onClick={() => setShowSettingsModal(false)}
+                  >
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div class={styles.modalBody}>
+                  <DashboardSettings />
+                </div>
               </div>
             </div>
-          </div>
+          </Show>
         </>
       ) : (
         <div class={styles.emptyState}>Failed to load data</div>
@@ -548,7 +533,7 @@ export default function Dashboard() {
   )
 }
 
-function getIcon(type: 'income' | 'expense') {
+function getIcon(type: string) {
   if (type === 'income') {
     return (
       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">

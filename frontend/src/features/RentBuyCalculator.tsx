@@ -444,13 +444,13 @@ export default function RentBuyCalculator(props: Props) {
 
           {/* Break-even message */}
           {summary.breakEven && (
-            <div class={`breakeven ${summary.winner === 'buy' ? '' : 'neutral'}`}>
-              <div class="breakevenIcon">
+            <div class={`${styles.breakeven} ${summary.winner === 'buy' ? '' : styles.neutral}`}>
+              <div class={styles.breakevenIcon}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div class="breakevenText">
+              <div class={styles.breakevenText}>
                 <strong>
                   After {summary.breakEven} years, buying becomes cheaper than renting.
                 </strong>

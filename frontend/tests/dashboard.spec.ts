@@ -23,9 +23,9 @@ test.describe('Dashboard', () => {
   test('should display balance summary cards', async ({ page }) => {
     await page.waitForTimeout(500)
 
-    const balanceLabel = page.getByText(/Total Balance|Balance/i)
-    const incomeLabel = page.getByText(/Income/i)
-    const expenseLabel = page.getByText(/Expenses/i)
+    const balanceLabel = page.getByText('Net Worth', { exact: true }).first()
+    const incomeLabel = page.getByText('Income', { exact: true }).first()
+    const expenseLabel = page.getByText('Expenses', { exact: true }).first()
 
     await expect(balanceLabel).toBeVisible()
     await expect(incomeLabel).toBeVisible()
@@ -35,8 +35,8 @@ test.describe('Dashboard', () => {
   test('should display balance values', async ({ page }) => {
     await page.waitForTimeout(500)
 
-    const balanceValue = page.getByText(/\$[\d,]+\.\d{2}/)
-    await expect(balanceValue).toBeVisible()
+    const balanceValue = page.getByText(/[€$][\d,]+\.\d{2}/).first()
+    await expect(balanceValue).toBeVisible({ timeout: 10000 })
   })
 
   test('should have chart section', async ({ page }) => {

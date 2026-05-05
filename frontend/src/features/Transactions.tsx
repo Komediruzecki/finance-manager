@@ -30,7 +30,7 @@
  * Transactions Component
  * Handles transaction listing, creation, and management with filtering, sorting, and pagination
  */
-import { createEffect, createSignal, onMount } from 'solid-js'
+import { createEffect, createSignal, For, onMount } from 'solid-js'
 import AutoCategorizeModal from '../components/AutoCategorizeModal'
 import { CategoryMultiSelect } from '../components/CategoryMultiSelect'
 import FilterBar from '../components/FilterBar'
@@ -40,40 +40,7 @@ import styles from '../components/TransactionsPage.module.css'
 import TransactionSummaryBar from '../components/TransactionSummaryBar'
 import TransactionTable from '../components/TransactionTable'
 import { api } from '../core/api'
-import type { Category } from '../types/models'
-
-type TransactionType = 'income' | 'expense' | 'transfer'
-
-interface Receipt {
-  id: number
-  transaction_id: number | null
-  filename: string
-  original_name: string
-  file_type: string
-  file_size: number
-  storage_path: string
-  uploaded_at: string
-  profile_id: number
-}
-
-interface Transaction {
-  id: number
-  date: string
-  description: string
-  amount: number
-  currency: string
-  type: TransactionType
-  category_name: string
-  category_id?: number
-  beneficiary?: string
-  payor?: string
-  reconciled: boolean
-  receipt_id: number | null
-  receipt_name: string
-  tags?: Array<{ id: number; name: string; color: string }>
-  means_of_payment?: string
-  notes?: string
-}
+import type { Category, Receipt, Transaction, TransactionType } from '../types/models'
 
 export default function Transactions() {
   const [transactions, setTransactions] = createSignal<Transaction[]>([])
@@ -87,7 +54,7 @@ export default function Transactions() {
   const [selectedFile, setSelectedFile] = createSignal<File | null>(null)
   const [receiptPreviewUrl, setReceiptPreviewUrl] = createSignal<string | null>(null)
   const [type, _setType] = createSignal<TransactionType>('expense')
-  const [formDate] = createSignal(new Date().toISOString().slice(0, 10))
+  const [formDate, setFormDate] = createSignal(new Date().toISOString().slice(0, 10))
   const [formAmount, setFormAmount] = createSignal('')
   const [formCurrency, setFormCurrency] = createSignal('USD')
   const [formExchangeRate, setFormExchangeRate] = createSignal('1')
@@ -95,7 +62,7 @@ export default function Transactions() {
   const [formBeneficiary, setFormBeneficiary] = createSignal('')
   const [formPayor, setFormPayor] = createSignal('')
   const [formNotes, setFormNotes] = createSignal('')
-  const [categories] = createSignal<Category[]>([])
+  const [categories, setCategories] = createSignal<Category[]>([])
   const [tags] = createSignal<Array<{ id: number; name: string; color: string }>>([])
   const [selectedCategories, setSelectedCategories] = createSignal<number[]>([])
   const [selectedTags, setSelectedTags] = createSignal<number[]>([])
@@ -135,7 +102,6 @@ export default function Transactions() {
   /**
    * Handle receipt file selection
    */
-  // @ts-expect-error unused but used by event delegation
   const _handleReceiptFileSelect = (_event: Event): void => {
     const target = _event.target as HTMLInputElement
     const file = target.files?.[0]
@@ -161,10 +127,8 @@ export default function Transactions() {
   // Close all modals
   const _closeModals = () => {
     setTransactionModalOpen(false)
-    const modal = document.getElementById('tx-modal') as HTMLElement
-    if (modal) modal.classList.remove('show')
-    const modal2 = document.getElementById('quickadd-modal') as HTMLElement
-    if (modal2) modal2.classList.remove('show')
+    const quickaddModal = document.getElementById('quickadd-modal') as HTMLElement
+    if (quickaddModal) quickaddModal.classList.remove('show')
   }
 
   // Close receipt modal
@@ -313,12 +277,6 @@ export default function Transactions() {
     }
   }
 
-  // _handleReconcile - unused (functionality can be extended)
-  // @ts-expect-error unused but used by event delegation
-  const _handleReconcile = async (_transactionId: number) => {
-    // Placeholder - functionality can be extended
-  }
-
   // _applyDatePreset - unused (functionality can be extended)
   // @ts-expect-error unused but used by event delegation
   const _applyDatePreset = (_preset: string) => {
@@ -361,10 +319,38 @@ export default function Transactions() {
 
   const openTransactionModal = () => {
     setTransactionModalOpen(true)
-    // Don't reset form values since they're already initialized with defaults
   }
-  onMount(() => {
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    _setType(transaction.type)
+    setFormAmount(transaction.amount.toString())
+    setFormCurrency(transaction.currency || 'USD')
+    setFormExchangeRate('1')
+    setFormCategory(transaction.category_id || null)
+    setFormBeneficiary(transaction.beneficiary || '')
+    setFormPayor(transaction.payor || '')
+    setFormNotes(transaction.notes || '')
+    setFormDate(transaction.date)
+    setTransactionModalOpen(true)
+    // Set DOM-only fields after render
+    setTimeout(() => {
+      const idInput = document.getElementById('tx-id') as HTMLInputElement
+      const descInput = document.getElementById('tx-description') as HTMLInputElement
+      const meansSelect = document.getElementById('tx-means') as HTMLSelectElement
+      if (idInput) idInput.value = transaction.id.toString()
+      if (descInput) descInput.value = transaction.description
+      if (meansSelect && transaction.means_of_payment) meansSelect.value = transaction.means_of_payment
+    })
+  }
+
+  onMount(async () => {
     refreshTransactions()
+    try {
+      const cats = await api.getCategories()
+      if (Array.isArray(cats)) setCategories(cats as Category[])
+    } catch {
+      // Categories will remain empty
+    }
   })
 
   return (
@@ -536,24 +522,21 @@ export default function Transactions() {
                   <button
                     type="button"
                     class={`expense ${type() === 'expense' ? 'active' : ''}`}
-                    data-action="transactions:setType"
-                    data-arg="expense"
+                    onClick={() => _setType('expense')}
                   >
                     Expense
                   </button>
                   <button
                     type="button"
                     class={`income ${type() === 'income' ? 'active' : ''}`}
-                    data-action="transactions:setType"
-                    data-arg="income"
+                    onClick={() => _setType('income')}
                   >
                     Income
                   </button>
                   <button
                     type="button"
                     class={`transfer ${type() === 'transfer' ? 'active' : ''}`}
-                    data-action="transactions:setType"
-                    data-arg="transfer"
+                    onClick={() => _setType('transfer')}
                   >
                     Transfer
                   </button>
@@ -617,7 +600,14 @@ export default function Transactions() {
                       const value = (e.target as HTMLSelectElement).value
                       setFormCategory(value !== '' ? parseInt(value) : null)
                     }}
-                  ></select>
+                  >
+                    <option value=""></option>
+                    <For each={categories()}>
+                      {(cat) => (
+                        <option value={cat.id}>{cat.name}</option>
+                      )}
+                    </For>
+                  </select>
                 </div>
               </div>
               <div class={`${styles.formGroup} ${styles.txTagSelector}`}>
@@ -629,7 +619,22 @@ export default function Transactions() {
                     class={styles.txTagNewInput}
                     id="tx-tag-new-input"
                     placeholder="Type tag name, press Enter to create..."
-                    data-action="transactions:addTagFromInput"
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const input = e.target as HTMLInputElement
+                        const tagName = input.value.trim()
+                        if (tagName) {
+                          try {
+                            const newTag = await api.createTag(tagName, '#6366f1')
+                            setSelectedTags([...selectedTags(), newTag.id])
+                            input.value = ''
+                          } catch {
+                            // Tag creation failed
+                          }
+                        }
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -706,7 +711,7 @@ export default function Transactions() {
                     id="tx-receipt"
                     class={styles.receiptInput}
                     accept="image/*,.pdf"
-                    data-action="transactions:handleReceiptFileSelect"
+                    onChange={_handleReceiptFileSelect}
                   />
                   {receiptPreviewUrl() && (
                     <>
@@ -752,7 +757,10 @@ export default function Transactions() {
                         <button
                           type="button"
                           class={`${styles.btnGhost} ${styles.btnSm}`}
-                          data-action="transactions:removeReceipt"
+                          onClick={() => {
+                            setSelectedFile(null)
+                            setReceiptPreviewUrl(null)
+                          }}
                           title="Remove receipt"
                         >
                           <svg
@@ -790,10 +798,49 @@ export default function Transactions() {
             <button
               class={styles.btnPrimary}
               id="tx-save-btn"
-              data-action="transactions:save"
-              onclick={(_e) => {
-                console.info('Save button clicked, openTransactionModal:', openTransactionModal)
-                openTransactionModal()
+              onclick={async (_e) => {
+                const descInput = document.getElementById('tx-description') as HTMLInputElement
+                const amountInput = document.getElementById('tx-amount') as HTMLInputElement
+                const dateInput = document.getElementById('tx-date') as HTMLInputElement
+                const categorySelect = document.getElementById('tx-category') as HTMLSelectElement
+                const meansSelect = document.getElementById('tx-means') as HTMLSelectElement
+                const notesInput = document.getElementById('tx-notes') as HTMLTextAreaElement
+                const idInput = document.getElementById('tx-id') as HTMLInputElement
+                const beneficiaryInput = document.getElementById('tx-beneficiary') as HTMLInputElement
+                const payorInput = document.getElementById('tx-payor') as HTMLInputElement
+                const currencySelect = document.getElementById('tx-currency') as HTMLSelectElement
+                const exchangeRateInput = document.getElementById('tx-exchange-rate') as HTMLInputElement
+                const amountLocalInput = document.getElementById('tx-amount-local') as HTMLInputElement
+
+                const txData: Record<string, unknown> = {
+                  description: descInput?.value || '',
+                  amount: parseFloat(amountInput?.value || '0'),
+                  date: dateInput?.value || new Date().toISOString().slice(0, 10),
+                  type: type(),
+                  category_id: categorySelect?.value ? parseInt(categorySelect.value) : null,
+                  currency: currencySelect?.value || 'USD',
+                  means_of_payment: meansSelect?.value || undefined,
+                  notes: notesInput?.value || undefined,
+                  beneficiary: beneficiaryInput?.value || undefined,
+                  payor: payorInput?.value || undefined,
+                  exchange_rate: exchangeRateInput?.value ? parseFloat(exchangeRateInput.value) : undefined,
+                  amount_local: amountLocalInput?.value ? parseFloat(amountLocalInput.value) : undefined,
+                }
+
+                try {
+                  const txId = idInput?.value
+                  if (txId) {
+                    await api.updateTransaction(parseInt(txId), txData as Parameters<typeof api.updateTransaction>[1])
+                  } else {
+                    await api.createTransaction(txData as Parameters<typeof api.createTransaction>[0])
+                  }
+                  // Refresh transactions list
+                  await refreshTransactions()
+                  // Close modal
+                  setTransactionModalOpen(false)
+                } catch (error) {
+                  console.error('Failed to save transaction:', error)
+                }
               }}
             >
               Save Transaction
@@ -903,6 +950,7 @@ export default function Transactions() {
             onSort={handleSortChange}
             sortField={sortField()}
             sortOrder={sortOrder()}
+            onEdit={handleEditTransaction}
           />
           {totalPages() > 1 && (
             <Pagination
@@ -928,6 +976,8 @@ export default function Transactions() {
       <ReconciliationModal
         isOpen={isReconciliationModalOpen}
         onClose={() => setReconciliationModalOpen(false)}
+        selectedTransactionIds={selectedTransactions()}
+        onReconciled={refreshTransactions}
       />
     </div>
   )

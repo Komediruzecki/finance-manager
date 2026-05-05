@@ -3,6 +3,7 @@
  * Inline tag creation with enter key to add
  */
 import { createSignal } from 'solid-js'
+import styles from './TagInput.module.css'
 
 export interface TagInputProps {
   existingTags: () => string[]
@@ -14,7 +15,6 @@ export interface TagInputProps {
 
 export function TagInput(props: TagInputProps) {
   const [tagText, setTagText] = createSignal('')
-  const [_isFocused, _setIsFocused] = createSignal(false)
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -35,38 +35,10 @@ export function TagInput(props: TagInputProps) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const removeTag = () => {
-    if (tagText().trim()) {
-      props.onAdd(tagText().trim())
-    }
-  }
-
   return (
-    <div
-      class={TagInputStyles.tagInput}
-    >
+    <div class={styles['tag-input']}>
       <input
-        class={TagInputStyles.input}
-        type="text"
-        value={tagText()}
-        onInput={(e) => setTagText(e.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={removeTag}
-        placeholder={props.placeholder || 'Add tag and press Enter'}
-        autocomplete="off"
-        autofocus={props.autoFocus}
-      />
-      <span class={TagInputStyles.divider}>+</span>
-    </div>
-  )
-
-  return (
-    <div
-      class={TagInputStyles.tagInput}
-    >
-      <input
-        class={TagInputStyles.input}
+        class={styles['tag-input__input']}
         type="text"
         value={tagText()}
         onInput={(e) => setTagText(e.currentTarget.value)}
@@ -75,17 +47,11 @@ export function TagInput(props: TagInputProps) {
         autocomplete="off"
         autofocus={props.autoFocus}
       />
-      <span class={TagInputStyles.divider}>+</span>
+      <span class={styles['tag-input__divider']}>+</span>
     </div>
   )
 }
 
 export default function TagInputDefault(props: TagInputProps) {
   return <TagInput {...props} />
-}
-
-const TagInputStyles = {
-  tagInput: 'tag-input',
-  input: 'tag-input__input',
-  divider: 'tag-input__divider',
 }

@@ -71,7 +71,7 @@ test.describe('Bills CRUD Operations', () => {
     expect(criticalErrors.length).toBeLessThan(3)
   })
 
-  test.skip('should display loading state', async ({ page }) => {
+  test.skip('should display loading state', async () => {
     // NOTE: This test is skipped because the loading state is not visible in tests.
     // The loadBills() function completes so quickly that the loading state element
     // (with data-test-id="loading-state") is never rendered in the DOM before the test checks.

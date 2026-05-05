@@ -35,7 +35,7 @@ import Badge from '../components/Badge'
 import styles from '../components/BudgetsPage.module.css'
 import Button from '../components/Button'
 import Chart from '../components/Chart'
-import { apiGet, apiPost, showToast } from '../utils/api'
+import { apiGet, apiPost, apiPut, showToast } from '../utils/api'
 
 type AllocationStatus = 'ok' | 'warning' | 'over'
 
@@ -58,6 +58,7 @@ interface ForecastData {
 }
 
 interface CategoryAllocation {
+  budget_id: number | null
   category_id: number
   category_name: string
   category_color: string
@@ -70,6 +71,7 @@ interface CategoryAllocation {
   can_allocate: boolean
   is_budgeted: boolean
   is_fully_allocated: boolean
+  rollover_enabled: boolean
 }
 
 interface ZeroBasedSummary {
@@ -98,6 +100,8 @@ export default function Budgets() {
   const [budgetMessage, setBudgetMessage] = createSignal<string>('')
   const [forecastData, setForecastData] = createSignal<ForecastData | null>(null)
   const [showForecast, setShowForecast] = createSignal(false)
+  const [improvements, setImprovements] = createSignal<any[]>([])
+  const [showCharts, setShowCharts] = createSignal(true)
 
   // Get current allocations and summary
   const loadData = async () => {
@@ -139,6 +143,67 @@ export default function Budgets() {
     setShowForecast(!showForecast())
     if (!showForecast() && !forecastData()) {
       loadData()
+    }
+  }
+
+  // Load historical improvements data for trend chart
+  const loadImprovements = async () => {
+    try {
+      const data = await apiGet<any[]>(`/api/budgets/improvements?months=6`)
+      setImprovements(data || [])
+    } catch {
+      // History loading is best-effort
+    }
+  }
+
+  // Duplicate budgets from previous month
+  const duplicateLastMonth = async () => {
+    const [year, mon] = month().split('-')
+    try {
+      const result = await apiPost<{ ok: boolean; count?: number; message?: string }>('/api/budgets/duplicate-last', {
+        year: parseInt(year),
+        month: parseInt(mon),
+      })
+      if (result.ok) {
+        showToast(`Duplicated ${result.count} budgets from last month`, 'success')
+        await loadData()
+      } else {
+        showToast(result.message || 'Nothing to duplicate', 'info')
+      }
+    } catch (_err) {
+      showToast('Failed to duplicate budgets', 'error')
+    }
+  }
+
+  // Set budgets from previous month's expenses
+  const setFromExpenses = async () => {
+    const [year, mon] = month().split('-')
+    try {
+      const result = await apiPost<{ ok: boolean; count?: number; message?: string }>('/api/budgets/from-expenses', {
+        year: parseInt(year),
+        month: parseInt(mon),
+      })
+      if (result.ok) {
+        showToast(`Set ${result.count} budgets from last month's expenses`, 'success')
+        await loadData()
+      } else {
+        showToast(result.message || 'No expenses found', 'info')
+      }
+    } catch (_err) {
+      showToast('Failed to set budgets from expenses', 'error')
+    }
+  }
+
+  // Toggle rollover for a budget
+  const toggleRollover = async (budgetId: number, enabled: boolean) => {
+    try {
+      await apiPut(`/api/budgets/${budgetId}/rollover`, {
+        rollover_enabled: enabled,
+      })
+      showToast(enabled ? 'Rollover enabled' : 'Rollover disabled', 'success')
+      await loadData()
+    } catch {
+      showToast('Failed to update rollover', 'error')
     }
   }
 
@@ -196,11 +261,13 @@ export default function Budgets() {
   // Initialize
   onMount(() => {
     loadData()
+    loadImprovements()
   })
 
   // Refresh on month change
   createEffect(() => {
     loadData()
+    loadImprovements()
   })
 
   return (
@@ -318,6 +385,126 @@ export default function Budgets() {
         </div>
       </div>
 
+      {/* Additional Charts Toggle */}
+      <div class={styles.forecastToggleSection}>
+        <button class={`${styles.btnOutline} ${styles.btnLarge}`} onClick={() => { setShowCharts(!showCharts()) }}>
+          {showCharts() ? 'Hide Charts' : 'Show Charts'}
+        </button>
+      </div>
+
+      {/* Spending vs Budget Bar Chart */}
+      {showCharts() && allocations().length > 0 && (
+        <div class={styles.categoryChartSection}>
+          <h3>Spending vs Budget</h3>
+          <div class={styles.chartWrapper}>
+            <Chart
+              type="bar"
+              data={{
+                labels: allocations().map((a) => a.category_name),
+                datasets: [
+                  {
+                    label: 'Budget',
+                    data: allocations().map((a) => a.allocated),
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1,
+                  },
+                  {
+                    label: 'Spent',
+                    data: allocations().map((a) => a.spent),
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                    labels: {
+                      usePointStyle: true,
+                      padding: 15,
+                      font: { size: 12 },
+                    },
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: (value: any) => `$${value}`,
+                    },
+                  },
+                },
+              }}
+              height={300}
+              width="100%"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Historical Adherence Trend Chart */}
+      {showCharts() && improvements().length > 0 && (
+        <div class={styles.categoryChartSection}>
+          <h3>Monthly Adherence Trend</h3>
+          <div class={styles.chartWrapper}>
+            <Chart
+              type="line"
+              data={{
+                labels: [...improvements()].reverse().map((item: any) => item.month),
+                datasets: [
+                  {
+                    label: 'Adherence %',
+                    data: [...improvements()].reverse().map((item: any) => item.adherence_pct),
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                    labels: {
+                      usePointStyle: true,
+                      padding: 15,
+                      font: { size: 12 },
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx: any) => `${ctx.parsed.y.toFixed(1)}%`,
+                    },
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: false,
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                      callback: (value: any) => `${value}%`,
+                    },
+                  },
+                },
+              }}
+              height={250}
+              width="100%"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Forecast Toggle Button */}
       <div data-test-id="forecast-toggle-section" class={styles.forecastToggleSection}>
         <button class={`${styles.btnOutline} ${styles.btnLarge}`} onClick={toggleForecast}>
@@ -417,6 +604,18 @@ export default function Budgets() {
         <div data-test-id="table-header" class={styles.tableHeader}>
           <h2>Category Allocations</h2>
           <div class={styles.actions}>
+            <button class={styles.btnOutline} onClick={duplicateLastMonth}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              </svg>
+              Duplicate Last Month
+            </button>
+            <button class={styles.btnOutline} onClick={setFromExpenses}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              From Expenses
+            </button>
             <button
               class={styles.btnPrimary}
               onclick={() => {
@@ -469,6 +668,7 @@ export default function Budgets() {
                   <th>Remaining</th>
                   <th>% Used</th>
                   <th>Status</th>
+                  <th>Rollover</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -507,6 +707,19 @@ export default function Budgets() {
                         {item.status === 'ok' && <Badge status="ok">On Track</Badge>}
                         {item.is_fully_allocated && (
                           <span class={styles.badgeOk}>Fully Allocated</span>
+                        )}
+                      </td>
+                      <td class={styles.actionsCol}>
+                        {item.budget_id ? (
+                          <button
+                            class={item.rollover_enabled ? styles.rolloverOn : styles.rolloverOff}
+                            onClick={() => { toggleRollover(item.budget_id!, !item.rollover_enabled) }}
+                            title={item.rollover_enabled ? 'Disable rollover' : 'Enable rollover'}
+                          >
+                            {item.rollover_enabled ? 'ON' : 'OFF'}
+                          </button>
+                        ) : (
+                          <span class={styles.budgetMessage}>--</span>
                         )}
                       </td>
                       <td class={styles.actionsCol}>

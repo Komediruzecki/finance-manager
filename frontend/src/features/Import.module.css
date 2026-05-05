@@ -29,11 +29,47 @@
   background: var(--border);
 }
 
+/* Tab bar */
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
 /* Upload area */
 .uploadArea {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.uploadLabel {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .dropzone {
@@ -50,6 +86,11 @@
 .dropzone.dragOver {
   border-color: var(--primary);
   background: rgba(59, 130, 246, 0.03);
+}
+
+.dropzone.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .dropzoneIcon {
@@ -458,6 +499,10 @@
   margin: 0 0 12px 0;
 }
 
+.settingsCardActions {
+  margin-top: 16px;
+}
+
 .settingsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -506,4 +551,99 @@
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0 0 8px 0;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.btnSm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btnPrimary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--primary-hover);
+}
+
+.btnSecondary {
+  background: var(--bg-secondary);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btnSecondary:hover {
+  background: var(--bg);
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btnGhost:hover {
+  background: var(--btn-ghost-hover);
+  color: var(--text);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btnOutline:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Page layout */
+.pageImport {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.pageHeader p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
 }

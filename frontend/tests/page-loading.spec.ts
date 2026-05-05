@@ -46,10 +46,10 @@ test.describe('Page Loading Tests', () => {
       await page.waitForTimeout(500)
 
       // Assert no console errors
-      expect(errors.length).toBe(0, `Console errors found on /${page}: ${errors.join(', ')}`)
+      expect(errors.length).toBe(0)
 
       // Assert no page errors
-      expect(rejectionErrors.length).toBe(0, `Page errors found on /${page}: ${rejectionErrors.join(', ')}`)
+      expect(rejectionErrors.length).toBe(0)
 
       // Verify page content loaded (at least the main heading exists)
       const hasContent = await page.locator('h1, h2, h3').count() > 0
@@ -129,7 +129,7 @@ test.describe('Component Loading Tests', () => {
     // Give time for any chart rendering to complete
     await page.waitForTimeout(1000)
 
-    expect(errors.length).toBe(0, `Chart errors on dashboard: ${errors.join(', ')}`)
+    expect(errors.length).toBe(0)
   })
 
   test('tables load without errors', async ({ page }) => {
@@ -151,7 +151,7 @@ test.describe('Component Loading Tests', () => {
     const table = page.locator('table')
     await expect(table).toBeVisible({ timeout: 5000 })
 
-    expect(errors.length).toBe(0, `Table errors on transactions: ${errors.join(', ')}`)
+    expect(errors.length).toBe(0)
   })
 })
 

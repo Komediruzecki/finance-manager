@@ -3,6 +3,7 @@
  * Displays detailed amortization schedule for a loan
  */
 import { createSignal, onMount } from 'solid-js'
+import Chart from '../components/Chart'
 import { api as _api, formatCurrency } from '../core/api'
 import { apiPost, showToast } from '../utils/api'
 import styles from './LoansPage.module.css'
@@ -182,13 +183,94 @@ export default function LoanAmortizationTable(props: Props) {
           )}
 
           {/* Charts */}
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-            <div>
-              <canvas id={`loan-chart-principal-${props.loanId}`} style={{ height: '220px' }} />
+          <div style={{ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px', 'margin-bottom': '24px' }}>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', 'border-radius': 'var(--radius)', padding: '12px' }}>
+              <h4 style={{ 'font-size': '13px', 'font-weight': 600, margin: '0 0 8px 0', color: 'var(--text-secondary)' }}>Monthly Payment Breakdown</h4>
+              <Chart
+                type="bar"
+                data={{
+                  labels: schedule.map((r) => `M${r.month}`),
+                  datasets: [
+                    {
+                      label: 'Principal',
+                      data: schedule.map((r) => r.principal),
+                      backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                      borderColor: '#22c55e',
+                      borderWidth: 0,
+                      borderRadius: 2,
+                    },
+                    {
+                      label: 'Interest',
+                      data: schedule.map((r) => r.interest),
+                      backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                      borderColor: '#ef4444',
+                      borderWidth: 0,
+                      borderRadius: 2,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { 'font': { size: 10 }, maxTicksLimit: 12, autoSkip: true } },
+                    y: { stacked: true, beginAtZero: true, ticks: { callback: (v: any) => formatCurrency(v) } },
+                  },
+                  plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+                  },
+                }}
+                height={240}
+                width="100%"
+              />
             </div>
-            <div>
-              <canvas id={`loan-chart-balance-${props.loanId}`} style={{ height: '220px' }} />
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', 'border-radius': 'var(--radius)', padding: '12px' }}>
+              <h4 style={{ 'font-size': '13px', 'font-weight': 600, margin: '0 0 8px 0', color: 'var(--text-secondary)' }}>Balance Over Time</h4>
+              <Chart
+                type="line"
+                data={{
+                  labels: schedule.map((r) => `M${r.month}`),
+                  datasets: [
+                    {
+                      label: 'Balance',
+                      data: schedule.map((r) => r.balance),
+                      borderColor: '#3b82f6',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      fill: true,
+                      tension: 0.3,
+                      pointRadius: 1,
+                      borderWidth: 2,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: { beginAtZero: true, ticks: { callback: (v: any) => formatCurrency(v) } },
+                  },
+                  plugins: {
+                    legend: { display: false },
+                  },
+                }}
+                height={240}
+                width="100%"
+              />
             </div>
+          </div>
+
+          {/* CSV Export */}
+          <div style={{ display: 'flex', gap: '8px', 'margin-bottom': '16px' }}>
+            <button
+              class={styles.btnSm}
+              style={{ display: 'flex', 'align-items': 'center', gap: '6px', 'font-size': '12px', padding: '6px 12px' }}
+              onClick={() => { exportAmortizationCSV(schedule, props.loan.name) }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export CSV
+            </button>
           </div>
 
           {/* Basic Amortization Table */}
@@ -461,6 +543,29 @@ export default function LoanAmortizationTable(props: Props) {
       )}
     </div>
   )
+}
+
+function exportAmortizationCSV(schedule: AmortizationRow[], loanName: string) {
+  const headers = ['Month', 'Date', 'Payment', 'Principal', 'Interest', 'Balance', 'Rate', 'Prepayment', 'Note']
+  const rows = schedule.map((r) => [
+    r.month,
+    r.date,
+    r.payment.toFixed(2),
+    r.principal.toFixed(2),
+    r.interest.toFixed(2),
+    r.balance.toFixed(2),
+    r.rate.toFixed(3),
+    r.prepayment ? r.prepayment.toFixed(2) : '0',
+    r.note || '',
+  ])
+  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${loanName.replace(/\s+/g, '_')}_amortization.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function isLongTable(schedule: AmortizationRow[]): boolean {

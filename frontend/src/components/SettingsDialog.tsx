@@ -7,6 +7,7 @@ import { createSignal, For } from 'solid-js'
 import { toast } from '../core/api.js'
 import { setStorageMode } from '../core/storage/storageFactory.js'
 import { Modal } from './Modal.js'
+import styles from './SettingsDialog.module.css'
 import type { Component } from 'solid-js'
 import type { StorageMode } from '../core/storage/storageFactory.js'
 
@@ -192,12 +193,12 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
   ]
 
   return (
-    <div class="settings-dialog">
+    <div class={styles.settingsDialog}>
       <Modal isOpen={props.isOpen} onClose={props.onClose} title="Settings">
         {/* Tabs */}
-        <div class="settings-tabs">
+        <div class={styles.settingsTabs}>
           <button
-            class={`tab ${activeTab() === 'general' ? 'active' : ''}`}
+            class={`${styles.tab} ${activeTab() === 'general' ? styles.active : ''}`}
             onClick={() => {
               setActiveTab('general')
             }}
@@ -205,7 +206,7 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
             General
           </button>
           <button
-            class={`tab ${activeTab() === 'storage' ? 'active' : ''}`}
+            class={`${styles.tab} ${activeTab() === 'storage' ? styles.active : ''}`}
             onClick={() => {
               setActiveTab('storage')
             }}
@@ -215,13 +216,13 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
         </div>
 
         {/* General Settings */}
-        <div class="tab-content" classList={{ active: activeTab() === 'general' }}>
+        <div class={`${styles.tabContent} ${activeTab() === 'general' ? styles.active : ''}`}>
           {/* Theme */}
-          <div class="setting-group">
-            <label class="setting-label">Theme</label>
-            <div class="theme-selector">
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Theme</label>
+            <div class={styles.themeSelector}>
               <button
-                class={`theme-btn ${theme() === 'light' ? 'active' : ''}`}
+                class={`${styles.themeBtn} ${theme() === 'light' ? styles.active : ''}`}
                 onClick={() => {
                   setTheme('light')
                 }}
@@ -229,7 +230,7 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
                 <span>Light</span>
               </button>
               <button
-                class={`theme-btn ${theme() === 'dark' ? 'active' : ''}`}
+                class={`${styles.themeBtn} ${theme() === 'dark' ? styles.active : ''}`}
                 onClick={() => {
                   setTheme('dark')
                 }}
@@ -240,10 +241,10 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Language */}
-          <div class="setting-group">
-            <label class="setting-label">Language</label>
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Language</label>
             <select
-              class="setting-select"
+              class={styles.settingSelect}
               value={language()}
               onChange={(e) => {
                 setLanguage(e.currentTarget.value)
@@ -254,10 +255,10 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Currency */}
-          <div class="setting-group">
-            <label class="setting-label">Currency</label>
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Currency</label>
             <select
-              class="setting-select"
+              class={styles.settingSelect}
               value={currency()}
               onChange={(e) => {
                 setCurrency(e.currentTarget.value)
@@ -269,10 +270,10 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
             </select>
           </div>
 
-          <div class="setting-group">
-            <label class="setting-label">Primary Currency</label>
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Primary Currency</label>
             <select
-              class="setting-select"
+              class={styles.settingSelect}
               value={primaryCurrency()}
               onChange={(e) => {
                 setPrimaryCurrency(e.currentTarget.value)
@@ -284,9 +285,9 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
             </select>
           </div>
 
-          <div class="setting-actions">
+          <div class={styles.settingActions}>
             <button
-              class="btn-primary"
+              class={styles.btnPrimary}
               onClick={() => {
                 void saveSettings()
               }}
@@ -297,37 +298,37 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
         </div>
 
         {/* Storage Settings */}
-        <div class="tab-content" classList={{ active: activeTab() === 'storage' }}>
+        <div class={`${styles.tabContent} ${activeTab() === 'storage' ? styles.active : ''}`}>
           {/* Storage Mode */}
-          <div class="setting-group">
-            <label class="setting-label">Storage Mode</label>
-            <div class="mode-selector">
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Storage Mode</label>
+            <div class={styles.modeSelector}>
               <button
-                class={`mode-btn ${currentMode() === 'serverless' ? 'active' : ''}`}
+                class={`${styles.modeBtn} ${currentMode() === 'serverless' ? styles.active : ''}`}
                 onClick={() => {
                   void handleSetMode('serverless')
                 }}
               >
-                <div class="mode-info">
+                <div class={styles.modeInfo}>
                   <strong>Serverless</strong>
                   <span>Browser localStorage storage</span>
                 </div>
-                <div class="mode-icon">Serverless</div>
+                <div class={styles.modeIcon}>Serverless</div>
               </button>
               <button
-                class={`mode-btn ${currentMode() === 'self-hosted' ? 'active' : ''}`}
+                class={`${styles.modeBtn} ${currentMode() === 'self-hosted' ? styles.active : ''}`}
                 onClick={() => {
                   void handleSetMode('self-hosted')
                 }}
               >
-                <div class="mode-info">
+                <div class={styles.modeInfo}>
                   <strong>Self-Hosted</strong>
                   <span>Backend server storage</span>
                 </div>
-                <div class="mode-icon">Self-Hosted</div>
+                <div class={styles.modeIcon}>Self-Hosted</div>
               </button>
             </div>
-            <p class="setting-hint">
+            <p class={styles.settingHint}>
               {currentMode() === 'serverless'
                 ? 'Your data is stored in your browser. You can export/import your data at any time.'
                 : 'Your data is stored on the backend server. Use this if you need data access across devices.'}
@@ -335,18 +336,18 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Data Management */}
-          <div class="setting-group">
-            <label class="setting-label">Data Management</label>
-            <div class="data-actions">
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Data Management</label>
+            <div class={styles.dataActions}>
               <button
-                class="btn-secondary"
+                class={styles.btnSecondary}
                 onClick={() => {
                   void handleExport()
                 }}
               >
                 Export Data
               </button>
-              <button class="btn-secondary">
+              <button class={styles.btnSecondary}>
                 Import Data
                 <input
                   type="file"
@@ -361,10 +362,10 @@ export const SettingsDialog: Component<SettingsDialogProps> = (props) => {
           </div>
 
           {/* Reset */}
-          <div class="setting-group">
-            <label class="setting-label">Danger Zone</label>
+          <div class={styles.settingGroup}>
+            <label class={styles.settingLabel}>Danger Zone</label>
             <button
-              class="btn-danger"
+              class={styles.btnDanger}
               onClick={() => {
                 void _handleReset()
               }}

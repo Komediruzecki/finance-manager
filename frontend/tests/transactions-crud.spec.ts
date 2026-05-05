@@ -252,7 +252,7 @@ test.describe('Transactions CRUD Operations', () => {
     await page.waitForTimeout(500)
 
     const incomeBtn = page.locator('#tx-type-selector .income')
-    await incomeBtn.evaluate((el) => el.click())
+    await incomeBtn.evaluate((el: HTMLElement) => el.click())
     await page.waitForTimeout(500)
 
     // Just verify we can interact with the button - the active class may not be available
@@ -266,7 +266,7 @@ test.describe('Transactions CRUD Operations', () => {
     await page.waitForTimeout(500)
 
     const transferBtn = page.locator('#tx-type-selector .transfer')
-    await transferBtn.evaluate((el) => el.click())
+    await transferBtn.evaluate((el: HTMLElement) => el.click())
     await page.waitForTimeout(500)
 
     // Just verify we can interact with the button
@@ -412,7 +412,7 @@ test.describe('Transactions CRUD Operations', () => {
       await page.waitForTimeout(500)
 
       // Check if modal still exists or was closed
-      const isModalOpen = await page.locator('#tx-modal, [data-test-id="tx-modal"]').isVisible({ timeout: 1000 }).catch(() => false)
+      await page.locator('#tx-modal, [data-test-id="tx-modal"]').isVisible({ timeout: 1000 }).catch(() => false)
       // Modal may close after save, which is acceptable
     }
   })
