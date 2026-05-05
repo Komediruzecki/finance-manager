@@ -65,6 +65,8 @@ function migrate() {
   db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_profile ON transactions(profile_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_profile_date ON transactions(profile_id, date)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_transactions_profile_type_date ON transactions(profile_id, type, date)');
 
   // Create budgets table
   db.exec(`
@@ -248,6 +250,7 @@ function migrate() {
     )
   `);
   db.exec('CREATE INDEX IF NOT EXISTS idx_bills_profile ON bills(profile_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_bills_profile_due_date ON bills(profile_id, due_date)');
 
   // Create housings table
   db.exec(`

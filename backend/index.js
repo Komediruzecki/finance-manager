@@ -245,7 +245,7 @@ app.use(
   session({
     secret: sessionSecret,
     proxy: true, // Trust X-Forwarded-Proto from Apache
-    resave: true,
+    resave: false,
     saveUninitialized: true,
     cookie: {
       secure: isProduction, // Require HTTPS in production
@@ -1077,10 +1077,8 @@ const MERCHANT_DICTIONARY = [
 
 // Get learned mappings for profile
 app.get('/api/categories/mappings', apiRateLimiter, requireAuth, (req, res) => {
-  console.log('[DEBUG] GET /api/categories/mappings called, pid:', getProfileId(req));
   try {
     const pid = getProfileId(req);
-    console.log('[DEBUG] pid:', pid);
     const rows = db
       .prepare(
         `
@@ -1092,7 +1090,6 @@ app.get('/api/categories/mappings', apiRateLimiter, requireAuth, (req, res) => {
     `
       )
       .all(pid);
-    console.log('[DEBUG] rows:', rows);
     res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);
@@ -1256,10 +1253,8 @@ app.delete('/api/categories', apiRateLimiter, (req, res) => {
 });
 
 app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
-  console.log('[DEBUG] GET /api/categories/mappings called, pid:', getProfileId(req));
   try {
     const pid = getProfileId(req);
-    console.log('[DEBUG] pid:', pid);
     const rows = db
       .prepare(
         `
@@ -1271,7 +1266,6 @@ app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
     `
       )
       .all(pid);
-    console.log('[DEBUG] rows:', rows);
     res.json(toCamelCase(rows));
   } catch (err) {
     console.error(err.message);

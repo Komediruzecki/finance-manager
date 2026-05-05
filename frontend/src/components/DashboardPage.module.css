@@ -30,9 +30,21 @@
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .metric-card {
@@ -52,7 +64,23 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--metric-top-color, var(--primary));
+  background: var(--primary);
+}
+
+.metric-card.income::before {
+  background: var(--income);
+}
+
+.metric-card.expense::before {
+  background: var(--expense);
+}
+
+.metric-card.balance::before {
+  background: var(--primary);
+}
+
+.metric-card.networth::before {
+  background: var(--success);
 }
 
 .metric-label {
