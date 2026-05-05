@@ -26,6 +26,7 @@ import { createSignal, For } from 'solid-js'
 import Chart from '../components/Chart'
 import { formatCurrency } from '../core/api'
 import { apiPost, showToast } from '../utils/api'
+import sharedStyles from './CalculatorShared.module.css'
 import styles from './CompoundInterestCalculator.module.css'
 
 interface CompoundInterestResult {
@@ -112,8 +113,8 @@ export default function CompoundInterestCalculator() {
   }
 
   return (
-    <div class={styles.page}>
-      <div class={styles.pageHeader}>
+    <div class={sharedStyles.page}>
+      <div class={sharedStyles.pageHeader}>
         <h1>📈 Compound Interest Projector</h1>
         <p>Project investment growth over time</p>
       </div>

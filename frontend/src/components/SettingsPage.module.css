@@ -39,16 +39,6 @@
   margin-bottom: 12px;
 }
 
-/* legacy class mappings for settings page */
-.page-content {
-  max-width: 800px;
-}
-
-/* legacy class mappings for settings page */
-.page-content {
-  max-width: 800px;
-}
-
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

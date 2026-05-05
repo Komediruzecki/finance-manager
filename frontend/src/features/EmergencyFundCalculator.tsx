@@ -22,6 +22,7 @@ import { createSignal, For, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import { formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../utils/api'
+import sharedStyles from './CalculatorShared.module.css'
 import styles from './EmergencyFundCalculator.module.css'
 
 export default function EmergencyFundCalculator() {
@@ -64,8 +65,8 @@ export default function EmergencyFundCalculator() {
   }
 
   return (
-    <div class={styles.page}>
-      <div class={styles.pageHeader}>
+    <div class={sharedStyles.page}>
+      <div class={sharedStyles.pageHeader}>
         <h1>💰 Emergency Fund Tracker</h1>
         <p>Calculate coverage based on monthly expenses</p>
       </div>
