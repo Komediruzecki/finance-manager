@@ -1,3 +1,4 @@
+import * as h from './localHandlers'
 import type { StorageMode } from './storageFactory'
 
 // ── Route types ──────────────────────────────────────────────────────────────
@@ -27,10 +28,6 @@ function json(data: unknown, status = 200): Response {
   })
 }
 
-function notImplemented(method: string, path: string): Response {
-  return json({ error: `Not implemented: ${method} ${path}` }, 501)
-}
-
 function methodNotAllowed(method: string, path: string): Response {
   return json({ error: `Method not allowed: ${method} ${path}` }, 405)
 }
@@ -39,170 +36,496 @@ function notFound(path: string): Response {
   return json({ error: `Not found: ${path}` }, 404)
 }
 
-// ── Route builder ────────────────────────────────────────────────────────────
+// Stub for routes that will be wired in later phases (LS7-LS14)
+function stub(path: string): Handler {
+  return (ctx: RouteContext) =>
+    Promise.resolve(json({ error: `Not implemented: ${ctx.method} ${path}` }, 501))
+}
 
-function r(pattern: RegExp, methods: string[]): RouteDef {
-  return {
-    pattern,
-    methods,
-    handler: (ctx: RouteContext) => Promise.resolve(notImplemented(ctx.method, ctx.path)),
+// ── Dispatcher helper ────────────────────────────────────────────────────────
+
+/** Create a handler that dispatches based on HTTP method to named handlers */
+function dispatch(handlers: Partial<Record<string, (ctx: RouteContext) => Promise<Response>>>): Handler {
+  return (ctx: RouteContext) => {
+    const fn = handlers[ctx.method]
+    if (fn) return fn(ctx)
+    return Promise.resolve(methodNotAllowed(ctx.method, ctx.path))
   }
 }
 
 // ── Route table ──────────────────────────────────────────────────────────────
 
 const routes: RouteDef[] = [
-  // Health & app info
-  r(/^\/health$/, ['GET']),
-  r(/^\/app-info$/, ['GET']),
+  // ── Health & app info ──
+  {
+    pattern: /^\/health$/,
+    methods: ['GET'],
+    handler: () => Promise.resolve(json({ status: 'ok', timestamp: new Date().toISOString() })),
+  },
+  {
+    pattern: /^\/app-info$/,
+    methods: ['GET'],
+    handler: () =>
+      Promise.resolve(
+        json({
+          name: 'Finance Manager',
+          version: '4.0.0',
+          mode: 'serverless',
+          storage: 'indexeddb',
+        }),
+      ),
+  },
 
-  // Auth
-  r(/^\/auth\/login$/, ['POST']),
-  r(/^\/auth\/check$/, ['GET']),
-  r(/^\/auth\/logout$/, ['POST']),
-  r(/^\/auth\/me$/, ['GET']),
+  // ── Auth ──
+  {
+    pattern: /^\/auth\/login$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.authLogin(ctx.body) }),
+  },
+  {
+    pattern: /^\/auth\/check$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: () => h.authCheck() }),
+  },
+  {
+    pattern: /^\/auth\/logout$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: () => h.authLogout() }),
+  },
+  {
+    pattern: /^\/auth\/me$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: () => h.authMe() }),
+  },
 
-  // Profiles
-  r(/^\/profiles$/, ['GET', 'POST']),
-  r(/^\/profiles\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/profile\/data$/, ['DELETE']),
+  // ── Profiles ──
+  {
+    pattern: /^\/profiles$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.profilesList(),
+      POST: (ctx) => h.profilesCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/profiles\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.profilesGet(ctx.params),
+      PUT: (ctx) => h.profilesUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.profilesDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/profile\/data$/,
+    methods: ['DELETE'],
+    handler: dispatch({ DELETE: () => h.profileResetData() }),
+  },
 
-  // Settings
-  r(/^\/settings$/, ['GET', 'PUT']),
-  r(/^\/settings\/set-storage$/, ['POST']),
-  r(/^\/storage-mode$/, ['GET', 'POST']),
+  // ── Settings ──
+  {
+    pattern: /^\/settings$/,
+    methods: ['GET', 'PUT'],
+    handler: dispatch({
+      GET: () => h.settingsGet(),
+      PUT: (ctx) => h.settingsUpdate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/settings\/set-storage$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.storageModeSet(ctx.body) }),
+  },
+  {
+    pattern: /^\/storage-mode$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.storageModeGet(),
+      POST: (ctx) => h.storageModeSet(ctx.body),
+    }),
+  },
 
-  // Dashboard
-  r(/^\/dashboard$/, ['GET']),
-  r(/^\/dashboard\/(charts|net-worth|summary)$/, ['GET']),
+  // ── Dashboard (LS7) ──
+  {
+    pattern: /^\/dashboard(\/charts|\/net-worth|\/summary)?$/,
+    methods: ['GET'],
+    handler: stub('/api/dashboard'),
+  },
 
-  // Analytics
-  r(/^\/analytics$/, ['GET']),
-  r(/^\/analytics\/(category-trends|daily-heatmap|sankey|weeks|distinct-years)$/, ['GET']),
+  // ── Analytics (LS8) ──
+  {
+    pattern: /^\/analytics$/,
+    methods: ['GET'],
+    handler: stub('/api/analytics'),
+  },
+  {
+    pattern: /^\/analytics\/(category-trends|daily-heatmap|sankey|weeks|distinct-years)$/,
+    methods: ['GET'],
+    handler: stub('/api/analytics/*'),
+  },
 
-  // Transactions
-  r(/^\/transactions$/, ['GET', 'POST', 'DELETE']),
-  r(/^\/transactions\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/transactions\/(\d+)\/reconcile$/, ['PATCH']),
-  r(/^\/transactions\/(\d+)\/tags$/, ['GET', 'POST', 'PUT']),
-  r(/^\/transactions\/by-tag\/(\d+)$/, ['GET']),
-  r(/^\/transactions\/reconcile\/bulk$/, ['POST']),
-  r(/^\/transactions\/reconcile\/summary$/, ['GET']),
-  r(/^\/transactions\/reconcile-batch$/, ['PUT']),
-  r(/^\/transactions\/export$/, ['GET']),
-  r(/^\/transactions\/summary$/, ['GET']),
-  r(/^\/transactions\/bulk$/, ['PUT']),
+  // ── Transactions ──
+  {
+    pattern: /^\/transactions$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: (ctx) => h.transactionsList(ctx.query),
+      POST: (ctx) => h.transactionsCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/transactions\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.transactionsGet(ctx.params),
+      PUT: (ctx) => h.transactionsUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.transactionsDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/transactions\/(\d+)\/reconcile$/,
+    methods: ['PATCH'],
+    handler: dispatch({ PATCH: (ctx) => h.reconcileToggle(ctx.params) }),
+  },
+  { pattern: /^\/transactions\/reconcile\/bulk$/, methods: ['POST'], handler: dispatch({ POST: (ctx) => h.reconcileBulk(ctx.body) }) },
+  { pattern: /^\/transactions\/reconcile\/summary$/, methods: ['GET'], handler: dispatch({ GET: () => h.reconcileSummary() }) },
+  { pattern: /^\/transactions\/reconcile-batch$/, methods: ['PUT'], handler: dispatch({ PUT: (ctx) => h.reconcileBatch(ctx.body) }) },
+  { pattern: /^\/transactions\/export$/, methods: ['GET'], handler: dispatch({ GET: (ctx) => h.transactionsExport(ctx.query) }) },
+  { pattern: /^\/transactions\/summary$/, methods: ['GET'], handler: dispatch({ GET: () => h.transactionsSummary() }) },
 
-  // Categories
-  r(/^\/categories$/, ['GET', 'POST', 'DELETE']),
-  r(/^\/categories\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/categories\/mappings$/, ['GET', 'POST']),
-  r(/^\/categories\/mappings\/(\d+)$/, ['DELETE']),
-  r(/^\/categories\/auto-map$/, ['POST']),
-  r(/^\/categories\/apply-mappings$/, ['POST']),
+  // ── Categories ──
+  {
+    pattern: /^\/categories$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: (ctx) => h.categoriesList(ctx.query),
+      POST: (ctx) => h.categoriesCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/categories\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.categoriesGet(ctx.params),
+      PUT: (ctx) => h.categoriesUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.categoriesDelete(ctx.params),
+    }),
+  },
 
-  // Accounts
-  r(/^\/accounts$/, ['GET', 'POST']),
-  r(/^\/accounts\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/accounts\/(\d+)\/history$/, ['GET', 'POST']),
-  r(/^\/accounts\/(\d+)\/history\/(\d+)$/, ['DELETE']),
-  r(/^\/accounts\/history\/timeline$/, ['GET']),
-  r(/^\/accounts\/(\d+)\/reconciliation-summary$/, ['GET']),
+  // ── Accounts ──
+  {
+    pattern: /^\/accounts$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.accountsList(),
+      POST: (ctx) => h.accountsCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/accounts\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.accountsGet(ctx.params),
+      PUT: (ctx) => h.accountsUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.accountsDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/accounts\/(\d+)\/history$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: (ctx) => h.accountsHistory(ctx.params),
+      POST: (ctx) => h.accountsHistoryRecord(ctx.params, ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/accounts\/(\d+)\/history\/(\d+)$/,
+    methods: ['DELETE'],
+    handler: dispatch({ DELETE: (ctx) => h.accountsHistoryDelete(ctx.params) }),
+  },
 
-  // Budgets
-  r(/^\/budgets$/, ['GET', 'POST']),
-  r(/^\/budgets\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/budgets\/(\d+)\/rollover$/, ['PUT']),
-  r(/^\/budgets\/(alerts|forecast|history|improvements|summary|zero-based)$/, ['GET']),
-  r(/^\/budgets\/zero-based\/summary$/, ['GET']),
-  r(/^\/budgets\/allocate$/, ['POST']),
-  r(/^\/budgets\/duplicate-last$/, ['POST']),
-  r(/^\/budgets\/from-expenses$/, ['POST']),
+  // ── Budgets ──
+  {
+    pattern: /^\/budgets$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.budgetsList(),
+      POST: (ctx) => h.budgetsCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/budgets\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.budgetsGet(ctx.params),
+      PUT: (ctx) => h.budgetsUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.budgetsDelete(ctx.params),
+    }),
+  },
 
-  // Savings goals
-  r(/^\/savings-goals$/, ['GET', 'POST']),
-  r(/^\/savings-goals\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/savings-goals\/(\d+)\/contribute$/, ['POST']),
+  // ── Savings goals ──
+  {
+    pattern: /^\/savings-goals$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.goalsList(),
+      POST: (ctx) => h.goalsCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/savings-goals\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.goalsGet(ctx.params),
+      PUT: (ctx) => h.goalsUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.goalsDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/savings-goals\/(\d+)\/contribute$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.goalsContribute(ctx.params, ctx.body) }),
+  },
 
-  // Loans
-  r(/^\/loans$/, ['GET', 'POST']),
-  r(/^\/loans\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/loans\/(\d+)\/rate-periods$/, ['GET']),
-  r(/^\/loans\/(\d+)\/rate$/, ['PUT']),
-  r(/^\/loans\/(\d+)\/rates$/, ['GET', 'POST']),
-  r(/^\/loans\/(\d+)\/rates\/(\d+)$/, ['PUT', 'DELETE']),
-  r(/^\/loans\/(\d+)\/prepayment$/, ['POST']),
-  r(/^\/loans\/(\d+)\/prepayments$/, ['GET', 'POST']),
-  r(/^\/loans\/(\d+)\/prepayments\/(\d+)$/, ['DELETE']),
-  r(/^\/loans\/(\d+)\/calculate$/, ['POST']),
+  // ── Loans ──
+  {
+    pattern: /^\/loans$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.loansList(),
+      POST: (ctx) => h.loansCreate(ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: dispatch({
+      GET: (ctx) => h.loansGet(ctx.params),
+      PUT: (ctx) => h.loansUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.loansDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/rate-periods$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: (ctx) => h.loanRates(ctx.params) }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/rate$/,
+    methods: ['PUT'],
+    handler: dispatch({ PUT: (ctx) => h.loanRateUpdate(ctx.params, ctx.body) }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/rates$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: (ctx) => h.loanRates(ctx.params),
+      POST: (ctx) => h.loanRatesAdd(ctx.params, ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/rates\/(\d+)$/,
+    methods: ['PUT', 'DELETE'],
+    handler: dispatch({
+      PUT: (ctx) => h.loanRateUpdate(ctx.params, ctx.body),
+      DELETE: (ctx) => h.loanRateDelete(ctx.params),
+    }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/prepayment$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.loanPrepaymentAdd(ctx.params, ctx.body) }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/prepayments$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: (ctx) => h.loanPrepayments(ctx.params),
+      POST: (ctx) => h.loanPrepaymentAdd(ctx.params, ctx.body),
+    }),
+  },
+  {
+    pattern: /^\/loans\/(\d+)\/prepayments\/(\d+)$/,
+    methods: ['DELETE'],
+    handler: dispatch({ DELETE: (ctx) => h.loanPrepaymentsDelete(ctx.params) }),
+  },
 
-  // Bills
-  r(/^\/bills$/, ['GET', 'POST']),
-  r(/^\/bills\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/bills\/upcoming$/, ['GET']),
-  r(/^\/bills\/(\d+)\/pay$/, ['POST']),
-  r(/^\/bills\/(\d+)\/mark-paid$/, ['POST']),
+  // ── Export / Import / Clear ──
+  { pattern: /^\/export$/, methods: ['GET'], handler: dispatch({ GET: () => h.exportAll() }) },
+  {
+    pattern: /^\/export\/([a-z-]+)$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: (ctx) => h.exportByType(ctx.params, ctx.query) }),
+  },
+  { pattern: /^\/import$/, methods: ['POST'], handler: dispatch({ POST: (ctx) => h.importData(ctx.body) }) },
+  { pattern: /^\/clear-all$/, methods: ['DELETE'], handler: dispatch({ DELETE: () => h.clearAll() }) },
 
-  // Tags
-  r(/^\/tags$/, ['GET', 'POST']),
-  r(/^\/tags\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/tags\/(\d+)\/transactions$/, ['GET']),
+  // ── Seed ──
+  { pattern: /^\/categories\/seed$/, methods: ['POST'], handler: dispatch({ POST: () => h.seedCategories() }) },
 
-  // Recurring
-  r(/^\/recurring$/, ['GET', 'POST']),
-  r(/^\/recurring\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/recurring\/upcoming$/, ['GET']),
-  r(/^\/recurring\/(\d+)\/populate$/, ['POST']),
+  // ── Stubs for not-yet-implemented routes (LS11-LS14) ──
+  // Transactions (extra): tags, by-tag, bulk
+  {
+    pattern: /^\/transactions\/(\d+)\/tags$/,
+    methods: ['GET', 'POST', 'PUT'],
+    handler: stub('/api/transactions/:id/tags'),
+  },
+  { pattern: /^\/transactions\/by-tag\/(\d+)$/, methods: ['GET'], handler: stub('/api/transactions/by-tag') },
+  { pattern: /^\/transactions\/bulk$/, methods: ['PUT'], handler: stub('/api/transactions/bulk') },
 
-  // Receipts
-  r(/^\/receipts$/, ['POST']),
-  r(/^\/receipts\/upload$/, ['POST']),
-  r(/^\/receipts\/(\d+)$/, ['GET', 'DELETE']),
-  r(/^\/receipts\/(\d+)\/file$/, ['GET']),
-  r(/^\/receipts\/transaction\/(\d+)$/, ['GET']),
-  r(/^\/receipts\/file\/(.+)$/, ['GET']),
+  // Categories: mappings, auto-map
+  {
+    pattern: /^\/categories\/mappings$/,
+    methods: ['GET', 'POST'],
+    handler: stub('/api/categories/mappings'),
+  },
+  {
+    pattern: /^\/categories\/mappings\/(\d+)$/,
+    methods: ['DELETE'],
+    handler: stub('/api/categories/mappings'),
+  },
+  { pattern: /^\/categories\/auto-map$/, methods: ['POST'], handler: stub('/api/categories/auto-map') },
+  { pattern: /^\/categories\/apply-mappings$/, methods: ['POST'], handler: stub('/api/categories/apply-mappings') },
 
-  // Import/Export
-  r(/^\/import$/, ['POST']),
-  r(/^\/import\/upload$/, ['POST']),
-  r(/^\/import\/googlesheet$/, ['POST']),
-  r(/^\/import\/file-sheet$/, ['POST']),
-  r(/^\/import\/execute$/, ['POST']),
-  r(/^\/import\/preview$/, ['POST']),
-  r(/^\/export$/, ['GET']),
-  r(/^\/export\/([a-z-]+)$/, ['GET']),
-  r(/^\/clear-all$/, ['DELETE']),
+  // Accounts: timeline, reconciliation-summary
+  { pattern: /^\/accounts\/history\/timeline$/, methods: ['GET'], handler: stub('/api/accounts/history/timeline') },
+  {
+    pattern: /^\/accounts\/(\d+)\/reconciliation-summary$/,
+    methods: ['GET'],
+    handler: stub('/api/accounts/:id/reconciliation-summary'),
+  },
+
+  // Budgets: alerts, forecast, history, improvements, summary, zero-based, allocate, duplicate, from-expenses
+  {
+    pattern: /^\/budgets\/(alerts|forecast|history|improvements|summary|zero-based)$/,
+    methods: ['GET'],
+    handler: stub('/api/budgets/*'),
+  },
+  { pattern: /^\/budgets\/zero-based\/summary$/, methods: ['GET'], handler: stub('/api/budgets/zero-based/summary') },
+  { pattern: /^\/budgets\/allocate$/, methods: ['POST'], handler: stub('/api/budgets/allocate') },
+  { pattern: /^\/budgets\/duplicate-last$/, methods: ['POST'], handler: stub('/api/budgets/duplicate-last') },
+  { pattern: /^\/budgets\/from-expenses$/, methods: ['POST'], handler: stub('/api/budgets/from-expenses') },
+  { pattern: /^\/budgets\/(\d+)\/rollover$/, methods: ['PUT'], handler: stub('/api/budgets/:id/rollover') },
+
+  // Loans: calculate
+  {
+    pattern: /^\/loans\/(\d+)\/calculate$/,
+    methods: ['POST'],
+    handler: stub('/api/loans/:id/calculate'),
+  },
+
+  // Bills (LS6 no store)
+  {
+    pattern: /^\/bills$/,
+    methods: ['GET', 'POST'],
+    handler: stub('/api/bills'),
+  },
+  {
+    pattern: /^\/bills\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: stub('/api/bills'),
+  },
+  { pattern: /^\/bills\/upcoming$/, methods: ['GET'], handler: stub('/api/bills/upcoming') },
+  {
+    pattern: /^\/bills\/(\d+)\/(pay|mark-paid)$/,
+    methods: ['POST'],
+    handler: stub('/api/bills/:id/pay'),
+  },
+
+  // Tags (LS6 no store)
+  {
+    pattern: /^\/tags$/,
+    methods: ['GET', 'POST'],
+    handler: stub('/api/tags'),
+  },
+  {
+    pattern: /^\/tags\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: stub('/api/tags'),
+  },
+  { pattern: /^\/tags\/(\d+)\/transactions$/, methods: ['GET'], handler: stub('/api/tags/:id/transactions') },
+
+  // Recurring (LS6 no store)
+  {
+    pattern: /^\/recurring$/,
+    methods: ['GET', 'POST'],
+    handler: stub('/api/recurring'),
+  },
+  {
+    pattern: /^\/recurring\/(\d+)$/,
+    methods: ['GET', 'PUT', 'DELETE'],
+    handler: stub('/api/recurring'),
+  },
+  { pattern: /^\/recurring\/upcoming$/, methods: ['GET'], handler: stub('/api/recurring/upcoming') },
+  { pattern: /^\/recurring\/(\d+)\/populate$/, methods: ['POST'], handler: stub('/api/recurring/:id/populate') },
+
+  // Receipts (LS11)
+  {
+    pattern: /^\/receipts$/,
+    methods: ['POST'],
+    handler: stub('/api/receipts'),
+  },
+  { pattern: /^\/receipts\/upload$/, methods: ['POST'], handler: stub('/api/receipts/upload') },
+  {
+    pattern: /^\/receipts\/(\d+)$/,
+    methods: ['GET', 'DELETE'],
+    handler: stub('/api/receipts'),
+  },
+  { pattern: /^\/receipts\/(\d+)\/file$/, methods: ['GET'], handler: stub('/api/receipts/:id/file') },
+  {
+    pattern: /^\/receipts\/transaction\/(\d+)$/,
+    methods: ['GET'],
+    handler: stub('/api/receipts/transaction'),
+  },
+  { pattern: /^\/receipts\/file\/(.+)$/, methods: ['GET'], handler: stub('/api/receipts/file') },
+
+  // Import (LS13)
+  { pattern: /^\/import\/upload$/, methods: ['POST'], handler: stub('/api/import/upload') },
+  { pattern: /^\/import\/googlesheet$/, methods: ['POST'], handler: stub('/api/import/googlesheet') },
+  { pattern: /^\/import\/file-sheet$/, methods: ['POST'], handler: stub('/api/import/file-sheet') },
+  { pattern: /^\/import\/execute$/, methods: ['POST'], handler: stub('/api/import/execute') },
+  { pattern: /^\/import\/preview$/, methods: ['POST'], handler: stub('/api/import/preview') },
 
   // Exchange rates
-  r(/^\/exchange-rates$/, ['GET']),
-  r(/^\/exchange-rates\/([A-Z]{3})\/([A-Z]{3})$/, ['GET']),
+  { pattern: /^\/exchange-rates$/, methods: ['GET'], handler: stub('/api/exchange-rates') },
+  {
+    pattern: /^\/exchange-rates\/([A-Z]{3})\/([A-Z]{3})$/,
+    methods: ['GET'],
+    handler: stub('/api/exchange-rates/:base/:target'),
+  },
 
-  // Calculators
-  r(/^\/retirement$/, ['POST']),
-  r(/^\/retirement\/projection$/, ['GET']),
-  r(/^\/retirement-goals$/, ['GET']),
-  r(/^\/housing$/, ['GET', 'POST']),
-  r(/^\/housing\/(\d+)$/, ['GET', 'PUT', 'DELETE']),
-  r(/^\/housing\/calculate$/, ['POST']),
-  r(/^\/calculator\/compound-interest$/, ['POST']),
-  r(/^\/calculator\/retire$/, ['POST']),
-  r(/^\/calculator\/emergency-fund$/, ['GET']),
+  // Calculators (LS10)
+  { pattern: /^\/retirement$/, methods: ['POST'], handler: stub('/api/retirement') },
+  { pattern: /^\/retirement\/projection$/, methods: ['GET'], handler: stub('/api/retirement/projection') },
+  { pattern: /^\/retirement-goals$/, methods: ['GET'], handler: stub('/api/retirement-goals') },
+  {
+    pattern: /^\/housing(\/(\d+))?$/,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    handler: stub('/api/housing'),
+  },
+  { pattern: /^\/housing\/calculate$/, methods: ['POST'], handler: stub('/api/housing/calculate') },
+  { pattern: /^\/calculator\/compound-interest$/, methods: ['POST'], handler: stub('/api/calculator/compound-interest') },
+  { pattern: /^\/calculator\/retire$/, methods: ['POST'], handler: stub('/api/calculator/retire') },
+  { pattern: /^\/calculator\/emergency-fund$/, methods: ['GET'], handler: stub('/api/calculator/emergency-fund') },
 
-  // Reports
-  r(/^\/reports\/annual-pdf$/, ['GET']),
-  r(/^\/reports\/monthly-pdf$/, ['GET']),
-  r(/^\/reports\/pl-summary$/, ['GET']),
-  r(/^\/reports\/pl-summary-pdf$/, ['GET']),
-  r(/^\/reports\/tax-summary$/, ['GET']),
-  r(/^\/reports\/tax-summary-pdf$/, ['GET']),
-  r(/^\/reports\/custom$/, ['POST']),
+  // Reports (LS12)
+  {
+    pattern: /^\/reports\/(annual-pdf|monthly-pdf|pl-summary|pl-summary-pdf|tax-summary|tax-summary-pdf)$/,
+    methods: ['GET'],
+    handler: stub('/api/reports/*'),
+  },
+  { pattern: /^\/reports\/custom$/, methods: ['POST'], handler: stub('/api/reports/custom') },
 
   // Stats
-  r(/^\/stats\/monthly$/, ['GET']),
+  { pattern: /^\/stats\/monthly$/, methods: ['GET'], handler: stub('/api/stats/monthly') },
 
   // Logs
-  r(/^\/logs$/, ['GET', 'POST']),
-  r(/^\/logs\/clear$/, ['POST']),
+  {
+    pattern: /^\/logs$/,
+    methods: ['GET', 'POST'],
+    handler: stub('/api/logs'),
+  },
+  { pattern: /^\/logs\/clear$/, methods: ['POST'], handler: stub('/api/logs/clear') },
 ]
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -211,9 +534,7 @@ function extractParams(pattern: RegExp, path: string): Record<string, string> | 
   const match = path.match(pattern)
   if (!match) return null
 
-  // Collect named groups from numbered captures (positional params)
   const params: Record<string, string> = {}
-  // Skip match[0] (full match), extract capture groups
   for (let i = 1; i < match.length; i++) {
     if (match[i] !== undefined) {
       params[`p${i}`] = match[i]
@@ -227,20 +548,21 @@ export async function routeApiRequest(url: string, init?: RequestInit): Promise<
   const method = init?.method ?? 'GET'
   const path = urlObj.pathname.replace(/^\/api/, '') || '/'
 
-  // Parse query string
   const query = urlObj.searchParams
 
-  // Parse body
   let body: unknown = null
   if (init?.body) {
     if (typeof init.body === 'string') {
-      try { body = JSON.parse(init.body) } catch { body = init.body }
+      try {
+        body = JSON.parse(init.body)
+      } catch {
+        body = init.body
+      }
     } else {
       body = init.body
     }
   }
 
-  // Find matching route
   for (const route of routes) {
     const params = extractParams(route.pattern, path)
     if (params === null) continue
@@ -249,13 +571,7 @@ export async function routeApiRequest(url: string, init?: RequestInit): Promise<
       return methodNotAllowed(method, `/api${path}`)
     }
 
-    return route.handler({
-      method,
-      path: `/api${path}`,
-      params,
-      query,
-      body,
-    })
+    return route.handler({ method, path: `/api${path}`, params, query, body })
   }
 
   return notFound(`/api${path}`)
