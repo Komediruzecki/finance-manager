@@ -794,3 +794,23 @@
   margin: 0 0 12px 0;
   color: var(--text);
 }
+
+@media (max-width: 768px) {
+  .budget-summary .month-selector,
+  .budgets-page .month-selector,
+  .month-selector {
+    flex-wrap: wrap;
+  }
+
+  .budgets-page .modal,
+  .budget-summary .modal {
+    max-width: 95vw;
+    margin: 10px;
+    max-height: 85vh;
+  }
+
+  .chart-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+}

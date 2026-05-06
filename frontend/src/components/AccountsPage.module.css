@@ -425,3 +425,11 @@
 .form-control::placeholder {
   color: var(--text-secondary);
 }
+
+@media (max-width: 768px) {
+  .accounts-page .modal {
+    max-width: 95vw;
+    margin: 10px;
+    max-height: 85vh;
+  }
+}

@@ -12,6 +12,7 @@ export interface ChartProps {
   options?: ChartJS.ChartOptions
   height?: number
   width?: string
+  onReady?: (chart: ChartJS.Chart) => void
 }
 
 export default function Chart(props: ChartProps) {
@@ -33,16 +34,17 @@ export default function Chart(props: ChartProps) {
         // Create new chart
         const ctx = canvasRef?.getContext('2d')
         if (!ctx) return
-        ;(canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance =
-          new ChartJS(ctx, {
-            type: props.type,
-            data: props.data,
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              ...props.options,
-            },
-          })
+        const chart = new ChartJS(ctx, {
+          type: props.type,
+          data: props.data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            ...props.options,
+          },
+        })
+        ;(canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance = chart
+        props.onReady?.(chart)
       })
       .catch((_err: unknown) => {
         console.error('Failed to load Chart.js')

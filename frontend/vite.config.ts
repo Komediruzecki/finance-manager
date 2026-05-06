@@ -38,6 +38,19 @@ export default defineConfig({
     devtools({
       targetOrigin: 'auto',
     }),
+    {
+      name: 'copy-export-html',
+      writeBundle() {
+        const exportFiles = ['export.html', 'export-monthly.html']
+        for (const file of exportFiles) {
+          const src = resolve(__dirname, file)
+          const dest = resolve(__dirname, 'dist', file)
+          if (fs.existsSync(src)) {
+            fs.copyFileSync(src, dest)
+          }
+        }
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-192.svg', 'icon-512.svg'],

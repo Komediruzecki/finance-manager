@@ -33,7 +33,7 @@ export function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = createSignal(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = createSignal(false)
   const [isQuickAddOpen, setIsQuickAddOpen] = createSignal(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(true)
   const [quickAddCategories, setQuickAddCategories] = createSignal<Category[]>([])
 
   const loadProfiles = async (autoSelect = false) => {
@@ -509,6 +509,7 @@ export function App() {
               onClick={(e) => {
                 e.preventDefault()
                 setActivePage(item.name)
+                setSidebarCollapsed(true)
                 window.location.hash = item.name
               }}
             >
@@ -521,8 +522,8 @@ export function App() {
         </nav>
       </div>
 
-      <Show when={sidebarCollapsed()}>
-        <div class={layoutStyles['sidebar-overlay']} onClick={() => setSidebarCollapsed(false)} />
+      <Show when={!sidebarCollapsed()}>
+        <div class={layoutStyles['sidebar-overlay']} onClick={() => setSidebarCollapsed(true)} />
       </Show>
 
       <button
