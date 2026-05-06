@@ -259,6 +259,18 @@ app.use(
   })
 );
 
+// ==================== REQUEST TIMING ====================
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) {
+      console.warn(`[SLOW] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+    }
+  });
+  next();
+});
+
 // ==================== RATE LIMITING ====================
 // API rate limiter: 300 requests per minute per IP+profile
 const apiRateLimiter = (() => {
