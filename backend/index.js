@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -109,7 +110,7 @@ const LOGS_DIR = path.join(__dirname, '..', 'logs');
 const LOGS_FILE = path.join(LOGS_DIR, 'server-logs.json');
 if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
 
-function logError(level, source, error, request) {
+async function logError(level, source, error, request) {
   const timestamp = new Date().toISOString();
   const logEntry = {
     timestamp,
@@ -130,12 +131,10 @@ function logError(level, source, error, request) {
 
   let logs = { version: '1.0', max_entries: 500, entries: [] };
   try {
-    if (fs.existsSync(LOGS_FILE)) {
-      const data = fs.readFileSync(LOGS_FILE, 'utf-8');
-      logs = JSON.parse(data);
-    }
+    const data = await fsp.readFile(LOGS_FILE, 'utf-8');
+    logs = JSON.parse(data);
   } catch (e) {
-    console.warn('Failed to read logs:', e.message);
+    if (e.code !== 'ENOENT') console.warn('Failed to read logs:', e.message);
   }
 
   logs.entries.unshift(logEntry);
@@ -144,7 +143,7 @@ function logError(level, source, error, request) {
   }
 
   try {
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2));
+    await fsp.writeFile(LOGS_FILE, JSON.stringify(logs, null, 2));
   } catch (e) {
     console.error('Failed to write logs:', e.message);
   }
@@ -246,7 +245,7 @@ app.use(
     secret: sessionSecret,
     proxy: true, // Trust X-Forwarded-Proto from Apache
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       secure: isProduction, // Require HTTPS in production
       httpOnly: true,
@@ -1252,78 +1251,6 @@ app.delete('/api/categories', apiRateLimiter, (req, res) => {
   }
 });
 
-app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
-  try {
-    const pid = getProfileId(req);
-    const rows = db
-      .prepare(
-        `
-      SELECT cm.*, c.name as category_name, c.color as category_color
-      FROM category_mappings cm
-      JOIN categories c ON cm.category_id = c.id
-      WHERE cm.profile_id = ?
-      ORDER BY cm.use_count DESC, cm.confidence DESC
-    `
-      )
-      .all(pid);
-    res.json(toCamelCase(rows));
-  } catch (err) {
-    console.error(err.message);
-    logError('error', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Add/update a mapping
-app.post('/api/categories/mappings', apiRateLimiter, (req, res) => {
-  try {
-    const pid = getProfileId(req);
-    const { pattern, category_id, confidence, use_count } = req.body;
-
-    // Validation
-    if (!pattern || typeof pattern !== 'string' || pattern.trim() === '') {
-      return res.status(400).json({ error: 'Pattern is required' });
-    }
-    if (!category_id || typeof category_id !== 'number' || category_id <= 0) {
-      return res.status(400).json({ error: 'Valid category_id is required' });
-    }
-
-    // Check if mapping already exists
-    const existing = db
-      .prepare('SELECT id, use_count FROM category_mappings WHERE profile_id=? AND pattern=?')
-      .get(pid, pattern);
-
-    if (existing) {
-      // Update existing mapping
-      db.prepare(
-        `
-        UPDATE category_mappings
-        SET category_id=?, confidence=?, use_count=?
-        WHERE id=?
-      `
-      ).run(category_id, confidence || 0.9, (use_count || existing.use_count) + 1, existing.id);
-      res.json(
-        toCamelCase({ ok: true, id: existing.id, use_count: (use_count || existing.use_count) + 1 })
-      );
-    } else {
-      // Insert new mapping
-      const info = db
-        .prepare(
-          `
-        INSERT INTO category_mappings (profile_id, pattern, category_id, confidence, use_count)
-        VALUES (?, ?, ?, ?, ?)
-      `
-        )
-        .run(pid, pattern.trim(), category_id, confidence || 0.9, use_count || 1);
-      res.json(toCamelCase({ ok: true, id: info.lastInsertRowid }));
-    }
-  } catch (err) {
-    console.error(err.message);
-    logError('error', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Delete a mapping
 app.delete('/api/categories/mappings/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
@@ -1969,12 +1896,12 @@ app.get('/api/transactions', apiRateLimiter, requireAuth, (req, res) => {
       }
     }
     const total = db.prepare(countSql).get(...cparams).c;
-    res.json(toCamelCase({
+    res.json({
       rows,
       total,
       limit: limit ? parseInt(limit) : total,
       offset: offset ? parseInt(offset) : 0,
-    }));
+    });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
