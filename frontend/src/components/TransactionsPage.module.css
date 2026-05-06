@@ -394,3 +394,15 @@
 .modalOverlay.show {
   display: flex;
 }
+
+@media (max-width: 768px) {
+  .transactions-page .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .transactions-page .modal {
+    max-width: 95vw;
+    margin: 10px;
+    max-height: 85vh;
+  }
+}

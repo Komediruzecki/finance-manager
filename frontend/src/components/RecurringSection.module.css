@@ -316,3 +316,9 @@
 .btnSecondary:hover {
   background: var(--bg-secondary);
 }
+
+@media (max-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}

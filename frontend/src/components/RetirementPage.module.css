@@ -297,3 +297,27 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+
+@media (max-width: 768px) {
+  .retirement-page {
+    padding: 16px;
+  }
+
+  .retirement-page .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .retirement-page .goals-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .retirement-page .projection-row,
+  .retirement-page .projection-details {
+    grid-template-columns: 1fr;
+  }
+
+  .retirement-page .projection-bars .bar-label {
+    width: 50px;
+    font-size: 12px;
+  }
+}

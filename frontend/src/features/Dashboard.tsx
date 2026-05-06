@@ -50,6 +50,18 @@ export default function Dashboard() {
   const [loading, setLoading] = createSignal(true)
   const [pillPeriod, setPillPeriod] = createSignal('month')
   const [showSettingsModal, setShowSettingsModal] = createSignal(false)
+  const [savingsGoal, setSavingsGoal] = createSignal(() => {
+    const stored = localStorage.getItem('savingsGoal')
+    return stored ? parseFloat(stored) : 20
+  })
+
+  const handleSavingsGoalChange = (value: string) => {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num >= 0) {
+      setSavingsGoal(num)
+      localStorage.setItem('savingsGoal', String(num))
+    }
+  }
 
   onMount(() => {
     void loadMonthlyData()
@@ -390,7 +402,16 @@ export default function Dashboard() {
                   Details
                 </a>
               </div>
-              <SavingsRateCard />
+              <SavingsRateCard
+                savingsRate={
+                  metrics()!.totalIncome > 0
+                    ? ((metrics()!.totalIncome - metrics()!.totalExpenses) / metrics()!.totalIncome) * 100
+                    : 0
+                }
+                monthlySavings={metrics()!.totalIncome - metrics()!.totalExpenses}
+                goal={savingsGoal()}
+                onGoalChange={handleSavingsGoalChange}
+              />
             </div>
 
             <div class={styles.widgetCard}>

@@ -445,3 +445,24 @@
   background: var(--bg);
   color: var(--text);
 }
+
+@media (max-width: 768px) {
+  .goals-page {
+    padding: 16px;
+  }
+
+  .goals-page .goals-grid,
+  .goals-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .goals-page .modal,
+  .goals-page .modal-overlay .modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+
+  .goals-page .chart-wrapper {
+    height: 200px;
+  }
+}

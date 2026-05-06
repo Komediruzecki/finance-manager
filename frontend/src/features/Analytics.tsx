@@ -30,9 +30,11 @@ import { createEffect, createSignal, onMount } from 'solid-js'
 import styles from '../components/AnalyticsPage.module.css'
 import Chart from '../components/Chart'
 import D3HeatmapChart from '../components/D3HeatmapChart'
+import ExportChartButton from '../components/ExportChartButton'
 import SankeyChart from '../components/SankeyChart'
 import { formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../utils/api'
+import { downloadBlob } from '../utils/chartExport'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
@@ -78,6 +80,11 @@ export default function Analytics() {
     transactions: any[]
     loading: boolean
   } | null>(null)
+  const [categoryChart, setCategoryChart] = createSignal<any>(undefined)
+  const [stackedChart, setStackedChart] = createSignal<any>(undefined)
+  const [monthlyChart, setMonthlyChart] = createSignal<any>(undefined)
+  const [sankeyContainer, setSankeyContainer] = createSignal<HTMLDivElement | undefined>(undefined)
+  const [heatmapContainer, setHeatmapContainer] = createSignal<HTMLDivElement | undefined>(undefined)
 
   // Load weeks for month drill-down
   const loadWeeks = async () => {
@@ -255,6 +262,31 @@ export default function Analytics() {
     return `${value.toFixed(1)}%`
   }
 
+  // Export SVG (D3 charts) as PNG
+  const exportSvgAsPng = (container: HTMLDivElement | undefined, filename: string) => {
+    const svg = container?.querySelector('svg')
+    if (!svg) return
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const canvas = document.createElement('canvas')
+    const rect = svg.getBoundingClientRect()
+    canvas.width = rect.width || 800
+    canvas.height = rect.height || 400
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const img = new Image()
+    img.onload = () => {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+      canvas.toBlob((blob) => {
+        if (blob) downloadBlob(blob, `${filename}.png`)
+      })
+    }
+    const bytes = new TextEncoder().encode(svgData)
+    const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('')
+    img.src = `data:image/svg+xml;base64,${btoa(binary)}`
+  }
+
   onMount(() => {
     loadData()
     // Load heatmap data on initial load
@@ -384,6 +416,11 @@ export default function Analytics() {
                     {categoryType() === 'expense' ? 'Spending' : 'Income'} by Category
                   </h3>
                   <div class={styles.heatmapControls}>
+                    <ExportChartButton
+                      chart={categoryChart()}
+                      filename="category-breakdown"
+                      variant="inline"
+                    />
                     <select
                       class={styles.heatmapTypeSelect}
                       value={categoryType()}
@@ -440,6 +477,7 @@ export default function Analytics() {
                       }}
                       height={300}
                       width="100%"
+                      onReady={setCategoryChart}
                     />
                   )}
                 </div>
@@ -535,6 +573,11 @@ export default function Analytics() {
                   )
                 </h3>
                 <div class={styles.heatmapControls}>
+                  <ExportChartButton
+                    chart={stackedChart()}
+                    filename="category-trends"
+                    variant="inline"
+                  />
                   <select
                     class={styles.heatmapTypeSelect}
                     value={categoryType()}
@@ -639,6 +682,7 @@ export default function Analytics() {
                 ) : (
                   <Chart
                     type="bar"
+                    onReady={setStackedChart}
                     data={{
                       labels: stackedData().labels,
                       datasets: [
@@ -701,13 +745,23 @@ export default function Analytics() {
           {/* Monthly Trend Chart */}
           {selectedChart() === 'monthly' && (
             <div class={styles.analyticsChart}>
-              <h3 class={styles.chartTitle}>Monthly Income vs Expense</h3>
+              <div class={styles.heatmapHeader}>
+                <h3 class={styles.chartTitle}>Monthly Income vs Expense</h3>
+                <div class={styles.heatmapControls}>
+                  <ExportChartButton
+                    chart={monthlyChart()}
+                    filename="monthly-trends"
+                    variant="inline"
+                  />
+                </div>
+              </div>
               <div class={styles.chartContainer}>
                 {data()!.byMonth.length === 0 ? (
                   <div class={styles.emptyState}>No data available</div>
                 ) : (
                   <Chart
                     type="line"
+                    onReady={setMonthlyChart}
                     data={{
                       labels: data()!.byMonth.map((item) =>
                         new Date(item.month).toLocaleDateString('en-US', { month: 'short' })
@@ -828,6 +882,20 @@ export default function Analytics() {
               <div class={styles.heatmapHeader}>
                 <h3 class={styles.chartTitle}>Spending Heatmap</h3>
                 <div class={styles.heatmapControls}>
+                  <button
+                    class={styles.exportButton}
+                    onClick={() => { exportSvgAsPng(heatmapContainer(), 'spending-heatmap'); }}
+                    title="Export as PNG"
+                  >
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                  </button>
                   <select
                     class={styles.heatmapYearSelect}
                     value={heatmapYear()}
@@ -848,7 +916,10 @@ export default function Analytics() {
                   </select>
                 </div>
               </div>
-              <div class={styles.chartContainer}>
+              <div
+                class={styles.chartContainer}
+                ref={setHeatmapContainer}
+              >
                 {heatmapData().size === 0 ? (
                   <div class={styles.emptyState}>No data available for this year</div>
                 ) : (
@@ -932,6 +1003,20 @@ export default function Analytics() {
               <div class={styles.heatmapHeader}>
                 <h3 class={styles.chartTitle}>Budget Flow Diagram</h3>
                 <div class={styles.heatmapControls}>
+                  <button
+                    class={styles.exportButton}
+                    onClick={() => { exportSvgAsPng(sankeyContainer(), 'budget-flow'); }}
+                    title="Export as PNG"
+                  >
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                  </button>
                   <select
                     class={styles.heatmapYearSelect}
                     value={sankeyYear()}
@@ -961,7 +1046,10 @@ export default function Analytics() {
                   </select>
                 </div>
               </div>
-              <div class={styles.chartContainer}>
+              <div
+                class={styles.chartContainer}
+                ref={setSankeyContainer}
+              >
                 {sankeyData().nodes.length === 0 ? (
                   <div class={styles.emptyState}>
                     No budget data for this month. Set budgets to see the flow diagram.

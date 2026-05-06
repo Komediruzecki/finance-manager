@@ -174,3 +174,17 @@
   padding: 60px 20px;
   color: var(--text-secondary);
 }
+
+@media (max-width: 768px) {
+  .calc-container {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarios-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -551,3 +551,18 @@
   background: var(--btn-ghost-hover);
   color: var(--text);
 }
+
+@media (max-width: 768px) {
+  .housing-page {
+    padding: 16px;
+  }
+
+  .housing-page .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .housing-page .modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+}

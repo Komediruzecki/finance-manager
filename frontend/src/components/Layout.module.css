@@ -3,6 +3,11 @@
  * global app layout: sidebar, main content, grid systems
  */
 
+:global(html),
+:global(body) {
+  overflow-x: hidden;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -65,7 +70,9 @@
   padding: 20px 0 120px 0;
   z-index: 100;
   overflow-y: auto;
-  transition: width 0.2s;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  transition: transform 0.25s ease;
 }
 
 .sidebar-logo {
@@ -131,6 +138,7 @@
   margin-left: 240px;
   padding: 24px 32px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .page {
@@ -195,31 +203,32 @@
 
 @media (max-width: 768px) {
   .sidebar {
-    width: 60px;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
   }
 
-  .sidebar-logo h1,
-  .sidebar-logo p,
-  .sidebar-nav a span,
-  .sidebar-footer {
-    display: none;
-  }
-
-  .sidebar-logo {
-    padding: 0 16px 16px;
-  }
-
-  .sidebar-nav a {
-    justify-content: center;
-    padding: 12px;
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
   }
 
   .main {
-    margin-left: 60px;
+    margin-left: 0;
     padding: 16px;
+    overflow-x: hidden;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .page-header-actions {
+    width: 100%;
   }
 
   .grid2,
+  .grid3,
   .grid4 {
     grid-template-columns: 1fr;
   }
@@ -236,10 +245,6 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 99;
-  }
-
-  .sidebar.collapsed {
-    left: -240px;
   }
 }
 
@@ -264,5 +269,20 @@
 @media (max-width: 768px) {
   .mobile-toggle {
     display: flex;
+  }
+}
+
+@media (max-width: 380px) {
+  .main {
+    padding: 12px 8px;
+  }
+
+  .page-header h2 {
+    font-size: 20px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }

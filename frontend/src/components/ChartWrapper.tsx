@@ -131,7 +131,7 @@ export default function ChartWrapper(props: ChartWrapperProps) {
   return (
     <div class={ChartContainer.chartContainer} classList={{ [heightClass]: !!heightClass }}>
       {props.showExport && props.filename && (
-        <ExportChartButton filename={props.filename} chart={undefined} />
+        <ExportChartButton filename={props.filename} chart={chartInstance()} />
       )}
       <canvas ref={(canvas: HTMLCanvasElement) => (canvasRef = canvas)} />
     </div>
