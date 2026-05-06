@@ -11,17 +11,10 @@ import ProfileModal from './components/ProfileModal'
 import QuickAddModal from './components/QuickAddModal'
 import ToastContainer from './components/ToastContainer'
 import { api, toast } from './core/api.js'
-import { authLogout, handlers, receipts, transactions } from './core/handlers.js'
 import { logger } from './core/logger.js'
 import { pages as allPages } from './router.tsx'
 import type { PageName } from './router.tsx'
 import type { Category } from './types/models'
-
-// Mount handlers to window for legacy code compatibility
-window.receipts = receipts
-window.transactions = transactions
-window.handlers = handlers as any
-window.handlers.authLogout = () => authLogout()
 
 export function App() {
   const [_currentPage, _setCurrentPage] = createSignal<PageName>('dashboard')
@@ -98,12 +91,16 @@ export function App() {
 
   const handleLogout = async () => {
     try {
-      await authLogout()
-      setCurrentProfile(null)
-      // Clear localStorage when logged out
+      await api.logout()
       localStorage.removeItem('currentProfileId')
-    } catch {
-      console.error('Logout failed')
+      setCurrentProfile(null)
+      logger.info('User logged out', {}, 'App')
+      toast('Logged out successfully', 'info')
+    } catch (_error) {
+      logger.error('Logout API call failed', {}, 'App')
+      localStorage.removeItem('currentProfileId')
+      setCurrentProfile(null)
+      toast('Logged out', 'info')
     }
   }
 
