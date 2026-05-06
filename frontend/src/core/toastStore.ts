@@ -1,7 +1,7 @@
 /**
  * Shared toast store — signal-based, no DOM manipulation needed
  */
-import { createSignal } from 'solid-js'
+import { createRoot, createSignal } from 'solid-js'
 
 export interface ToastItem {
   id: number
@@ -10,7 +10,11 @@ export interface ToastItem {
 }
 
 let nextId = 0
-const [toasts, setToasts] = createSignal<ToastItem[]>([])
+
+const { toasts, setToasts } = createRoot(() => {
+  const [toasts, setToasts] = createSignal<ToastItem[]>([])
+  return { toasts, setToasts }
+})
 
 export { toasts }
 
