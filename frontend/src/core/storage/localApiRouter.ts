@@ -531,17 +531,37 @@ const routes: RouteDef[] = [
 
   // Calculators (LS10)
   { pattern: /^\/retirement$/, methods: ['POST'], handler: stub('/api/retirement') },
-  { pattern: /^\/retirement\/projection$/, methods: ['GET'], handler: stub('/api/retirement/projection') },
-  { pattern: /^\/retirement-goals$/, methods: ['GET'], handler: stub('/api/retirement-goals') },
+  {
+    pattern: /^\/retirement\/projection$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: (ctx) => h.retirementProjection(ctx.query) }),
+  },
+  {
+    pattern: /^\/retirement-goals$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: () => h.retirementGoals() }),
+  },
   {
     pattern: /^\/housing(\/(\d+))?$/,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     handler: stub('/api/housing'),
   },
   { pattern: /^\/housing\/calculate$/, methods: ['POST'], handler: stub('/api/housing/calculate') },
-  { pattern: /^\/calculator\/compound-interest$/, methods: ['POST'], handler: stub('/api/calculator/compound-interest') },
-  { pattern: /^\/calculator\/retire$/, methods: ['POST'], handler: stub('/api/calculator/retire') },
-  { pattern: /^\/calculator\/emergency-fund$/, methods: ['GET'], handler: stub('/api/calculator/emergency-fund') },
+  {
+    pattern: /^\/calculator\/compound-interest$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.compoundInterest(ctx.body) }),
+  },
+  {
+    pattern: /^\/calculator\/retire$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.retirementCalculate(ctx.body) }),
+  },
+  {
+    pattern: /^\/calculator\/emergency-fund$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: () => h.emergencyFund() }),
+  },
 
   // Reports (LS12)
   {
