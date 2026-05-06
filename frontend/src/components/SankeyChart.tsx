@@ -28,7 +28,7 @@ interface Props {
 
 export default function SankeyChart(props: Props) {
   let containerRef: HTMLDivElement | undefined
-  let svgRef: SVGSVGElement | undefined
+  let resizeDebounce: ReturnType<typeof setTimeout> | undefined
 
   const renderSankey = () => {
     const container = containerRef
@@ -39,9 +39,6 @@ export default function SankeyChart(props: Props) {
     const margin = { top: 10, right: 20, bottom: 10, left: 20 }
 
     // Clear previous
-    if (svgRef) {
-      svgRef.innerHTML = ''
-    }
     d3.select(container).selectAll('svg').remove()
 
     const svg = d3
@@ -50,8 +47,6 @@ export default function SankeyChart(props: Props) {
       .attr('width', width)
       .attr('height', height)
       .attr('viewBox', [0, 0, width, height])
-
-    svgRef = svg.node() as SVGSVGElement
 
     const sankeyGenerator = sankey()
       .nodeWidth(20)
@@ -62,7 +57,6 @@ export default function SankeyChart(props: Props) {
       ])
       .nodeId((d: any) => d.name)
 
-    // Color scheme
     const categoryColors: Record<string, string> = {
       budget: '#6366f1',
       category: '#f59e0b',
@@ -128,16 +122,18 @@ export default function SankeyChart(props: Props) {
   }
 
   onMount(() => {
-    renderSankey()
     const observer = new ResizeObserver(() => {
-      renderSankey()
+      clearTimeout(resizeDebounce)
+      resizeDebounce = setTimeout(() => { renderSankey() }, 150)
     })
     if (containerRef) observer.observe(containerRef)
     onCleanup(() => {
+      clearTimeout(resizeDebounce)
       observer.disconnect()
     })
   })
 
+  // Reactive render on data change — also handles initial render
   createEffect(() => {
     if (props.data) renderSankey()
   })

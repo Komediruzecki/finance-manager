@@ -155,7 +155,7 @@ export default function Transactions() {
       await api.deleteReceipt(receipt.id)
       // Reload transactions to remove the deleted receipt reference
       const data = await api.getTransactions()
-      const transactionsData = Array.isArray(data) ? data : []
+      const transactionsData = Array.isArray(data) ? data : data?.rows ?? []
       setTransactions(transactionsData as unknown as Transaction[])
       closeReceiptModal()
     } catch (error) {
@@ -311,7 +311,7 @@ export default function Transactions() {
       await api.updateTransaction(transactionId, { category_id: categoryId })
       // Reload transactions to update the view
       const data = await api.getTransactions()
-      const transactionsData: any[] = Array.isArray(data) ? data : []
+      const transactionsData: any[] = Array.isArray(data) ? data : data?.rows ?? []
       setTransactions(transactionsData as unknown as Transaction[])
     } catch (error) {
       console.error('Failed to apply category:', error)
@@ -323,7 +323,8 @@ export default function Transactions() {
     setLoading(true)
     try {
       const data = (await api.getTransactions()) as any
-      const transactionsData: any[] = Array.isArray(data) ? data : []
+      // Backend returns { rows, total, limit, offset } for paginated responses
+      const transactionsData: any[] = Array.isArray(data) ? data : data?.rows ?? []
       setTransactions(transactionsData as unknown as Transaction[])
     } catch (error) {
       console.error('Failed to reload transactions:', error)

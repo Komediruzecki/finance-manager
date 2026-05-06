@@ -30,7 +30,7 @@
  * Budgets Component
  * Includes traditional budgeting view, zero-based budgeting (envelope-style), and forecasting
  */
-import { createEffect, createSignal, For } from 'solid-js'
+import { createEffect, createSignal, For, onMount } from 'solid-js'
 import Badge from '../components/Badge'
 import styles from '../components/BudgetsPage.module.css'
 import Button from '../components/Button'
@@ -264,11 +264,15 @@ export default function Budgets() {
     setShowAllocateModal(true)
   }
 
-  // Load data on mount and when month changes
+  // Load improvements once on mount (6-month data, not month-specific)
+  onMount(() => {
+    loadImprovements()
+  })
+
+  // Load data when month changes
   createEffect(() => {
     void month() // track month dependency
     loadData()
-    loadImprovements()
   })
 
   return (
