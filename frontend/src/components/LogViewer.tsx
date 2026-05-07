@@ -4,7 +4,7 @@
  * Accessible from Settings page
  */
 
-import { createSignal, For, onMount, Show } from 'solid-js'
+import { createMemo, createSignal, For, onMount, Show } from 'solid-js'
 import { logger } from '../core/logger'
 import ConfirmButton from './ConfirmButton'
 import css from './LogViewer.module.css'
@@ -12,14 +12,13 @@ import type { LogEntry, LogLevel } from '../core/logger'
 
 export function LogViewer() {
   const [logs, setLogs] = createSignal<LogEntry[]>([])
-  const [filteredLogs, _setFilteredLogs] = createSignal<LogEntry[]>([])
   const [searchTerm, setSearchTerm] = createSignal('')
   const [levelFilter, setLevelFilter] = createSignal<LogLevel[]>([])
   const [componentFilter, setComponentFilter] = createSignal<string>('')
   const [showDetails, setShowDetails] = createSignal(false)
   const [stats, setStats] = createSignal(logger.getStats())
   const [debugMode, setDebugMode] = createSignal(false)
-  const [_expandCount, setExpandCount] = createSignal(10)
+  const [expandCount, setExpandCount] = createSignal(10)
 
   const levels = [
     { value: 'error' as LogLevel, label: 'Error', color: '#ef4444' },
@@ -91,14 +90,16 @@ export function LogViewer() {
     }
   })
 
-  const filtered = getFilteredLogs()
-  const allComponents = Array.from(
-    new Set(
-      logs()
-        .map((l) => l.component)
-        .filter(Boolean) as string[]
-    )
-  ).sort()
+  const filtered = createMemo(() => getFilteredLogs().slice(0, expandCount()))
+  const allComponents = createMemo(() =>
+    Array.from(
+      new Set(
+        logs()
+          .map((l) => l.component)
+          .filter(Boolean) as string[]
+      )
+    ).sort()
+  )
 
   return (
     <div class={css.container}>
@@ -205,7 +206,7 @@ export function LogViewer() {
           onChange={(e) => setComponentFilter(e.target.value)}
         >
           <option value="">All Components</option>
-          <For each={allComponents}>{(comp) => <option value={comp}>{comp}</option>}</For>
+          <For each={allComponents()}>{(comp) => <option value={comp}>{comp}</option>}</For>
         </select>
       </div>
 
@@ -234,7 +235,7 @@ export function LogViewer() {
               />
               {level.label}
               {levelFilter().includes(level.value) &&
-                `(${filteredLogs().filter((l) => l.level === level.value).length})`}
+                `(${filtered().filter((l) => l.level === level.value).length})`}
             </button>
           )}
         </For>
@@ -250,7 +251,7 @@ export function LogViewer() {
             <div class={css.colAction}></div>
           </div>
           <div class={css.tableBody}>
-            <For each={filtered}>
+            <For each={filtered()}>
               {(log) => (
                 <div class={`${css.row} ${log.level}`}>
                   <div class={css.colTime}>
@@ -289,7 +290,7 @@ export function LogViewer() {
               )}
             </For>
 
-            <Show when={filtered.length === 0}>
+            <Show when={filtered().length === 0}>
               <div class={css.empty}>
                 <svg
                   width="48"
@@ -311,7 +312,7 @@ export function LogViewer() {
 
       <div class={css.footer}>
         <span class={css.count}>
-          Showing {filtered.length} of {logs().length} logs
+          Showing {filtered().length} of {logs().length} logs
         </span>
         <button class={css.btnSecondary} onClick={() => setExpandCount((c) => c + 10)}>
           Show more

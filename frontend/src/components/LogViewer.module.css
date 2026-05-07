@@ -157,6 +157,8 @@
 }
 
 .tableHeader {
+  display: flex;
+  align-items: center;
   position: sticky;
   top: 0;
   background: var(--bg);
@@ -169,6 +171,8 @@
 }
 
 .row {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
