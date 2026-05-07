@@ -101,3 +101,15 @@
     padding: 8px;
   }
 }
+
+@media (max-width: 480px) {
+  .table td {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .table th {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+}

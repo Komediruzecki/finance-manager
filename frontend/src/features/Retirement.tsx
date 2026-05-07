@@ -91,8 +91,21 @@ export default function Retirement() {
   const loadGoals = async () => {
     setLoading(true)
     try {
-      const data = await apiGet<RetirementGoal[]>('/api/retirement-goals')
-      setGoals(data)
+      const data = await apiGet<{ settings: any; goals: RetirementGoal[] }>('/api/retirement-goals')
+      setGoals(
+        (data.goals || []).map((g: any) => ({
+          id: g.id,
+          name: g.name || '',
+          target_amount: g.target_amount || 0,
+          current_amount: g.current_amount || 0,
+          target_date: g.deadline || g.target_date || '',
+          monthly_contribution: g.monthly_contribution || 0,
+          expected_return_rate: g.expected_return_rate || 7,
+          current_age: g.current_age || 30,
+          retirement_age: g.retirement_age || 65,
+          profile_id: g.profile_id || 0,
+        }))
+      )
     } catch (err) {
       console.error('Failed to load retirement goals', err)
       showToast('Failed to load retirement goals', 'error')

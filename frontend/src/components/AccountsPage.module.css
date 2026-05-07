@@ -427,9 +427,59 @@
 }
 
 @media (max-width: 768px) {
+  .accounts-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .accounts-page .modal {
     max-width: 95vw;
     margin: 10px;
     max-height: 85vh;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-top .add-account-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .page-header {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .accounts-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card {
+    padding: 14px;
+  }
+
+  .summary-value {
+    font-size: 18px;
+  }
+
+  .accounts-page {
+    margin-top: 16px;
+  }
+
+  .activity-item {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .activity-content {
+    flex: 1 1 100%;
   }
 }

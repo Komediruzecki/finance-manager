@@ -104,8 +104,19 @@ export default function Dashboard() {
 
   const loadMonthlyData = async () => {
     try {
-      const data = await api.getDashboardByMonth(month(), year())
-      setMonthlyData(data)
+      const [_chartsData, netWorthData] = await Promise.all([
+        api.getDashboardCharts(12),
+        api.getNetWorth(),
+      ])
+      const labels = netWorthData.timeline.map((t) => {
+        const [y, m] = t.month.split('-')
+        const date = new Date(parseInt(y), parseInt(m) - 1)
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      })
+      const netWorth = netWorthData.timeline.map((t) => t.balance)
+      const income = netWorthData.timeline.map((t) => t.netChange > 0 ? t.netChange : 0)
+      const expenses = netWorthData.timeline.map((t) => t.netChange < 0 ? Math.abs(t.netChange) : 0)
+      setMonthlyData({ labels, income, expenses, netWorth })
     } catch {
       // Don't show error for monthly data - it's optional
     }

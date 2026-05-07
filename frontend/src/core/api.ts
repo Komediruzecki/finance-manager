@@ -691,10 +691,18 @@ export class ApiClient {
   }
 
   /**
-   * Get dashboard data for a specific month/year
+   * Get dashboard chart data (monthly income/expense, category breakdown, cash flow)
    */
-  async getDashboardByMonth(month: number, year: number): Promise<Models.DashboardChartData> {
-    return this.request<Models.DashboardChartData>(`/dashboard?month=${month}&year=${year}`)
+  async getDashboardCharts(months?: number): Promise<Models.DashboardChartsResponse> {
+    const params = months ? `?months=${months}` : ''
+    return this.request<Models.DashboardChartsResponse>(`/dashboard/charts${params}`)
+  }
+
+  /**
+   * Get net worth timeline data
+   */
+  async getNetWorth(): Promise<Models.NetWorthResponse> {
+    return this.request<Models.NetWorthResponse>('/dashboard/net-worth')
   }
 
   /**

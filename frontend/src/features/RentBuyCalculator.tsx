@@ -66,6 +66,7 @@ export default function RentBuyCalculator(props: Props) {
   })
 
   const [showResults, setShowResults] = createSignal(false)
+  const [chartRef, setChartRef] = createSignal<any>(undefined)
 
   // Load saved calculator settings
   onMount(() => {
@@ -77,6 +78,8 @@ export default function RentBuyCalculator(props: Props) {
         console.error('Failed to load calculator settings')
       }
     }
+    // Calculate immediately with loaded/default values
+    calculate()
   })
 
   // Debounced calculation
@@ -219,8 +222,6 @@ export default function RentBuyCalculator(props: Props) {
   }
 
   const summary = getSummary()
-
-  let chartRef: any = null
 
   return (
     <div class={sharedStyles.page}>
@@ -460,7 +461,7 @@ export default function RentBuyCalculator(props: Props) {
 
           {/* Chart */}
           <div class={styles.chartSection}>
-            <ExportChartButton chart={chartRef} filename="rent-buy-comparison" variant="inline" />
+            <ExportChartButton chart={chartRef()} filename="rent-buy-comparison" variant="inline" />
             <Chart
               id="rentBuyChart"
               type="line"
@@ -518,7 +519,7 @@ export default function RentBuyCalculator(props: Props) {
               height={300}
               width="100%"
               onReady={(chart: any) => {
-                chartRef = chart
+                setChartRef(chart)
               }}
             />
           </div>

@@ -3,8 +3,8 @@
 }
 .budget-summary .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 24px;
 }
 .budget-summary .header-top {
@@ -812,5 +812,66 @@
   .chart-row {
     grid-template-columns: 1fr 1fr;
     gap: 4px;
+  }
+
+  .budgets-page,
+  .budget-summary {
+    padding: 16px;
+  }
+
+  .budgets-page .header-top,
+  .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .budget-summary .header-top,
+  .budget-summary .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .forecast-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .budget-summary .budget-forecast,
+  .budget-forecast {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .forecast-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-summary .forecast-stats,
+  .budget-summary .forecast-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-summary .budget-summary,
+  .budget-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .chart-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .budgets-page h1 {
+    font-size: 20px;
   }
 }

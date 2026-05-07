@@ -24,6 +24,7 @@ export default defineConfig(
       '**/*.config.js',
       '.eslintrc.*',
       'registerSW.js',
+      'chart.umd.min.js',
     ],
   },
   importX.flatConfigs.recommended,

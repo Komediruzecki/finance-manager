@@ -3,8 +3,8 @@
 }
 .housing-page .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 24px;
 }
 .housing-page .header-top {
@@ -564,5 +564,38 @@
   .housing-page .modal {
     max-width: 95vw;
     margin: 10px;
+  }
+
+  .housing-page .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .housing-page .housing-details {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .housing-page {
+    padding: 12px;
+  }
+
+  .housing-page h1 {
+    font-size: 20px;
+  }
+
+  .housing-page .housing-card {
+    padding: 12px;
+  }
+
+  .housing-page .housing-name {
+    font-size: 14px;
+  }
+
+  .housing-page .amount-value {
+    font-size: 18px;
   }
 }

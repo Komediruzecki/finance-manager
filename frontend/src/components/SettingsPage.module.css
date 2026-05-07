@@ -168,3 +168,45 @@
 .btn-primary:hover {
   background: var(--primary-hover);
 }
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 16px;
+  }
+
+  .settings-page .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-page {
+    padding: 12px;
+  }
+
+  .settings-page .page-header h1 {
+    font-size: 20px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .settings-section-title {
+    font-size: 14px;
+  }
+}

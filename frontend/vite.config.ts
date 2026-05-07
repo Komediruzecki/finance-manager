@@ -41,7 +41,7 @@ export default defineConfig({
     {
       name: 'copy-export-html',
       writeBundle() {
-        const exportFiles = ['export.html', 'export-monthly.html']
+        const exportFiles = ['export.html', 'export-monthly.html', 'chart.umd.min.js']
         for (const file of exportFiles) {
           const src = resolve(__dirname, file)
           const dest = resolve(__dirname, 'dist', file)

@@ -214,6 +214,7 @@ export default function Loans() {
     interestRate: number,
     termMonths: number
   ): number => {
+    if (!termMonths || termMonths <= 0) return 0
     if (interestRate === 0) return principal / termMonths
     const monthlyRate = interestRate / 100 / 12
     return (

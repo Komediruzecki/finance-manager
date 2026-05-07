@@ -263,6 +263,18 @@ export interface DashboardChartData {
   netWorth: number[]
 }
 
+export interface DashboardChartsResponse {
+  byCategory: { name: string; color: string; icon: string; total: number; count: number }[]
+  monthly: { month: string; income: number; expense: number }[]
+  cashFlow: { month: string; income: number; expense: number; cumulative: number }[]
+  currency: string
+}
+
+export interface NetWorthResponse {
+  totalNetWorth: number
+  timeline: { month: string; balance: number; netChange: number }[]
+}
+
 export interface CategoryBalance {
   category_id: CategoryId
   category_name: string
