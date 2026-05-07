@@ -2105,8 +2105,14 @@ export async function analyticsSankey(query: URLSearchParams): Promise<Response>
     const budgets = await adapter.listBudgets()
     const cats = await adapter.listCategories()
 
-    // Get budgets for this month
-    const activeBudgets = budgets.filter((b) => b.period === 'month' || b.period === 'monthly')
+    // Get budgets for this month (deduplicate by category_id — listBudgets returns all historical records)
+    const budgetMap = new Map<number, typeof budgets[number]>()
+    for (const b of budgets) {
+      if ((b.period === 'month' || b.period === 'monthly') && !budgetMap.has(b.category_id)) {
+        budgetMap.set(b.category_id, b)
+      }
+    }
+    const activeBudgets = Array.from(budgetMap.values())
 
     // Get actual spending for this month
     const profileTxns = allTxns.filter(
