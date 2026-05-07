@@ -5883,6 +5883,7 @@ app.get('/api/analytics/sankey', apiRateLimiter, (req, res) => {
       JOIN categories c ON b.category_id = c.id AND c.profile_id = b.profile_id
       WHERE b.profile_id IN (${inClause}) AND (b.period = 'month' OR b.period = 'monthly')
       AND strftime('%Y-%m', b.start_date) <= ? AND (b.end_date IS NULL OR strftime('%Y-%m', b.end_date) >= ?)
+      GROUP BY b.category_id
     `
       )
       .all(...pids, `${year}-${month}`, `${year}-${month}`);
