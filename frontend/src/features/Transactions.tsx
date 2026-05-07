@@ -222,8 +222,7 @@ export default function Transactions() {
     setCurrentPage(1)
     if (filters.selectedPreset) {
       applyDatePreset(filters.selectedPreset)
-    }
-    if (filters.dateRange) {
+    } else if (filters.dateRange) {
       setDateRange(filters.dateRange)
     }
   }

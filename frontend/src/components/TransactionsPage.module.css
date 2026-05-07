@@ -407,6 +407,12 @@
   }
 }
 
+@media (min-width: 1600px) {
+  .transactions-page {
+    padding: 16px 24px;
+  }
+}
+
 @media (max-width: 480px) {
   .transactions-page {
     padding: 12px;
