@@ -321,6 +321,18 @@
   background: var(--primary-hover);
 }
 
+.billsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .billsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .bills-page {
     padding: 16px;

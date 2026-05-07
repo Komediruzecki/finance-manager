@@ -72,9 +72,13 @@
   margin-top: 4px;
 }
 .retirement-page .projection-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
 }
 .retirement-page .detail-row {
   display: flex;
@@ -332,8 +336,7 @@
     grid-template-columns: 1fr;
   }
 
-  .retirement-page .projection-row,
-  .retirement-page .projection-details {
+  .retirement-page .projection-row {
     grid-template-columns: 1fr;
   }
 
