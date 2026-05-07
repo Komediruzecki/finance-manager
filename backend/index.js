@@ -97,6 +97,17 @@ function calculateRetirementProjection(
     finalBalance: Math.round(finalBalance),
     shortfall,
     yearsOfRunway,
+    // Frontend-compatible field names
+    current_age: currentAge,
+    retirement_age: retirementAge,
+    current_amount: Math.round(currentSavings),
+    annual_contribution: Math.round(annualContribution),
+    expected_return: Math.round(annualReturn),
+    withdrawal_rate: Math.round(withdrawalRate),
+    years_to_retire: retirementAge - currentAge,
+    projected_total: Math.round(balance),
+    projected_income: Math.round(balance > 0 ? balance * 0.04 : 0),
+    monthly_income_in_retirement: Math.round(balance > 0 ? balance * 0.04 / 12 : 0),
   };
 }
 const XLSX = require('xlsx');
@@ -277,7 +288,7 @@ const apiRateLimiter = (() => {
   const store = global.__rateLimitStore || new Map();
   if (process.env.NODE_ENV === 'test') global.__rateLimitStore = store;
   const WINDOW_MS = 60 * 1000; // 1 minute
-  const MAX_REQUESTS = 300;
+  const MAX_REQUESTS = 600;
 
   setInterval(() => {
     const now = Date.now();
@@ -288,7 +299,7 @@ const apiRateLimiter = (() => {
 
   return (req, res, next) => {
     // Skip rate limiting if X-Skip-RateLimit header is present (for testing)
-    if (req.headers['X-Skip-RateLimit'] === 'true') return next();
+    if (req.headers['x-skip-ratelimit'] === 'true') return next();
 
     // Always set rate limit headers so tests that check them pass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -339,7 +350,7 @@ const authRateLimiter = (() => {
 
   return (req, res, next) => {
     // Skip rate limiting if X-Skip-RateLimit header is present (for testing)
-    if (req.headers['X-Skip-RateLimit'] === 'true') return next();
+    if (req.headers['x-skip-ratelimit'] === 'true') return next();
 
     // Always set rate limit headers so tests that check them pass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -5270,6 +5281,33 @@ app.get('/api/recurring/upcoming', apiRateLimiter, (req, res) => {
 // ========================
 // BILLS API
 // ========================
+// Helper: determine if a bill is paid for the current billing period
+function isBillPaidForCurrentPeriod(bill, now) {
+  if (!bill.last_paid) return false;
+  const lastPaid = new Date(bill.last_paid);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  if (bill.frequency === 'monthly') {
+    // Paid if last_paid is in the current month
+    return lastPaid.getMonth() === today.getMonth() && lastPaid.getFullYear() === today.getFullYear();
+  } else if (bill.frequency === 'weekly') {
+    // Paid if last_paid is within the last 7 days
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return lastPaid >= weekAgo;
+  } else if (bill.frequency === 'biweekly') {
+    // Paid if last_paid is within the last 14 days
+    const twoWeeksAgo = new Date(today);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    return lastPaid >= twoWeeksAgo;
+  } else if (bill.frequency === 'yearly') {
+    // Paid if last_paid is in the current year
+    return lastPaid.getFullYear() === today.getFullYear();
+  }
+  return false;
+}
+
 app.get('/api/bills', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
@@ -5284,7 +5322,23 @@ app.get('/api/bills', apiRateLimiter, (req, res) => {
     `
       )
       .all(pid);
-    res.json(rows);
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    const billsWithStatus = rows.map((b) => {
+      const paid = isBillPaidForCurrentPeriod(b, now);
+      return { ...b, paid };
+    });
+
+    // Filter by paid status if requested
+    if (req.query.paid === 'true') {
+      res.json(billsWithStatus.filter((b) => b.paid));
+    } else if (req.query.paid === 'false') {
+      res.json(billsWithStatus.filter((b) => !b.paid));
+    } else {
+      res.json(billsWithStatus);
+    }
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -5369,6 +5423,7 @@ app.get('/api/bills/upcoming', apiRateLimiter, (req, res) => {
         next_due_date: nextDueStr,
         days_until: daysUntil,
         is_overdue: isOverdue,
+        paid: isBillPaidForCurrentPeriod(b, now),
       };
     });
 

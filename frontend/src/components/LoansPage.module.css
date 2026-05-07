@@ -7,8 +7,8 @@
 /* Page Header */
 .pageHeader {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 24px;
 }
 
@@ -342,6 +342,9 @@
 
 /* Buttons */
 .btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
   background: var(--primary);
   color: #fff;
@@ -507,5 +510,45 @@
     max-width: 95vw;
     margin: 10px;
     max-height: 85vh;
+  }
+
+  .loansPage {
+    padding: 16px;
+  }
+
+  .headerTop {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .loansGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .loansPage {
+    padding: 12px;
+  }
+
+  .pageHeader h1 {
+    font-size: 20px;
+  }
+
+  .summaryValue {
+    font-size: 18px;
+  }
+
+  .loanCard {
+    padding: 12px;
+  }
+
+  .loanName {
+    font-size: 14px;
+  }
+
+  .balanceAmount {
+    font-size: 18px;
   }
 }

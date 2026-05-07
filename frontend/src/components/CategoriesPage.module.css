@@ -4,8 +4,8 @@
 
 .categories-page .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 20px;
 }
 
@@ -276,12 +276,6 @@
 
 .categories-page .empty-state p {
   font-size: 14px;
-}
-/* legacy class mappings for categories page */
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 /* legacy class mappings for categories page */
 .header-top {
@@ -562,19 +556,6 @@
   font-size: 14px;
   color: var(--text-secondary);
 }
-/* legacy class mappings for categories page - continued */
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-subtitle {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin-top: 4px;
-}
-
 .add-category-btn {
   display: inline-flex;
   align-items: center;

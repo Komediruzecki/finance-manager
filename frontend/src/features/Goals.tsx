@@ -64,15 +64,13 @@ export default function Goals() {
     setLoading(true)
     try {
       const data = await apiGet<any[]>('/api/savings-goals')
-      // Convert SavingsGoal (deadline) to Goal (target_date)
       setGoals(
         data.map((s) => ({
           id: s.id,
           name: s.name,
-          target_amount: s.current_amount,
-          current_amount: s.current_amount,
-          target_date: s.deadline || new Date().toISOString().split('T')[0],
-          monthly_contribution: s.monthly_contribution || '',
+          target_amount: s.target_amount || 0,
+          current_amount: s.current_amount || 0,
+          target_date: s.deadline || s.target_date || new Date().toISOString().split('T')[0],
           profile_id: s.profile_id,
           created_at: s.created_at,
         }))
@@ -141,6 +139,7 @@ export default function Goals() {
 
   // Progress percentage
   const getProgress = (goal: Goal): number => {
+    if (!goal.target_amount || goal.target_amount <= 0) return 0
     return Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100))
   }
 
@@ -297,7 +296,7 @@ export default function Goals() {
                   {
                     data: goals().map((g) => g.current_amount),
                     backgroundColor: goals().map((g) => {
-                      const progress = g.current_amount / g.target_amount
+                      const progress = g.target_amount > 0 ? g.current_amount / g.target_amount : 0
                       if (progress < 0.3) return '#dc2626'
                       if (progress < 0.6) return '#eab308'
                       if (progress < 0.9) return '#22c55e'
@@ -323,9 +322,9 @@ export default function Goals() {
                     callbacks: {
                       label: (context: any) => {
                         const goal = goals()[context.dataIndex]
-                        const progress = Math.round(
-                          (goal.current_amount / goal.target_amount) * 100
-                        )
+                        const progress = goal.target_amount > 0
+                          ? Math.round((goal.current_amount / goal.target_amount) * 100)
+                          : 0
                         return `${goal.name}: ${formatCurrency(goal.current_amount)} of ${formatCurrency(goal.target_amount)} (${progress}%)`
                       },
                     },

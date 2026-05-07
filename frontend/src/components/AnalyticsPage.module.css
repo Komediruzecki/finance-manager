@@ -757,6 +757,120 @@
   text-decoration: underline;
 }
 
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: 16px;
+  }
+
+  .analytics-page .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .analytics-page .analytics-tabs,
+  .analytics-tabs {
+    flex-wrap: wrap;
+  }
+
+  .analytics-page .tab,
+  .tab {
+    flex: 1 1 auto;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .analytics-page .savings-rate-display,
+  .savings-rate-display {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .analytics-page .rate-info,
+  .rate-info {
+    width: 100%;
+  }
+
+  .analytics-page .heatmap-header,
+  .heatmap-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .analytics-page .heatmap-controls,
+  .heatmap-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .analytics-page .transaction-item,
+  .transaction-item {
+    flex-wrap: wrap;
+  }
+
+  .analytics-page .transaction-details,
+  .transaction-details {
+    flex: 1 1 100%;
+  }
+
+  .analytics-page .transaction-amount,
+  .transaction-amount {
+    min-width: unset;
+    text-align: left;
+  }
+
+  .analytics-page .analytics-chart,
+  .analytics-chart {
+    padding: 12px;
+  }
+
+  .analytics-page .analytics-stats,
+  .analytics-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .analytics-page .analytics-stats,
+  .analytics-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .rates-container {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-page .tab,
+  .tab {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .analytics-page .stat-value,
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .analytics-page .rate-value,
+  .rate-value {
+    font-size: 20px;
+  }
+
+  .analytics-page .analytics-chart,
+  .analytics-chart {
+    padding: 10px;
+  }
+
+  .analytics-page .chart-title,
+  .chart-title {
+    font-size: 16px;
+  }
+}
+
 /* legacy class mappings for analytics page */
 .page-subtitle {
   color: var(--text-secondary);

@@ -60,3 +60,16 @@
     min-width: unset;
   }
 }
+
+@media (max-width: 480px) {
+  .toastContainer {
+    bottom: 70px;
+    left: 8px;
+    right: 8px;
+  }
+
+  .toast {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}

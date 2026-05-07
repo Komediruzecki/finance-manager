@@ -188,3 +188,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 480px) {
+  .calc-section {
+    padding: 12px;
+  }
+
+  .calc-title {
+    font-size: 14px;
+  }
+
+  .chart-section {
+    padding: 12px;
+  }
+
+  .scenarios-section {
+    padding: 12px;
+  }
+
+  .form-group input {
+    padding: 8px;
+    font-size: 13px;
+  }
+}

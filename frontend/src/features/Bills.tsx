@@ -193,15 +193,29 @@ export default function Bills() {
     }
   }
 
+  const [markingPaid, setMarkingPaid] = createSignal<Set<number>>(new Set())
+
   // Mark bill as paid
   const markPaid = async (id: number) => {
+    // Optimistic update: mark as paid locally immediately
+    setUpcoming(upcoming().map((b) => (b.id === id ? { ...b, paid: true } : b)))
+    setBills(bills().map((b) => (b.id === id ? { ...b, paid: true } : b)))
+    setMarkingPaid(new Set([...markingPaid(), id]))
+
     try {
       await apiPost(`/api/bills/${id}/mark-paid`, {})
       showToast('Bill marked as paid', 'success')
-      loadBills()
+      // Reload to get fresh data from server
+      await loadBills()
     } catch (err) {
       console.error('Failed to mark bill as paid:', err)
       showToast('Failed to mark bill as paid', 'error')
+      // Revert optimistic update on failure
+      await loadBills()
+    } finally {
+      const next = new Set(markingPaid())
+      next.delete(id)
+      setMarkingPaid(next)
     }
   }
 
@@ -278,7 +292,7 @@ export default function Bills() {
       </div>
 
       {/* Upcoming Section */}
-      {upcoming().length > 0 && (
+      {upcoming().filter((b) => !b.paid).length > 0 && (
         <div data-test-id="bills-upcoming-section" class={styles.billsSection}>
           <h2 class={styles.sectionTitle}>
             <svg
@@ -292,10 +306,10 @@ export default function Bills() {
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
             </svg>{' '}
             Upcoming Bills
-            <span class={styles.sectionSubtitle}>{upcoming().length} bills</span>
+            <span class={styles.sectionSubtitle}>{upcoming().filter((b) => !b.paid).length} bills</span>
           </h2>
           <div data-test-id="bills-list" class={styles.billsList}>
-            <For each={upcoming()}>
+            <For each={upcoming().filter((b) => !b.paid)}>
               {(bill) => (
                 <div
                   data-test-id="bill-card"
@@ -346,15 +360,14 @@ export default function Bills() {
                     class={`${styles.billAmount} ${isOverdue(bill.due_date) ? styles.overdue : ''}`}
                   >
                     <div class={styles.amountValue}>{formatCurrency(bill.amount)}</div>
-                    {!bill.paid && (
-                      <button
-                        data-test-id="bill-mark-paid-btn"
-                        class={`${styles.btnPrimary} ${styles.btnSm}`}
-                        onClick={() => markPaid(bill.id)}
-                      >
-                        Mark Paid
-                      </button>
-                    )}
+                    <button
+                      data-test-id="bill-mark-paid-btn"
+                      class={`${styles.btnPrimary} ${styles.btnSm}`}
+                      onClick={() => markPaid(bill.id)}
+                      disabled={markingPaid().has(bill.id)}
+                    >
+                      {markingPaid().has(bill.id) ? 'Paying...' : 'Mark Paid'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -469,7 +482,7 @@ export default function Bills() {
           <div class={styles.billsList}>
             <For each={bills()}>
               {(bill) => (
-                <div class={styles.billCard}>
+                <div class={`${styles.billCard} ${bill.paid ? styles.paid : ''} ${isOverdue(bill.due_date) && !bill.paid ? styles.overdue : ''}`}>
                   <div class={styles.billMain}>
                     <div data-test-id="bill-icon" class={styles.billIcon}>
                       {bill.autopay ? (
@@ -499,6 +512,7 @@ export default function Bills() {
                     <div class={styles.billInfo}>
                       <h3 data-test-id="bill-name" class={styles.billName}>
                         {bill.name}
+                        {bill.paid && <span class={styles.paidBadge}>Paid</span>}
                       </h3>
                       <p data-test-id="bill-details" class={styles.billDetails}>
                         {formatDate(bill.due_date)} •{' '}
@@ -519,8 +533,9 @@ export default function Bills() {
                           data-test-id="bill-mark-paid-btn"
                           class={`${styles.btnPrimary} ${styles.btnSm}`}
                           onClick={() => markPaid(bill.id)}
+                          disabled={markingPaid().has(bill.id)}
                         >
-                          {isOverdue(bill.due_date) ? 'Mark as Paid (Overdue)' : 'Mark Paid'}
+                          {markingPaid().has(bill.id) ? 'Paying...' : isOverdue(bill.due_date) ? 'Mark as Paid (Overdue)' : 'Mark Paid'}
                         </button>
                       ) : (
                         <ConfirmButton

@@ -46,12 +46,6 @@ interface Category {
   budget?: number
 }
 
-interface ExpenseCategory extends Category {
-  spent: number
-  remaining?: number
-  percent_used: number
-}
-
 export default function Categories() {
   const [categories, setCategories] = createSignal<Category[]>([])
   const [loading, setLoading] = createSignal(true)
@@ -60,6 +54,8 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = createSignal<Category | null>(null)
   const [selectedCategory, setSelectedCategory] = createSignal<Category | null>(null)
   const [budgetAmount, setBudgetAmount] = createSignal('')
+  const [filterType, setFilterType] = createSignal<'all' | 'expense' | 'income'>('all')
+  const [budgetSummary, setBudgetSummary] = createSignal<Record<number, { spent: number; budget: number; remaining: number; percent_used: number }>>({})
   const [formData, setFormData] = createSignal({
     name: '',
     type: 'expense' as 'expense' | 'income',
@@ -71,8 +67,23 @@ export default function Categories() {
   const loadCategories = async () => {
     setLoading(true)
     try {
-      const [allRes] = await Promise.all([apiGet<Category[]>('/api/categories')])
+      const [allRes, budgetRes] = await Promise.all([
+        apiGet<Category[]>('/api/categories'),
+        apiGet<any[]>('/api/budgets/summary').catch(() => [] as any[]),
+      ])
       setCategories(allRes)
+      const summary: Record<number, { spent: number; budget: number; remaining: number; percent_used: number }> = {}
+      if (Array.isArray(budgetRes)) {
+        for (const b of budgetRes) {
+          summary[b.category_id] = {
+            spent: b.spent || 0,
+            budget: b.amount || 0,
+            remaining: b.remaining || 0,
+            percent_used: b.percentage || 0,
+          }
+        }
+      }
+      setBudgetSummary(summary)
     } catch (err) {
       console.error('Failed to load categories:', err)
       showToast('Failed to load categories', 'error')
@@ -213,16 +224,20 @@ export default function Categories() {
 
       <div class={styles.categoriesTabs}>
         <button
-          class={`${styles.tab} ${categories().filter((c) => c.type === 'expense').length === 0 ? styles.active : ''}`}
-          onClick={() => loadCategories()}
+          class={`${styles.tab} ${filterType() === 'all' ? styles.active : ''}`}
+          onClick={() => setFilterType('all')}
+        >
+          All Categories
+        </button>
+        <button
+          class={`${styles.tab} ${filterType() === 'expense' ? styles.active : ''}`}
+          onClick={() => setFilterType('expense')}
         >
           Expenses
         </button>
         <button
-          class={`${styles.tab} ${categories().filter((c) => c.type === 'income').length === 0 ? styles.active : ''}`}
-          onClick={() => {
-            setCategories(categories().filter((c) => c.type === 'income'))
-          }}
+          class={`${styles.tab} ${filterType() === 'income' ? styles.active : ''}`}
+          onClick={() => setFilterType('income')}
         >
           Income
         </button>
@@ -242,13 +257,18 @@ export default function Categories() {
         </div>
       ) : (
         <div class={styles.categoriesGrid}>
-          <For each={categories()}>
+          <For
+            each={categories().filter((c) =>
+              filterType() === 'all' ? true : c.type === filterType()
+            )}
+          >
             {(category) => {
               const iconClass = getIconClass(category.color)
-              const spent = (category as ExpenseCategory).spent || 0
-              const budget = (category as ExpenseCategory).budget || 0
-              const remaining = (category as ExpenseCategory).remaining ?? budget - spent
-              const percentUsed = (category as ExpenseCategory).percent_used || 0
+              const summary = budgetSummary()[category.id]
+              const spent = summary?.spent || 0
+              const budget = summary?.budget || 0
+              const remaining = summary?.remaining ?? budget - spent
+              const percentUsed = summary?.percent_used || 0
               const isOverBudget = percentUsed > 100
 
               return (
@@ -368,7 +388,11 @@ export default function Categories() {
                           onClick={() => updateColor(category.id, color)}
                           title={color}
                         >
-                          {color}
+                          {category.color === color && (
+                            <svg width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -468,7 +492,11 @@ export default function Categories() {
                       onClick={() => setFormData({ ...formData(), color })}
                       title={color}
                     >
-                      {color}
+                      {formData().color === color && (
+                        <svg width="14" height="14" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -528,7 +556,7 @@ export default function Categories() {
                   class={styles.formControl}
                   placeholder="500.00"
                   value={budgetAmount()}
-                  onInput={(e) => setBudgetAmount((e.target as HTMLInputElement).value)}
+                  oninput={(e) => setBudgetAmount((e.target as HTMLInputElement).value)}
                 />
               </div>
             </div>

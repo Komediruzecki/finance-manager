@@ -150,7 +150,7 @@ export default function Analytics() {
         byCategory,
         byMonth: [],
         recentTransactions,
-        savingsRate: transactionsRes
+        savingsRate: transactionsRes?.total_income > 0
           ? ((transactionsRes.total_income - transactionsRes.total_expense) /
               transactionsRes.total_income) *
             100

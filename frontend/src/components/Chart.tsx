@@ -21,6 +21,12 @@ export default function Chart(props: ChartProps) {
   createEffect(() => {
     if (canvasRef === null) return
 
+    // Capture props synchronously so SolidJS tracks them as dependencies
+    const chartType = props.type
+    const chartData = props.data
+    const chartOptions = props.options
+    const onReady = props.onReady
+
     // Lazy load Chart.js to avoid import issues
     import('chart.js/auto')
       .then(({ default: ChartJS }) => {
@@ -35,16 +41,16 @@ export default function Chart(props: ChartProps) {
         const ctx = canvasRef?.getContext('2d')
         if (!ctx) return
         const chart = new ChartJS(ctx, {
-          type: props.type,
-          data: props.data,
+          type: chartType,
+          data: chartData,
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            ...props.options,
+            ...chartOptions,
           },
         })
         ;(canvasRef as HTMLCanvasElement & { chartInstance?: ChartJS.Chart }).chartInstance = chart
-        props.onReady?.(chart)
+        onReady?.(chart)
       })
       .catch((_err: unknown) => {
         console.error('Failed to load Chart.js')

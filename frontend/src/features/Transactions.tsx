@@ -957,7 +957,7 @@ export default function Transactions() {
                 </div>
                 <div class={styles.receiptMetaItem}>
                   <span class={styles.receiptMetaLabel}>Size</span>
-                  <span>{(selectedReceipt()!.file_size / 1024).toFixed(2)} KB</span>
+                  <span>{((selectedReceipt()!.file_size || 0) / 1024).toFixed(2)} KB</span>
                 </div>
                 <div class={styles.receiptMetaItem}>
                   <span class={styles.receiptMetaLabel}>Uploaded</span>
