@@ -59,12 +59,12 @@
 }
 
 .date-col {
-  width: 110px;
+  width: 120px;
   font-size: 13px;
 }
 
 .description-col {
-  min-width: 200px;
+  min-width: 250px;
 }
 
 .description {
@@ -88,7 +88,7 @@
 }
 
 .category-col {
-  min-width: 150px;
+  min-width: 180px;
 }
 
 .category-name {
