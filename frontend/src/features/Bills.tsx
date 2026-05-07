@@ -291,9 +291,11 @@ export default function Bills() {
         </p>
       </div>
 
-      {/* Upcoming Section */}
-      {upcoming().filter((b) => !b.paid).length > 0 && (
-        <div data-test-id="bills-upcoming-section" class={styles.billsSection}>
+      <div class={styles.billsGrid}>
+
+        {/* Upcoming Section */}
+        {upcoming().filter((b) => !b.paid).length > 0 && (
+          <div data-test-id="bills-upcoming-section" class={styles.billsSection}>
           <h2 class={styles.sectionTitle}>
             <svg
               width="16"
@@ -370,74 +372,6 @@ export default function Bills() {
                     >
                       {markingPaid().has(bill.id) ? 'Paying...' : 'Mark Paid'}
                     </button>
-                  </div>
-                </div>
-              )}
-            </For>
-          </div>
-        </div>
-      )}
-
-      {/* Paid Section */}
-      {paid().length > 0 && (
-        <div data-test-id="bills-paid-section" class={styles.billsSection}>
-          <h2 class={styles.sectionTitle}>
-            <svg
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>{' '}
-            Paid Bills
-            <span class={styles.sectionSubtitle}>{paid().length} bills</span>
-          </h2>
-          <div data-test-id="bills-list" class={styles.billsList}>
-            <For each={paid()}>
-              {(bill) => (
-                <div data-test-id="bill-card" class={`${styles.billCard} ${styles.paid}`}>
-                  <div class={styles.billMain}>
-                    <div data-test-id="bill-icon" class={styles.billIcon}>
-                      <svg
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div class={styles.billInfo}>
-                      <h3 data-test-id="bill-name" class={styles.billName}>
-                        {bill.name}
-                      </h3>
-                      <p data-test-id="bill-details" class={styles.billDetails}>
-                        Paid {formatDate(bill.due_date)}
-                      </p>
-                    </div>
-                  </div>
-                  <div class={styles.billAmount}>
-                    <div class={styles.amountValue}>{formatCurrency(bill.amount)}</div>
-                    <ConfirmButton
-                      class={`${styles.btnSm} ${styles.btnGhost}`}
-                      onConfirm={() => deleteBill(bill.id)}
-                      label={
-                        <svg
-                          width="16"
-                          height="16"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      }
-                    />
                   </div>
                 </div>
               )}
@@ -570,6 +504,76 @@ export default function Bills() {
           </div>
         )}
       </div>
+
+      </div>
+
+      {/* Paid Section */}
+      {paid().length > 0 && (
+        <div data-test-id="bills-paid-section" class={styles.billsSection}>
+          <h2 class={styles.sectionTitle}>
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>{' '}
+            Paid Bills
+            <span class={styles.sectionSubtitle}>{paid().length} bills</span>
+          </h2>
+          <div data-test-id="bills-list" class={styles.billsList}>
+            <For each={paid()}>
+              {(bill) => (
+                <div data-test-id="bill-card" class={`${styles.billCard} ${styles.paid}`}>
+                  <div class={styles.billMain}>
+                    <div data-test-id="bill-icon" class={styles.billIcon}>
+                      <svg
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div class={styles.billInfo}>
+                      <h3 data-test-id="bill-name" class={styles.billName}>
+                        {bill.name}
+                      </h3>
+                      <p data-test-id="bill-details" class={styles.billDetails}>
+                        Paid {formatDate(bill.due_date)}
+                      </p>
+                    </div>
+                  </div>
+                  <div class={styles.billAmount}>
+                    <div class={styles.amountValue}>{formatCurrency(bill.amount)}</div>
+                    <ConfirmButton
+                      class={`${styles.btnSm} ${styles.btnGhost}`}
+                      onConfirm={() => deleteBill(bill.id)}
+                      label={
+                        <svg
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      )}
 
       {/* Add Bill Modal */}
       {showAddModal() && (

@@ -332,7 +332,7 @@ export default function Retirement() {
                 <div class={styles.cardValue}>
                   {formatAmount(projection()!.annual_contribution / 12)}
                 </div>
-                <div class={styles.cardSub}>${projection()!.annual_contribution}/year</div>
+                <div class={styles.cardSub}>{formatAmount(projection()!.annual_contribution)}/year</div>
               </div>
               <div class={styles.projectionCard}>
                 <div class={styles.cardLabel}>Expected Return</div>
