@@ -68,7 +68,9 @@ export class ThemeStore {
       incomeBg: 'rgba(34,197,94,.2)',
       expenseBg: 'rgba(239,68,68,.2)',
       primaryBg: 'rgba(59,130,246,.15)',
-      grid: cs.getPropertyValue('--chart-grid').trim() || (this.isDark() ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)'),
+      grid:
+        cs.getPropertyValue('--chart-grid').trim() ||
+        (this.isDark() ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)'),
       text: cs.getPropertyValue('--text').trim(),
       textSecondary: cs.getPropertyValue('--text-secondary').trim(),
       border: cs.getPropertyValue('--border').trim(),

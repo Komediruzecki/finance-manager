@@ -557,7 +557,10 @@ export default function Loans() {
                   responsive: true,
                   maintainAspectRatio: false,
                   scales: {
-                    x: { ticks: { color: chartColors().text }, grid: { color: chartColors().grid } },
+                    x: {
+                      ticks: { color: chartColors().text },
+                      grid: { color: chartColors().grid },
+                    },
                     y: {
                       beginAtZero: true,
                       ticks: {

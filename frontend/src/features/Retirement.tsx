@@ -36,8 +36,8 @@ import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
 import styles from '../components/RetirementPage.module.css'
 import { formatCurrency } from '../core/api'
-import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 import { theme } from '../core/theme'
+import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 
 interface RetirementGoal {
   id: number
@@ -334,7 +334,9 @@ export default function Retirement() {
                 <div class={styles.cardValue}>
                   {formatAmount(projection()!.annual_contribution / 12)}
                 </div>
-                <div class={styles.cardSub}>{formatAmount(projection()!.annual_contribution)}/year</div>
+                <div class={styles.cardSub}>
+                  {formatAmount(projection()!.annual_contribution)}/year
+                </div>
               </div>
               <div class={styles.projectionCard}>
                 <div class={styles.cardLabel}>Expected Return</div>

@@ -2106,7 +2106,7 @@ export async function analyticsSankey(query: URLSearchParams): Promise<Response>
     const cats = await adapter.listCategories()
 
     // Get budgets for this month (deduplicate by category_id — listBudgets returns all historical records)
-    const budgetMap = new Map<number, typeof budgets[number]>()
+    const budgetMap = new Map<number, (typeof budgets)[number]>()
     for (const b of budgets) {
       if ((b.period === 'month' || b.period === 'monthly') && !budgetMap.has(b.category_id)) {
         budgetMap.set(b.category_id, b)
@@ -3124,9 +3124,7 @@ export async function importExecute(body: unknown): Promise<Response> {
       let accountId: number | null = null
       if (mapping.category && row[mapping.category]) {
         const catName = toStr(row[mapping.category]).toLowerCase().trim()
-        let cat = categories.find(
-          (c) => c.name.toLowerCase().trim() === catName
-        )
+        let cat = categories.find((c) => c.name.toLowerCase().trim() === catName)
         // Auto-create category if not found
         if (!cat) {
           const defaultColor = '#6366f1'

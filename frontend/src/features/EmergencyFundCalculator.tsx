@@ -22,8 +22,8 @@ import { createSignal, For, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
-import { apiGet, showToast } from '../utils/api'
 import { theme } from '../core/theme'
+import { apiGet, showToast } from '../utils/api'
 import sharedStyles from './CalculatorShared.module.css'
 import styles from './EmergencyFundCalculator.module.css'
 
@@ -138,7 +138,11 @@ export default function EmergencyFundCalculator() {
                 setChartRef(chart)
               }}
             />
-            <ExportChartButton chart={chartRef()} filename="emergency-fund-chart" variant="inline" />
+            <ExportChartButton
+              chart={chartRef()}
+              filename="emergency-fund-chart"
+              variant="inline"
+            />
           </div>
 
           {/* Coverage Details */}

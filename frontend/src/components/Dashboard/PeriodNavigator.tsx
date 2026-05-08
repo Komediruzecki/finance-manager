@@ -15,8 +15,18 @@ export interface PeriodNavigatorProps {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 export function PeriodNavigator(props: PeriodNavigatorProps) {
@@ -49,7 +59,10 @@ export function PeriodNavigator(props: PeriodNavigatorProps) {
         <div class={styles.dropdownWrapper}>
           <button
             class={styles.monthBtn}
-            onClick={() => { setShowMonthPicker(!showMonthPicker()); setShowYearPicker(false) }}
+            onClick={() => {
+              setShowMonthPicker(!showMonthPicker())
+              setShowYearPicker(false)
+            }}
             type="button"
           >
             {MONTHS[props.month() - 1]}
@@ -81,7 +94,10 @@ export function PeriodNavigator(props: PeriodNavigatorProps) {
         <div class={styles.dropdownWrapper}>
           <button
             class={styles.yearBtn}
-            onClick={() => { setShowYearPicker(!showYearPicker()); setShowMonthPicker(false) }}
+            onClick={() => {
+              setShowYearPicker(!showYearPicker())
+              setShowMonthPicker(false)
+            }}
             type="button"
           >
             {props.year()}
@@ -132,7 +148,10 @@ export function PeriodNavigator(props: PeriodNavigatorProps) {
       <Show when={showMonthPicker() || showYearPicker()}>
         <div
           class={styles.overlay}
-          onClick={() => { setShowMonthPicker(false); setShowYearPicker(false) }}
+          onClick={() => {
+            setShowMonthPicker(false)
+            setShowYearPicker(false)
+          }}
         />
       </Show>
     </div>

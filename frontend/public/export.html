@@ -22,7 +22,7 @@
         --chart-tick: #64748b;
       }
 
-      [data-theme="dark"] {
+      [data-theme='dark'] {
         --bg: #0f172a;
         --card-bg: #1e293b;
         --text: #e2e8f0;
@@ -123,16 +123,16 @@
         color: #dc2626;
       }
 
-      [data-theme="dark"] .stat-income .stat-value {
+      [data-theme='dark'] .stat-income .stat-value {
         color: #10b981;
       }
-      [data-theme="dark"] .stat-expense .stat-value {
+      [data-theme='dark'] .stat-expense .stat-value {
         color: #f87171;
       }
-      [data-theme="dark"] .stat-net .stat-value {
+      [data-theme='dark'] .stat-net .stat-value {
         color: #10b981;
       }
-      [data-theme="dark"] .stat-net.negative .stat-value {
+      [data-theme='dark'] .stat-net.negative .stat-value {
         color: #f87171;
       }
 
@@ -243,15 +243,55 @@
         font-weight: 600;
       }
 
-      [data-theme="dark"] .val-income { color: #10b981; }
-      [data-theme="dark"] .val-expense { color: #f87171; }
-      [data-theme="dark"] .val-positive { color: #10b981; }
-      [data-theme="dark"] .val-negative { color: #f87171; }
+      [data-theme='dark'] .val-income {
+        color: #10b981;
+      }
+      [data-theme='dark'] .val-expense {
+        color: #f87171;
+      }
+      [data-theme='dark'] .val-positive {
+        color: #10b981;
+      }
+      [data-theme='dark'] .val-negative {
+        color: #f87171;
+      }
 
       @media print {
         body {
           background: white;
           padding: 20px;
+        }
+        .header h1,
+        .header .subtitle,
+        .summary-box h3,
+        .stat-label,
+        .chart-card h3,
+        .monthly-table h3 {
+          color: #1e293b !important;
+        }
+        .stat-income .stat-value {
+          color: #059669 !important;
+        }
+        .stat-expense .stat-value {
+          color: #dc2626 !important;
+        }
+        .stat-net .stat-value {
+          color: #059669 !important;
+        }
+        .stat-net.negative .stat-value {
+          color: #dc2626 !important;
+        }
+        .val-income {
+          color: #059669 !important;
+        }
+        .val-expense {
+          color: #dc2626 !important;
+        }
+        .val-positive {
+          color: #059669 !important;
+        }
+        .val-negative {
+          color: #dc2626 !important;
         }
         .chart-card {
           break-inside: avoid;
