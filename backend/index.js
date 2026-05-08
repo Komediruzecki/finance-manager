@@ -662,6 +662,7 @@ app.post('/api/auth/login', authRateLimiter, async (req, res) => {
 });
 
 app.post('/api/auth/logout', apiRateLimiter, (req, res) => {
+  res.clearCookie('connect.sid');
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ error: 'Logout failed' });
     res.json(toCamelCase({ ok: true }));
