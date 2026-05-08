@@ -324,6 +324,101 @@
   gap: 12px;
 }
 
+/* modal */
+.retirement-page .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fade-in 0.2s ease-out;
+}
+.retirement-page .modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slide-in 0.2s ease-out;
+}
+.retirement-page .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.retirement-page .modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+.retirement-page .modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: background 0.2s;
+}
+.retirement-page .modal-close:hover {
+  background: var(--bg);
+}
+.retirement-page .modal-body {
+  padding: 20px;
+}
+.retirement-page .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+.retirement-page .btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.retirement-page .btn-secondary:hover {
+  background: var(--bg);
+}
+.retirement-page .empty-state {
+  padding: 48px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.retirement-page .empty-state p {
+  margin: 8px 0;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .retirement-page {
     padding: 16px;
@@ -350,6 +445,11 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .retirement-page .modal {
+    max-width: 95vw;
+    margin: 10px;
   }
 }
 
