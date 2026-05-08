@@ -133,7 +133,11 @@ export default function ChartWrapper(props: ChartWrapperProps) {
   const heightStyle = props.height ? `height: ${props.height}px` : undefined
 
   return (
-    <div class={ChartContainer.chartContainer} classList={{ [heightClass]: !!heightClass }} style={heightStyle}>
+    <div
+      class={ChartContainer.chartContainer}
+      classList={{ [heightClass]: !!heightClass }}
+      style={heightStyle}
+    >
       {props.showExport && props.filename && (
         <ExportChartButton filename={props.filename} chart={chartInstance()} />
       )}

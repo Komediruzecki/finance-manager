@@ -123,7 +123,9 @@ export default function Import() {
 
   // Column mapping
   const [columnMapping, setColumnMapping] = createSignal<Record<string, number>>({})
-  const [categoryTypes, setCategoryTypes] = createSignal<Record<string, 'income' | 'expense' | 'account'>>({})
+  const [categoryTypes, setCategoryTypes] = createSignal<
+    Record<string, 'income' | 'expense' | 'account'>
+  >({})
   const [accountTypes, setAccountTypes] = createSignal<Record<string, string>>({})
   const [accountBalances, setAccountBalances] = createSignal<Record<string, string>>({})
   const [accountBalanceDates, setAccountBalanceDates] = createSignal<Record<string, string>>({})
@@ -469,11 +471,35 @@ export default function Import() {
   // Auto-detect income categories based on keywords in the category name
   const classifyCategory = (name: string): 'income' | 'expense' | 'account' => {
     const lower = name.toLowerCase()
-    const incomeKeywords = ['salary', 'income', 'wages', 'wage', 'payroll', 'revenue',
-      'dividend', 'refund', 'bonus', 'paycheck', 'pay cheque', 'interest',
-      'credit', 'received', 'royalt']
-    const accountKeywords = ['account', 'bank', 'checking', 'savings', 'giro',
-      'deposit', 'wallet', 'portfolio', 'investment account', 'credit card account']
+    const incomeKeywords = [
+      'salary',
+      'income',
+      'wages',
+      'wage',
+      'payroll',
+      'revenue',
+      'dividend',
+      'refund',
+      'bonus',
+      'paycheck',
+      'pay cheque',
+      'interest',
+      'credit',
+      'received',
+      'royalt',
+    ]
+    const accountKeywords = [
+      'account',
+      'bank',
+      'checking',
+      'savings',
+      'giro',
+      'deposit',
+      'wallet',
+      'portfolio',
+      'investment account',
+      'credit card account',
+    ]
     if (incomeKeywords.some((kw) => lower.includes(kw))) return 'income'
     if (accountKeywords.some((kw) => lower.includes(kw))) return 'account'
     return 'expense'

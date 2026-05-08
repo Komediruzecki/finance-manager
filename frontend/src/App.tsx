@@ -4,6 +4,7 @@
 
 import { createSignal, For, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
+import ConfirmDialog from './components/ConfirmDialog'
 import layoutStyles from './components/Layout.module.css'
 import LoginModal from './components/LoginModal'
 import profileStyles from './components/Profile.module.css'
@@ -575,6 +576,7 @@ export function App() {
       />
 
       <ToastContainer />
+      <ConfirmDialog />
     </Suspense>
   )
 }

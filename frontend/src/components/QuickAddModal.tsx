@@ -127,9 +127,7 @@ export function QuickAddModal(props: QuickAddModalProps) {
                   step="0.01"
                   placeholder="0.00"
                   value={formData().amount}
-                  oninput={(e) =>
-                    setFormData({ ...formData(), amount: e.currentTarget.value })
-                  }
+                  oninput={(e) => setFormData({ ...formData(), amount: e.currentTarget.value })}
                   disabled={isSubmitting()}
                 />
               </div>

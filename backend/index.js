@@ -624,10 +624,9 @@ function profileParams(pids, extra = []) {
 // AUTH
 // ========================
 function requireAuth(req, res, next) {
-  // Relaxed auth for demo profiles - allows accessing transactions logged in or logged out
-  // if (!req.session.userId) {
-  //   return res.status(401).json({ error: 'Unauthorized' });
-  // }
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   next();
 }
 

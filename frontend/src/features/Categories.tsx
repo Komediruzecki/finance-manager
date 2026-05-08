@@ -284,11 +284,9 @@ export default function Categories() {
                 <div class={styles.categoryCard}>
                   <div class={styles.categoryHeader}>
                     <div class={`${styles.categoryIcon} ${iconClass}`}>
-                      {category.icon && category.icon !== 'tag' ? (
-                        category.icon
-                      ) : (
-                        getCategorySvg(category.name)
-                      )}
+                      {category.icon && category.icon !== 'tag'
+                        ? category.icon
+                        : getCategorySvg(category.name)}
                     </div>
                     <div class={styles.categoryInfo}>
                       <h3 class={styles.categoryName}>{category.name}</h3>

@@ -109,8 +109,18 @@ export default function Budgets() {
   const [showYearPicker, setShowYearPicker] = createSignal(false)
 
   const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ]
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i)
@@ -157,8 +167,7 @@ export default function Budgets() {
           status:
             item.status ||
             (item.percent_used > 100 ? 'over' : item.percent_used >= 90 ? 'warning' : 'ok'),
-          is_fully_allocated:
-            item.is_fully_allocated ?? (item.is_budgeted && item.amount > 0),
+          is_fully_allocated: item.is_fully_allocated ?? (item.is_budgeted && item.amount > 0),
         })
       )
       setAllocations(allocationsList)
@@ -351,7 +360,10 @@ export default function Budgets() {
               <button
                 data-test-id="month-display"
                 class={styles.monthBtn}
-                onclick={() => { setShowMonthPicker(!showMonthPicker()); setShowYearPicker(false) }}
+                onclick={() => {
+                  setShowMonthPicker(!showMonthPicker())
+                  setShowYearPicker(false)
+                }}
               >
                 {MONTHS[currentMonthNum() - 1]}
                 <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
@@ -378,7 +390,10 @@ export default function Budgets() {
             <div class={styles.dropdownWrapper}>
               <button
                 class={styles.yearBtn}
-                onclick={() => { setShowYearPicker(!showYearPicker()); setShowMonthPicker(false) }}
+                onclick={() => {
+                  setShowYearPicker(!showYearPicker())
+                  setShowMonthPicker(false)
+                }}
               >
                 {currentYearNum()}
                 <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
@@ -402,11 +417,7 @@ export default function Budgets() {
                 </div>
               )}
             </div>
-            <button
-              class={styles.btnGhost}
-              onclick={goToNextMonth}
-              aria-label="Next month"
-            >
+            <button class={styles.btnGhost} onclick={goToNextMonth} aria-label="Next month">
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
@@ -419,7 +430,10 @@ export default function Budgets() {
             {(showMonthPicker() || showYearPicker()) && (
               <div
                 class={styles.overlay}
-                onclick={() => { setShowMonthPicker(false); setShowYearPicker(false) }}
+                onclick={() => {
+                  setShowMonthPicker(false)
+                  setShowYearPicker(false)
+                }}
               />
             )}
           </div>
@@ -958,7 +972,6 @@ export default function Budgets() {
           </div>
         </div>
       )}
-
     </div>
   )
 }

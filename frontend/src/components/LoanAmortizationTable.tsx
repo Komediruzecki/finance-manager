@@ -251,7 +251,12 @@ export default function LoanAmortizationTable(props: Props) {
                     x: {
                       stacked: true,
                       grid: { display: false },
-                      ticks: { font: { size: 10 }, maxTicksLimit: 12, autoSkip: true, color: chartColors().text },
+                      ticks: {
+                        font: { size: 10 },
+                        maxTicksLimit: 12,
+                        autoSkip: true,
+                        color: chartColors().text,
+                      },
                     },
                     y: {
                       stacked: true,
@@ -263,7 +268,12 @@ export default function LoanAmortizationTable(props: Props) {
                   plugins: {
                     legend: {
                       position: 'top',
-                      labels: { usePointStyle: true, padding: 12, font: { size: 11 }, color: chartColors().legend },
+                      labels: {
+                        usePointStyle: true,
+                        padding: 12,
+                        font: { size: 11 },
+                        color: chartColors().legend,
+                      },
                     },
                   },
                 }}
@@ -310,8 +320,15 @@ export default function LoanAmortizationTable(props: Props) {
                   responsive: true,
                   maintainAspectRatio: false,
                   scales: {
-                    x: { ticks: { color: chartColors().text }, grid: { color: chartColors().grid } },
-                    y: { beginAtZero: true, ticks: { callback: (v: any) => formatCurrency(v), color: chartColors().text }, grid: { color: chartColors().grid } },
+                    x: {
+                      ticks: { color: chartColors().text },
+                      grid: { color: chartColors().grid },
+                    },
+                    y: {
+                      beginAtZero: true,
+                      ticks: { callback: (v: any) => formatCurrency(v), color: chartColors().text },
+                      grid: { color: chartColors().grid },
+                    },
                   },
                   plugins: {
                     legend: { display: false },

@@ -41,7 +41,8 @@ import RecurringSection from '../components/RecurringSection'
 import styles from '../components/TransactionsPage.module.css'
 import TransactionSummaryBar from '../components/TransactionSummaryBar'
 import TransactionTable from '../components/TransactionTable'
-import { api, getLocalCurrency } from '../core/api'
+import { api, getLocalCurrency, toast } from '../core/api'
+import { showConfirm } from '../core/confirmStore'
 import type { Category, Receipt, Transaction, TransactionType } from '../types/models'
 
 export default function Transactions() {
@@ -120,7 +121,7 @@ export default function Transactions() {
 
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB')
+      toast('File size must be less than 5MB', 'warning')
       target.value = ''
       return
     }
@@ -178,7 +179,7 @@ export default function Transactions() {
   }
 
   const handleDeleteTransaction = async (transaction: Transaction) => {
-    if (!confirm(`Delete transaction "${transaction.description}"?`)) return
+    if (!(await showConfirm(`Delete transaction "${transaction.description}"?`))) return
     try {
       await api.deleteTransaction(transaction.id)
       await refreshTransactions()
@@ -190,7 +191,12 @@ export default function Transactions() {
   const handleBulkDelete = async () => {
     const ids = selectedTransactions()
     if (ids.length === 0) return
-    if (!confirm(`Delete ${ids.length} selected transaction${ids.length !== 1 ? 's' : ''}?`)) return
+    if (
+      !(await showConfirm(
+        `Delete ${ids.length} selected transaction${ids.length !== 1 ? 's' : ''}?`
+      ))
+    )
+      return
     try {
       for (const id of ids) {
         await api.deleteTransaction(id)

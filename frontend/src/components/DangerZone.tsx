@@ -1,4 +1,5 @@
 import { createSignal, Show } from 'solid-js'
+import { toast } from '../core/api'
 import { apiFetch } from '../core/apiFetch'
 import styles from './DangerZone.module.css'
 
@@ -18,10 +19,10 @@ export default function DangerZone(props: DangerZoneProps) {
     try {
       const res = await apiFetch(endpoint, { method: 'DELETE', credentials: 'include' })
       if (!res.ok) throw new Error('Operation failed')
-      alert(successMsg)
+      toast(successMsg, 'success')
       window.location.reload()
     } catch {
-      alert('Failed to complete the operation')
+      toast('Failed to complete the operation', 'error')
     } finally {
       setLoading(false)
       setConfirming(null)

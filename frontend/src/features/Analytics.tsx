@@ -33,9 +33,9 @@ import D3HeatmapChart from '../components/D3HeatmapChart'
 import ExportChartButton from '../components/ExportChartButton'
 import SankeyChart from '../components/SankeyChart'
 import { formatCurrency } from '../core/api'
+import { theme } from '../core/theme'
 import { apiGet, showToast } from '../utils/api'
 import { downloadBlob } from '../utils/chartExport'
-import { theme } from '../core/theme'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
@@ -498,7 +498,12 @@ export default function Analytics() {
               </div>
               {compareEnabled() && compareData() && (
                 <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;padding:0 4px;">
-                  Dashed outlines show {new Date(stackedYear(), compareMonth() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} data for comparison
+                  Dashed outlines show{' '}
+                  {new Date(stackedYear(), compareMonth() - 1).toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}{' '}
+                  data for comparison
                 </div>
               )}
               <div class={styles.chartContainer}>
@@ -533,7 +538,11 @@ export default function Analytics() {
                       responsive: true,
                       maintainAspectRatio: false,
                       scales: {
-                        x: { stacked: true, ticks: { color: chartColors().text }, grid: { color: chartColors().border } },
+                        x: {
+                          stacked: true,
+                          ticks: { color: chartColors().text },
+                          grid: { color: chartColors().border },
+                        },
                         y: {
                           stacked: true,
                           beginAtZero: true,
@@ -691,7 +700,10 @@ export default function Analytics() {
                       responsive: true,
                       maintainAspectRatio: false,
                       scales: {
-                        x: { ticks: { color: chartColors().text }, grid: { color: chartColors().border } },
+                        x: {
+                          ticks: { color: chartColors().text },
+                          grid: { color: chartColors().border },
+                        },
                         y: {
                           beginAtZero: true,
                           ticks: {
@@ -941,13 +953,23 @@ export default function Analytics() {
                     </div>
                     <div class={styles.rateRow}>
                       <span>Monthly Savings</span>
-                      <span class={data()!.savingsRate >= 20 ? styles.good : data()!.savingsRate >= 10 ? styles.fair : styles.poor}>
+                      <span
+                        class={
+                          data()!.savingsRate >= 20
+                            ? styles.good
+                            : data()!.savingsRate >= 10
+                              ? styles.fair
+                              : styles.poor
+                        }
+                      >
                         {formatAmount(totalIncome() - totalExpense())}
                       </span>
                     </div>
                     <div class={styles.rateRow}>
                       <span>Projected Annual Savings</span>
-                      <span class={styles.rateValue}>{formatAmount((totalIncome() - totalExpense()) * 12)}</span>
+                      <span class={styles.rateValue}>
+                        {formatAmount((totalIncome() - totalExpense()) * 12)}
+                      </span>
                     </div>
                     <div class={styles.rateRow}>
                       <span>Status vs 20% Target</span>

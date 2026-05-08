@@ -30,6 +30,7 @@ import { createEffect, createSignal, For, onMount, Show } from 'solid-js'
 import DangerZone from '../components/DangerZone'
 import { LogViewer } from '../components/LogViewer'
 import styles from '../components/SettingsPage.module.css'
+import { toast } from '../core/api.js'
 import { apiFetch } from '../core/apiFetch'
 import { migrateData, setStorageMode } from '../core/storage/storageFactory'
 import { theme } from '../core/theme'
@@ -104,7 +105,7 @@ function Reports() {
       a.click()
       URL.revokeObjectURL(downloadUrl)
     } catch {
-      alert('Failed to generate report')
+      toast('Failed to generate report', 'error')
     } finally {
       setReportLoading(null)
     }
@@ -114,8 +115,14 @@ function Reports() {
     const y = reportYear()
 
     if (reportType() === 'monthly') {
-      const m = String(reportMonth()).padStart(2, '0')
-      downloadReport(`/api/reports/monthly-pdf?year=${y}&month=${m}`, `report-${y}-${m}.pdf`)
+      const m = reportMonth()
+      if (m === 0) {
+        // "All Months" selected — generate annual report instead
+        downloadReport(`/api/reports/annual-pdf?year=${y}`, `annual-report-${y}.pdf`)
+        return
+      }
+      const mStr = String(m).padStart(2, '0')
+      downloadReport(`/api/reports/monthly-pdf?year=${y}&month=${mStr}`, `report-${y}-${mStr}.pdf`)
     } else if (reportType() === 'annual') {
       downloadReport(`/api/reports/annual-pdf?year=${y}`, `annual-report-${y}.pdf`)
     } else if (reportType() === 'tax') {
@@ -187,9 +194,8 @@ function Reports() {
 export default function Settings() {
   const [localCurrency, setLocalCurrency] = createSignal('USD')
   const [darkMode, setDarkMode] = createSignal(false)
-  const [chartExportSettings, setChartExportSettings] = createSignal<ChartExportSettings>(
-    loadChartExportSettings()
-  )
+  const [chartExportSettings, setChartExportSettings] =
+    createSignal<ChartExportSettings>(loadChartExportSettings())
   const [storageMode, setLocalStorageMode] = createSignal<'serverless' | 'self-hosted'>(
     'self-hosted'
   )
@@ -253,7 +259,7 @@ export default function Settings() {
       if (migrateDataEnabled()) {
         const result = await migrateData(storageMode())
         if (!result.success) {
-          alert(`Migration failed: ${result.error || 'Unknown error'}`)
+          toast(`Migration failed: ${result.error || 'Unknown error'}`, 'error')
           setMigrating(false)
           return
         }
@@ -268,13 +274,14 @@ export default function Settings() {
       }
 
       setShowStorageWarning(false)
-      alert(
-        `Database switched to ${storageMode() === 'serverless' ? 'Browser LocalStorage' : 'Backend SQLite'} successfully.`
+      toast(
+        `Database switched to ${storageMode() === 'serverless' ? 'Browser LocalStorage' : 'Backend SQLite'} successfully.`,
+        'success'
       )
       window.location.reload()
     } catch (error) {
       console.error('Failed to switch storage:', error)
-      alert('Failed to switch storage mode.')
+      toast('Failed to switch storage mode.', 'error')
     } finally {
       setMigrating(false)
     }
@@ -302,7 +309,7 @@ export default function Settings() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Failed to export data')
+      toast('Failed to export data', 'error')
     }
   }
 
@@ -323,7 +330,7 @@ export default function Settings() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert(`Failed to export ${type}`)
+      toast(`Failed to export ${type}`, 'error')
     } finally {
       setCsvExporting(null)
     }
@@ -366,9 +373,12 @@ export default function Settings() {
       if (!res.ok) {
         const data = await res.json()
         if (data.error === 'Unauthorized') {
-          alert('You cannot rename default demo profiles. Log in to manage your own profiles.')
+          toast(
+            'You cannot rename default demo profiles. Log in to manage your own profiles.',
+            'warning'
+          )
         } else {
-          alert(data.error || 'Failed to rename profile')
+          toast(data.error || 'Failed to rename profile', 'error')
         }
       } else {
         setRenamingProfileId(null)
@@ -377,7 +387,7 @@ export default function Settings() {
         window.location.reload()
       }
     } catch {
-      alert('Failed to rename profile')
+      toast('Failed to rename profile', 'error')
     } finally {
       setRenaming(false)
     }
@@ -392,7 +402,7 @@ export default function Settings() {
       })
       if (!res.ok) {
         const data = await res.json()
-        alert(data.error || 'Failed to delete profile')
+        toast(data.error || 'Failed to delete profile', 'error')
         return
       }
       // Switch to the next available profile
@@ -404,7 +414,7 @@ export default function Settings() {
       }
       window.location.reload()
     } catch {
-      alert('Failed to delete profile')
+      toast('Failed to delete profile', 'error')
     }
   }
 
@@ -415,11 +425,21 @@ export default function Settings() {
     const checkHash = () => setShowLogs(window.location.hash.includes('#logs'))
     checkHash()
     window.addEventListener('hashchange', checkHash)
-    return () => { window.removeEventListener('hashchange', checkHash) }
+    return () => {
+      window.removeEventListener('hashchange', checkHash)
+    }
   })
 
   // Household View state
-  const [allProfiles, setAllProfiles] = createSignal<Array<{ id: number; name: string; transaction_count?: number; account_count?: number; budget_count?: number }>>([])
+  const [allProfiles, setAllProfiles] = createSignal<
+    Array<{
+      id: number
+      name: string
+      transaction_count?: number
+      account_count?: number
+      budget_count?: number
+    }>
+  >([])
   const [householdIds, setHouseholdIds] = createSignal<number[]>(
     (() => {
       const stored = localStorage.getItem('selectedProfileIds')
@@ -627,7 +647,9 @@ export default function Settings() {
                             when={renamingProfileId() === profile.id}
                             fallback={
                               <>
-                                <span style="font-size: 14px; color: var(--text);">{profile.name}</span>
+                                <span style="font-size: 14px; color: var(--text);">
+                                  {profile.name}
+                                </span>
                                 <button
                                   class={styles.iconBtn}
                                   onclick={(e) => {
@@ -639,7 +661,9 @@ export default function Settings() {
                                 >
                                   Edit
                                 </button>
-                                <Show when={householdIds().length === 1 && householdIds().length > 0}>
+                                <Show
+                                  when={householdIds().length === 1 && householdIds().length > 0}
+                                >
                                   <span style="font-size: 11px; color: var(--text-secondary);">
                                     Current
                                   </span>
@@ -693,10 +717,18 @@ export default function Settings() {
                     <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                       <thead>
                         <tr style="border-bottom: 2px solid var(--border);">
-                          <th style="text-align: left; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Profile</th>
-                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Txns</th>
-                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Accts</th>
-                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Budgets</th>
+                          <th style="text-align: left; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">
+                            Profile
+                          </th>
+                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">
+                            Txns
+                          </th>
+                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">
+                            Accts
+                          </th>
+                          <th style="text-align: right; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">
+                            Budgets
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -704,9 +736,15 @@ export default function Settings() {
                           {(profile) => (
                             <tr style="border-bottom: 1px solid var(--border);">
                               <td style="padding: 6px 8px; color: var(--text);">{profile.name}</td>
-                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">{profile.transaction_count ?? 0}</td>
-                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">{profile.account_count ?? 0}</td>
-                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">{profile.budget_count ?? 0}</td>
+                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
+                                {profile.transaction_count ?? 0}
+                              </td>
+                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
+                                {profile.account_count ?? 0}
+                              </td>
+                              <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
+                                {profile.budget_count ?? 0}
+                              </td>
                             </tr>
                           )}
                         </For>
@@ -715,13 +753,19 @@ export default function Settings() {
                         <tr style="border-top: 2px solid var(--border); font-weight: 600;">
                           <td style="padding: 6px 8px; color: var(--text);">Total</td>
                           <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
-                            {allProfiles().filter((p) => householdIds().includes(p.id)).reduce((sum, p) => sum + (p.transaction_count ?? 0), 0)}
+                            {allProfiles()
+                              .filter((p) => householdIds().includes(p.id))
+                              .reduce((sum, p) => sum + (p.transaction_count ?? 0), 0)}
                           </td>
                           <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
-                            {allProfiles().filter((p) => householdIds().includes(p.id)).reduce((sum, p) => sum + (p.account_count ?? 0), 0)}
+                            {allProfiles()
+                              .filter((p) => householdIds().includes(p.id))
+                              .reduce((sum, p) => sum + (p.account_count ?? 0), 0)}
                           </td>
                           <td style="padding: 6px 8px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums;">
-                            {allProfiles().filter((p) => householdIds().includes(p.id)).reduce((sum, p) => sum + (p.budget_count ?? 0), 0)}
+                            {allProfiles()
+                              .filter((p) => householdIds().includes(p.id))
+                              .reduce((sum, p) => sum + (p.budget_count ?? 0), 0)}
                           </td>
                         </tr>
                       </tfoot>

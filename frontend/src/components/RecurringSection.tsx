@@ -4,6 +4,7 @@
  */
 import { createSignal, For, onMount } from 'solid-js'
 import { api } from '../core/api'
+import { showConfirm } from '../core/confirmStore'
 import styles from './RecurringSection.module.css'
 import type { Category } from '../types/models'
 
@@ -112,7 +113,7 @@ export default function RecurringSection(props: RecurringSectionProps) {
   }
 
   const handleDelete = async (item: RecurringItem) => {
-    if (!confirm(`Delete recurring "${item.description}"?`)) return
+    if (!(await showConfirm(`Delete recurring "${item.description}"?`))) return
     try {
       await api.deleteRecurring(item.id)
       await loadItems()

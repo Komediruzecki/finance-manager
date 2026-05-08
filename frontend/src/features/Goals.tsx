@@ -35,8 +35,8 @@ import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
 import styles from '../components/GoalsPage.module.css'
 import { formatCurrency } from '../core/api'
-import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 import { theme } from '../core/theme'
+import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 
 interface Goal {
   id: number
@@ -369,7 +369,14 @@ export default function Goals() {
                 datasets: goals()
                   .filter((g) => g.monthly_contribution > 0)
                   .map((g, idx) => {
-                    const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+                    const colors = [
+                      '#6366f1',
+                      '#10b981',
+                      '#f59e0b',
+                      '#ef4444',
+                      '#8b5cf6',
+                      '#06b6d4',
+                    ]
                     const color = colors[idx % colors.length]
                     const monthly = g.monthly_contribution || 0
                     const remaining = g.target_amount - g.current_amount

@@ -3,10 +3,7 @@
  * Button with icons to export chart as PNG or SVG
  */
 import { exportChartAsPNG, exportChartAsSVG } from '../utils/chartExport'
-import {
-  loadChartExportSettings,
-  resolveBackgroundColor,
-} from '../utils/chartExportSettings'
+import { loadChartExportSettings, resolveBackgroundColor } from '../utils/chartExportSettings'
 import styles from './ExportChartButton.module.css'
 
 export interface ExportChartButtonProps {
