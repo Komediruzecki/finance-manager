@@ -36,6 +36,7 @@ import ConfirmButton from '../components/ConfirmButton'
 import styles from '../components/GoalsPage.module.css'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import { theme } from '../core/theme'
 
 interface Goal {
   id: number
@@ -51,6 +52,7 @@ interface Goal {
 export default function Goals() {
   const [goals, setGoals] = createSignal<Goal[]>([])
   const [loading, setLoading] = createSignal(true)
+  const chartColors = () => theme.getChartColors()
   const [showAddModal, setShowAddModal] = createSignal(false)
   const [editingGoal, setEditingGoal] = createSignal<Goal | null>(null)
   const [formData, setFormData] = createSignal({
@@ -318,7 +320,7 @@ export default function Goals() {
                       usePointStyle: true,
                       padding: 15,
                       font: { size: 12 },
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                   tooltip: {
@@ -396,29 +398,29 @@ export default function Goals() {
                     ticks: {
                       callback: (v: number | string) =>
                         formatCurrency(typeof v === 'number' ? v : Number(v), 'EUR'),
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
-                    grid: { color: 'var(--border)' },
+                    grid: { color: chartColors().border },
                     title: {
                       display: true,
                       text: 'Balance',
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                   x: {
-                    ticks: { color: 'var(--text)', maxTicksLimit: 12 },
-                    grid: { color: 'var(--border)' },
+                    ticks: { color: chartColors().text, maxTicksLimit: 12 },
+                    grid: { color: chartColors().border },
                     title: {
                       display: true,
                       text: 'Months from now',
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                 },
                 plugins: {
                   legend: {
                     position: 'top',
-                    labels: { color: 'var(--text)', usePointStyle: true },
+                    labels: { color: chartColors().text, usePointStyle: true },
                   },
                 },
               }}

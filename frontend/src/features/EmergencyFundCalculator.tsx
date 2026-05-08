@@ -23,10 +23,12 @@ import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../utils/api'
+import { theme } from '../core/theme'
 import sharedStyles from './CalculatorShared.module.css'
 import styles from './EmergencyFundCalculator.module.css'
 
 export default function EmergencyFundCalculator() {
+  const chartColors = () => theme.getChartColors()
   const [monthlyExpenses, setMonthlyExpenses] = createSignal(0)
   const [totalEmergencyFund, setTotalEmergencyFund] = createSignal(0)
   const [monthsWithData, setMonthsWithData] = createSignal(0)
@@ -117,13 +119,13 @@ export default function EmergencyFundCalculator() {
                   y: {
                     beginAtZero: true,
                     max: 100,
-                    ticks: { color: 'var(--text)' },
-                    grid: { color: 'var(--border)' },
-                    title: { display: true, text: 'Coverage %', color: 'var(--text)' },
+                    ticks: { color: chartColors().text },
+                    grid: { color: chartColors().border },
+                    title: { display: true, text: 'Coverage %', color: chartColors().text },
                   },
                   x: {
-                    ticks: { color: 'var(--text)' },
-                    grid: { color: 'var(--border)' },
+                    ticks: { color: chartColors().text },
+                    grid: { color: chartColors().border },
                   },
                 },
                 plugins: {

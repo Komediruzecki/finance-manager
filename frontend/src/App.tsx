@@ -87,6 +87,7 @@ export function App() {
       }
     }
     setShowDropdown(false)
+    window.location.reload()
   }
 
   const handleLogout = async () => {
@@ -96,11 +97,13 @@ export function App() {
       setCurrentProfile(null)
       logger.info('User logged out', {}, 'App')
       toast('Logged out successfully', 'info')
+      window.location.reload()
     } catch (_error) {
       logger.error('Logout API call failed', {}, 'App')
       localStorage.removeItem('currentProfileId')
       setCurrentProfile(null)
       toast('Logged out', 'info')
+      window.location.reload()
     }
   }
 

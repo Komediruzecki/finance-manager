@@ -37,6 +37,7 @@ import ConfirmButton from '../components/ConfirmButton'
 import styles from '../components/RetirementPage.module.css'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import { theme } from '../core/theme'
 
 interface RetirementGoal {
   id: number
@@ -74,6 +75,7 @@ export default function Retirement() {
   const [projection, setProjection] = createSignal<RetirementProjection | null>(null)
   const [projectedBalances, setProjectedBalances] = createSignal<ProjectedBalance[]>([])
   const [loading, setLoading] = createSignal(true)
+  const chartColors = () => theme.getChartColors()
   const [showAddModal, setShowAddModal] = createSignal(false)
   const [editingGoal, setEditingGoal] = createSignal<RetirementGoal | null>(null)
   const [formData, setFormData] = createSignal({
@@ -532,21 +534,21 @@ export default function Retirement() {
                   title: {
                     display: true,
                     text: 'Age',
-                    color: 'var(--text)',
+                    color: chartColors().text,
                   },
                   ticks: {
                     stepSize: 5,
-                    color: 'var(--text)',
+                    color: chartColors().text,
                   },
-                  grid: { color: 'var(--border)' },
+                  grid: { color: chartColors().border },
                 },
                 y: {
                   beginAtZero: true,
                   ticks: {
                     callback: (value: any) => formatAmount(value),
-                    color: 'var(--text)',
+                    color: chartColors().text,
                   },
-                  grid: { color: 'var(--border)' },
+                  grid: { color: chartColors().border },
                 },
               },
               plugins: {
@@ -556,7 +558,7 @@ export default function Retirement() {
                     usePointStyle: true,
                     padding: 15,
                     font: { size: 12 },
-                    color: 'var(--text)',
+                    color: chartColors().text,
                   },
                 },
                 tooltip: {

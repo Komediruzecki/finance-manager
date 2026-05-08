@@ -35,6 +35,7 @@ import SankeyChart from '../components/SankeyChart'
 import { formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../utils/api'
 import { downloadBlob } from '../utils/chartExport'
+import { theme } from '../core/theme'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
@@ -47,6 +48,7 @@ export default function Analytics() {
   const [data, setData] = createSignal<AnalyticsData | null>(null)
   const [loading, setLoading] = createSignal(true)
   const [heatmapYear, setHeatmapYear] = createSignal(new Date().getFullYear())
+  const chartColors = () => theme.getChartColors()
   const [heatmapType, setHeatmapType] = createSignal<'income' | 'expense'>('expense')
   const [heatmapData, setHeatmapData] = createSignal<Map<string, number>>(new Map())
   const [sankeyYear, setSankeyYear] = createSignal(new Date().getFullYear())
@@ -531,15 +533,15 @@ export default function Analytics() {
                       responsive: true,
                       maintainAspectRatio: false,
                       scales: {
-                        x: { stacked: true, ticks: { color: 'var(--text)' }, grid: { color: 'var(--border)' } },
+                        x: { stacked: true, ticks: { color: chartColors().text }, grid: { color: chartColors().border } },
                         y: {
                           stacked: true,
                           beginAtZero: true,
                           ticks: {
                             callback: (value: any) => formatCurrency(value),
-                            color: 'var(--text)',
+                            color: chartColors().text,
                           },
-                          grid: { color: 'var(--border)' },
+                          grid: { color: chartColors().border },
                         },
                       },
                       plugins: {
@@ -550,7 +552,7 @@ export default function Analytics() {
                             padding: 10,
                             font: { size: 11 },
                             boxWidth: 10,
-                            color: 'var(--text)',
+                            color: chartColors().text,
                           },
                         },
                         tooltip: {
@@ -631,7 +633,7 @@ export default function Analytics() {
                             usePointStyle: true,
                             padding: 15,
                             font: { size: 12 },
-                            color: 'var(--text)',
+                            color: chartColors().text,
                           },
                         },
                       },
@@ -689,14 +691,14 @@ export default function Analytics() {
                       responsive: true,
                       maintainAspectRatio: false,
                       scales: {
-                        x: { ticks: { color: 'var(--text)' }, grid: { color: 'var(--border)' } },
+                        x: { ticks: { color: chartColors().text }, grid: { color: chartColors().border } },
                         y: {
                           beginAtZero: true,
                           ticks: {
                             callback: (value: any) => formatCurrency(value),
-                            color: 'var(--text)',
+                            color: chartColors().text,
                           },
-                          grid: { color: 'var(--border)' },
+                          grid: { color: chartColors().border },
                         },
                       },
                       plugins: {
@@ -706,7 +708,7 @@ export default function Analytics() {
                             usePointStyle: true,
                             padding: 15,
                             font: { size: 12 },
-                            color: 'var(--text)',
+                            color: chartColors().text,
                           },
                         },
                       },
