@@ -329,6 +329,47 @@ export default function Settings() {
     window.location.reload()
   }
 
+  const [renamingProfileId, setRenamingProfileId] = createSignal<number | null>(null)
+  const [renameValue, setRenameValue] = createSignal('')
+  const [renaming, setRenaming] = createSignal(false)
+
+  const startRename = (id: number, currentName: string) => {
+    setRenamingProfileId(id)
+    setRenameValue(currentName)
+  }
+
+  const cancelRename = () => {
+    setRenamingProfileId(null)
+    setRenameValue('')
+  }
+
+  const submitRename = async () => {
+    const pid = renamingProfileId()
+    const name = renameValue().trim()
+    if (!pid || !name) return
+    setRenaming(true)
+    try {
+      const res = await apiFetch(`/api/profiles/${pid}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Failed to rename profile')
+      } else {
+        setRenamingProfileId(null)
+        setRenameValue('')
+        loadHouseholdProfiles()
+      }
+    } catch {
+      alert('Failed to rename profile')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
   const handleDeleteProfile = async () => {
     const profileId = localStorage.getItem('currentProfileId') || '1'
     try {
@@ -569,11 +610,62 @@ export default function Settings() {
                             }}
                             style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                           />
-                          <span style="font-size: 14px; color: var(--text);">{profile.name}</span>
-                          <Show when={householdIds().length === 1 && householdIds().length > 0}>
-                            <span style="font-size: 11px; color: var(--text-secondary); margin-left: auto;">
-                              Current
-                            </span>
+                          <Show
+                            when={renamingProfileId() === profile.id}
+                            fallback={
+                              <>
+                                <span style="font-size: 14px; color: var(--text);">{profile.name}</span>
+                                <button
+                                  class={styles.iconBtn}
+                                  onclick={(e) => {
+                                    e.preventDefault()
+                                    startRename(profile.id, profile.name)
+                                  }}
+                                  title="Rename profile"
+                                  style="margin-left: auto; padding: 2px 6px; font-size: 11px; opacity: 0.6;"
+                                >
+                                  Edit
+                                </button>
+                                <Show when={householdIds().length === 1 && householdIds().length > 0}>
+                                  <span style="font-size: 11px; color: var(--text-secondary);">
+                                    Current
+                                  </span>
+                                </Show>
+                              </>
+                            }
+                          >
+                            <input
+                              value={renameValue()}
+                              oninput={(e) => setRenameValue(e.currentTarget.value)}
+                              onkeypress={(e) => {
+                                if (e.key === 'Enter') submitRename()
+                                if (e.key === 'Escape') cancelRename()
+                              }}
+                              style={{
+                                'font-size': '14px',
+                                padding: '2px 6px',
+                                border: '1px solid var(--primary)',
+                                'border-radius': '4px',
+                                background: 'var(--bg)',
+                                color: 'var(--text)',
+                                'min-width': '120px',
+                              }}
+                            />
+                            <button
+                              class={styles.iconBtn}
+                              onclick={submitRename}
+                              disabled={renaming()}
+                              style="padding: 2px 6px; font-size: 11px; color: var(--primary);"
+                            >
+                              Save
+                            </button>
+                            <button
+                              class={styles.iconBtn}
+                              onclick={cancelRename}
+                              style="padding: 2px 6px; font-size: 11px; opacity: 0.6;"
+                            >
+                              Cancel
+                            </button>
                           </Show>
                         </label>
                       )}

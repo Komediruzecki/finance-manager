@@ -737,7 +737,7 @@ function seedTransactions(profileId, config, startYear, currentYear, catId) {
   const targetMax = config.maxTransactionsPerMonth;
 
   for (let year = startYear; year <= currentYear; year++) {
-    const monthsToSeed = year === currentYear ? 4 : 12;
+    const monthsToSeed = year === currentYear ? new Date().getMonth() + 1 : 12;
 
     for (let month = 1; month <= monthsToSeed; month++) {
       const ym = `${year}-${String(month).padStart(2, '0')}`;
