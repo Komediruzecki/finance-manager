@@ -59,7 +59,7 @@ export class ThemeStore {
    * Get chart colors based on current theme
    */
   getChartColors() {
-    const isDark = this.isDark()
+    const cs = getComputedStyle(document.documentElement)
     return {
       income: '#22c55e',
       expense: '#ef4444',
@@ -68,9 +68,11 @@ export class ThemeStore {
       incomeBg: 'rgba(34,197,94,.2)',
       expenseBg: 'rgba(239,68,68,.2)',
       primaryBg: 'rgba(59,130,246,.15)',
-      grid: isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)',
-      text: isDark ? '#94a3b8' : '#64748b',
-      legend: isDark ? '#f1f5f9' : '#1e293b',
+      grid: cs.getPropertyValue('--chart-grid').trim() || (this.isDark() ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)'),
+      text: cs.getPropertyValue('--text').trim(),
+      textSecondary: cs.getPropertyValue('--text-secondary').trim(),
+      border: cs.getPropertyValue('--border').trim(),
+      legend: cs.getPropertyValue('--text').trim(),
     }
   }
 

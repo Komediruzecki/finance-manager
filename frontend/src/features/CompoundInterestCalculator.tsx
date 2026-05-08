@@ -27,6 +27,7 @@ import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
 import { apiPost, showToast } from '../utils/api'
+import { theme } from '../core/theme'
 import sharedStyles from './CalculatorShared.module.css'
 import styles from './CompoundInterestCalculator.module.css'
 
@@ -58,6 +59,7 @@ interface FormState {
 
 export default function CompoundInterestCalculator() {
   const [loading, setLoading] = createSignal(false)
+  const chartColors = () => theme.getChartColors()
   const [results, setResults] = createSignal<CompoundInterestResult | null>(null)
   const [form, setForm] = createSignal<FormState>({
     principal: '10000',
@@ -260,22 +262,22 @@ export default function CompoundInterestCalculator() {
                     ticks: {
                       callback: (v: number | string) =>
                         formatCurrency(typeof v === 'number' ? v : Number(v), 'EUR'),
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
-                    grid: { color: 'var(--border)' },
+                    grid: { color: chartColors().border },
                     title: {
                       display: true,
                       text: 'Balance / Contributions / Interest',
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                   x: {
-                    ticks: { color: 'var(--text)', maxTicksLimit: 10 },
-                    grid: { color: 'var(--border)' },
+                    ticks: { color: chartColors().text, maxTicksLimit: 10 },
+                    grid: { color: chartColors().border },
                   },
                 },
                 plugins: {
-                  legend: { position: 'top', labels: { color: 'var(--text)' } },
+                  legend: { position: 'top', labels: { color: chartColors().text } },
                 },
               }}
               height={300}
@@ -309,18 +311,18 @@ export default function CompoundInterestCalculator() {
                     ticks: {
                       callback: (v: number | string) =>
                         formatCurrency(typeof v === 'number' ? v : Number(v), 'EUR'),
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
-                    grid: { color: 'var(--border)' },
+                    grid: { color: chartColors().border },
                     title: {
                       display: true,
                       text: 'Final Balance',
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                   x: {
-                    ticks: { color: 'var(--text)' },
-                    grid: { color: 'var(--border)' },
+                    ticks: { color: chartColors().text },
+                    grid: { color: chartColors().border },
                   },
                 },
                 plugins: {

@@ -357,11 +357,16 @@ export default function Settings() {
       })
       if (!res.ok) {
         const data = await res.json()
-        alert(data.error || 'Failed to rename profile')
+        if (data.error === 'Unauthorized') {
+          alert('You cannot rename default demo profiles. Log in to manage your own profiles.')
+        } else {
+          alert(data.error || 'Failed to rename profile')
+        }
       } else {
         setRenamingProfileId(null)
         setRenameValue('')
         loadHouseholdProfiles()
+        window.location.reload()
       }
     } catch {
       alert('Failed to rename profile')

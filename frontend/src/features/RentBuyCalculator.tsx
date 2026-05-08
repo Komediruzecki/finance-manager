@@ -26,6 +26,7 @@ import { createSignal, onCleanup, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
+import { theme } from '../core/theme'
 import sharedStyles from './CalculatorShared.module.css'
 import styles from './RentBuyCalculator.module.css'
 import type * as Models from '../types/models'
@@ -47,6 +48,7 @@ interface Props {
 export default function RentBuyCalculator(props: Props) {
   const currency = props.currency || 'EUR'
   const [loading, setLoading] = createSignal(false)
+  const chartColors = () => theme.getChartColors()
   const [results, setResults] = createSignal<Result[]>([])
   const [breakEvenYear, setBreakEvenYear] = createSignal<number | null>(null)
 
@@ -502,24 +504,24 @@ export default function RentBuyCalculator(props: Props) {
                     ticks: {
                       callback: (v: number | string) =>
                         formatCurrency(typeof v === 'number' ? v : Number(v), currency as any),
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                     grid: {
-                      color: 'var(--border)',
+                      color: chartColors().border,
                     },
                     title: {
                       display: true,
                       text: 'Net Cost (lower is better)',
-                      color: 'var(--text)',
+                      color: chartColors().text,
                     },
                   },
                   x: {
-                    ticks: { color: 'var(--text)', maxTicksLimit: 10 },
-                    grid: { color: 'var(--border)' },
+                    ticks: { color: chartColors().text, maxTicksLimit: 10 },
+                    grid: { color: chartColors().border },
                   },
                 },
                 plugins: {
-                  legend: { position: 'top', labels: { color: 'var(--text)' } },
+                  legend: { position: 'top', labels: { color: chartColors().text } },
                 },
               }}
               height={300}

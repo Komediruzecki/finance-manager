@@ -41,7 +41,7 @@ export function resolveBackgroundColor(setting: ChartExportSettings['background'
     case 'dark':
       return '#1a1a2e'
     case 'theme': {
-      const isDark = document.documentElement.classList.contains('dark')
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
       return isDark ? '#1a1a2e' : '#ffffff'
     }
   }
