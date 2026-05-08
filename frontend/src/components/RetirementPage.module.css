@@ -1,4 +1,5 @@
 .retirement-page {
+  display: block;
   padding: 24px;
 }
 .retirement-page .page-header {
