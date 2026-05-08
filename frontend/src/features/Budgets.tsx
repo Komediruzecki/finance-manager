@@ -156,7 +156,7 @@ export default function Budgets() {
           allocated: item.amount || item.allocated || 0,
           status:
             item.status ||
-            (item.percent_used >= 100 ? 'over' : item.percent_used >= 90 ? 'warning' : 'ok'),
+            (item.percent_used > 100 ? 'over' : item.percent_used >= 90 ? 'warning' : 'ok'),
           is_fully_allocated:
             item.is_fully_allocated ?? (item.is_budgeted && item.amount > 0),
         })
@@ -847,10 +847,12 @@ export default function Budgets() {
                         <span class={styles.percentValue}>{Math.round(item.percent_used)}%</span>
                       </td>
                       <td class={styles.statusCol}>
-                        {item.status === 'over' && <Badge status="over">Over Budget</Badge>}
-                        {item.status === 'warning' && <Badge status="warning">Near Limit</Badge>}
-                        {item.status === 'ok' && <Badge status="ok">On Track</Badge>}
-                        {item.is_fully_allocated && <Badge status="ok">Fully Allocated</Badge>}
+                        <div style={{ display: 'flex', gap: '6px', 'flex-wrap': 'wrap' }}>
+                          {item.status === 'over' && <Badge status="over">Over Budget</Badge>}
+                          {item.status === 'warning' && <Badge status="warning">Near Limit</Badge>}
+                          {item.status === 'ok' && <Badge status="ok">On Track</Badge>}
+                          {item.is_fully_allocated && <Badge status="ok">Fully Allocated</Badge>}
+                        </div>
                       </td>
                       <td class={styles.actionsCol}>
                         {item.budget_id ? (

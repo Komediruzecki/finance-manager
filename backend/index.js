@@ -695,10 +695,20 @@ app.get('/api/profiles', apiRateLimiter, (req, res) => {
   try {
     let profiles;
     if (req.session.userId) {
-      // Logged in: return user's profiles plus ExampleProfile
+      // Logged in: return only user's own profiles
       profiles = db
-        .prepare('SELECT * FROM profiles WHERE user_id = ? OR id = 1 ORDER BY id')
+        .prepare('SELECT * FROM profiles WHERE user_id = ? ORDER BY id')
         .all(req.session.userId);
+      // Auto-create a default profile if user has none
+      if (profiles.length === 0) {
+        db.prepare('INSERT INTO profiles (name, user_id) VALUES (?, ?)').run(
+          'Default',
+          req.session.userId
+        );
+        profiles = db
+          .prepare('SELECT * FROM profiles WHERE user_id = ? ORDER BY id')
+          .all(req.session.userId);
+      }
     } else {
       // Not logged in: return all example profiles (1, 2, 3)
       profiles = db.prepare('SELECT * FROM profiles WHERE id IN (1, 2, 3) ORDER BY id').all();
@@ -753,6 +763,31 @@ app.post('/api/profiles', apiRateLimiter, (req, res) => {
       account_count: 0,
       budget_count: 0,
     });
+  } catch (err) {
+    console.error(err.message);
+    logError('error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/profiles/:id', apiRateLimiter, (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const pid = parseInt(req.params.id);
+    const { name } = req.body;
+    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    if (profile.user_id !== req.session.userId) {
+      return res.status(403).json({ error: "Cannot modify another user's profile" });
+    }
+    if (name !== undefined) {
+      if (!name.trim()) return res.status(400).json({ error: 'Name is required' });
+      db.prepare('UPDATE profiles SET name = ? WHERE id = ?').run(name.trim(), pid);
+    }
+    const updated = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    res.json(updated);
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -3450,7 +3485,7 @@ app.get('/api/budgets/zero-based/summary', apiRateLimiter, (req, res) => {
       if (item.percent_used >= 90) {
         item.alerts.push(`Approaching limit: ${Math.round(item.percent_used)}% used`);
       }
-      if (item.percent_used >= 100) {
+      if (item.percent_used > 100) {
         item.alerts.push(`Over budget by $${item.remaining.toFixed(2)}`);
       }
     });
