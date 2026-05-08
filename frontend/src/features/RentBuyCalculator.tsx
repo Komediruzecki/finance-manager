@@ -22,7 +22,7 @@
  * Rent vs Buy Calculator Component
  * Compares 30-year costs of renting vs buying a home
  */
-import { createSignal, onCleanup, onMount } from 'solid-js'
+import { createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
@@ -239,7 +239,7 @@ export default function RentBuyCalculator(props: Props) {
     }
   }
 
-  const summary = getSummary()
+  const summary = createMemo(() => getSummary())
 
   return (
     <div class={sharedStyles.page}>
@@ -376,7 +376,7 @@ export default function RentBuyCalculator(props: Props) {
 
       {loading() ? (
         <div class={styles.loading}>Calculating...</div>
-      ) : showResults() && summary ? (
+      ) : showResults() && summary() ? (
         <>
           {/* Summary Cards */}
           <div class={styles.summaryGrid}>
@@ -385,19 +385,19 @@ export default function RentBuyCalculator(props: Props) {
               <div class={styles.summaryRow}>
                 <span>Total Rent Paid</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.rentCumulative, currency)}
+                  {formatCurrency(summary().rentCumulative, currency)}
                 </span>
               </div>
               <div class={styles.summaryRow}>
                 <span>Investment Value</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.rentInvestmentValue, currency)}
+                  {formatCurrency(summary().rentInvestmentValue, currency)}
                 </span>
               </div>
               <div class={`${styles.summaryRow} ${styles.highlight}`}>
                 <span>Net Cost</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.rentNetCost, currency)}
+                  {formatCurrency(summary().rentNetCost, currency)}
                 </span>
               </div>
             </div>
@@ -406,19 +406,19 @@ export default function RentBuyCalculator(props: Props) {
               <div class={styles.summaryRow}>
                 <span>Total Mortgage + Costs</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.buyCumulative, currency)}
+                  {formatCurrency(summary().buyCumulative, currency)}
                 </span>
               </div>
               <div class={styles.summaryRow}>
                 <span>Home Equity</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.buyEquity, currency)}
+                  {formatCurrency(summary().buyEquity, currency)}
                 </span>
               </div>
               <div class={`${styles.summaryRow} ${styles.highlight}`}>
                 <span>Net Cost</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(summary.buyNetCost, currency)}
+                  {formatCurrency(summary().buyNetCost, currency)}
                 </span>
               </div>
             </div>
@@ -427,29 +427,29 @@ export default function RentBuyCalculator(props: Props) {
               <div class={styles.summaryRow}>
                 <span>Winner</span>
                 <span
-                  class={`${styles.summaryValue} ${summary.winner === 'buy' ? styles.success : styles.warning}`}
+                  class={`${styles.summaryValue} ${summary().winner === 'buy' ? styles.success : styles.warning}`}
                 >
-                  {summary.winner === 'buy' ? 'Buying' : 'Renting'}
+                  {summary().winner === 'buy' ? 'Buying' : 'Renting'}
                 </span>
               </div>
               <div class={styles.summaryRow}>
                 <span>Savings</span>
                 <span class={styles.summaryValue}>
-                  {formatCurrency(Math.abs(summary.savings), currency)}
+                  {formatCurrency(Math.abs(summary().savings), currency)}
                 </span>
               </div>
               <div class={`${styles.summaryRow} highlight`}>
                 <span>Break-even</span>
                 <span class={styles.summaryValue}>
-                  {summary.breakEven ? `Year ${summary.breakEven}` : 'Not reached'}
+                  {summary().breakEven ? `Year ${summary().breakEven}` : 'Not reached'}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Break-even message */}
-          {summary.breakEven && (
-            <div class={`${styles.breakeven} ${summary.winner === 'buy' ? '' : styles.neutral}`}>
+          {summary().breakEven && (
+            <div class={`${styles.breakeven} ${summary().winner === 'buy' ? '' : styles.neutral}`}>
               <div class={styles.breakevenIcon}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -457,7 +457,7 @@ export default function RentBuyCalculator(props: Props) {
               </div>
               <div class={styles.breakevenText}>
                 <strong>
-                  After {summary.breakEven} years, buying becomes cheaper than renting.
+                  After {summary().breakEven} years, buying becomes cheaper than renting.
                 </strong>
                 <p>
                   At this point, your home equity exceeds the cumulative cost advantage of renting
