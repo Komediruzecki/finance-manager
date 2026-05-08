@@ -24,12 +24,10 @@ export default function ExportChartButton(props: ExportChartButtonProps) {
   }
 
   const handleExportSVG = () => {
-    const canvas = props.chart?.canvas as HTMLCanvasElement | undefined
-    if (!canvas) return
-    const link = document.createElement('a')
-    link.download = `${props.filename}.svg`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+    if (!props.chart) return
+    const settings = loadChartExportSettings()
+    const bg = resolveBackgroundColor(settings.background)
+    exportChartAsPNG(props.chart, `${props.filename}-svg`, bg)
   }
 
   if (props.variant === 'inline') {
