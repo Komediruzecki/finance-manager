@@ -843,15 +843,15 @@ export default function Analytics() {
             </>
           )}
 
-          {/* Two Column: Sankey + Savings Rate */}
-          <div class={styles.chartsTwoCol}>
+          {/* Budget Flow Diagram - Full Width */}
+          <div class={styles.chartsFullWidth}>
             <div class={styles.analyticsChart}>
               <div class={styles.heatmapHeader}>
                 <h3 class={styles.chartTitle}>Budget Flow Diagram</h3>
                 <div class={styles.heatmapControls}>
                   <button
                     class={styles.exportButton}
-                    onClick={() => {
+                    onclick={() => {
                       exportSvgAsPng(sankeyContainer(), 'budget-flow')
                     }}
                     title="Export as PNG"
@@ -909,9 +909,12 @@ export default function Analytics() {
                 )}
               </div>
             </div>
+          </div>
 
+          {/* Savings Rate - Full Width */}
+          <div class={styles.chartsFullWidth}>
             <div class={styles.analyticsChart}>
-              <h3 class={styles.chartTitle}>Savings Rate History</h3>
+              <h3 class={styles.chartTitle}>Savings Rate</h3>
               <div class={styles.chartContainer}>
                 <div class={styles.savingsRateDisplay}>
                   <div class={styles.rateCircle}>
@@ -920,20 +923,34 @@ export default function Analytics() {
                   </div>
                   <div class={styles.rateInfo}>
                     <div class={styles.rateRow}>
-                      <span>Target: 20%</span>
-                      <span
-                        class={`${styles.rateStatus} ${data()!.savingsRate >= 20 ? styles.good : data()!.savingsRate >= 10 ? styles.fair : styles.poor}`}
-                      >
-                        {data()!.savingsRate >= 20
-                          ? 'Good'
-                          : data()!.savingsRate >= 10
-                            ? 'Fair'
-                            : 'Poor'}
+                      <span>Monthly Income</span>
+                      <span>{formatAmount(totalIncome())}</span>
+                    </div>
+                    <div class={styles.rateRow}>
+                      <span>Monthly Expenses</span>
+                      <span>{formatAmount(totalExpense())}</span>
+                    </div>
+                    <div class={styles.rateRow}>
+                      <span>Monthly Savings</span>
+                      <span class={data()!.savingsRate >= 20 ? styles.good : data()!.savingsRate >= 10 ? styles.fair : styles.poor}>
+                        {formatAmount(totalIncome() - totalExpense())}
                       </span>
                     </div>
                     <div class={styles.rateRow}>
                       <span>Projected Annual Savings</span>
-                      <span>{formatAmount((totalIncome() - totalExpense()) * 12)}</span>
+                      <span class={styles.rateValue}>{formatAmount((totalIncome() - totalExpense()) * 12)}</span>
+                    </div>
+                    <div class={styles.rateRow}>
+                      <span>Status vs 20% Target</span>
+                      <span
+                        class={`${styles.rateStatus} ${data()!.savingsRate >= 20 ? styles.good : data()!.savingsRate >= 10 ? styles.fair : styles.poor}`}
+                      >
+                        {data()!.savingsRate >= 20
+                          ? 'Above target'
+                          : data()!.savingsRate >= 10
+                            ? 'Below target'
+                            : 'Critical'}
+                      </span>
                     </div>
                   </div>
                 </div>
