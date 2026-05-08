@@ -344,8 +344,7 @@ export default function Import() {
       const newCategoryTypes: Record<string, 'income' | 'expense'> = {}
       const allCategories = detectCategories()
       allCategories.forEach((cat) => {
-        // Default to expense unless type is explicitly set
-        newCategoryTypes[cat] = 'expense'
+        newCategoryTypes[cat] = classifyCategory(cat)
       })
       setCategoryTypes(newCategoryTypes)
     }
@@ -461,12 +460,21 @@ export default function Import() {
     }
   }
 
+  // Auto-detect income categories based on keywords in the category name
+  const classifyCategory = (name: string): 'income' | 'expense' => {
+    const lower = name.toLowerCase()
+    const incomeKeywords = ['salary', 'income', 'wages', 'wage', 'payroll', 'revenue',
+      'dividend', 'refund', 'bonus', 'paycheck', 'pay cheque', 'interest',
+      'credit', 'received', 'royalt']
+    return incomeKeywords.some((kw) => lower.includes(kw)) ? 'income' : 'expense'
+  }
+
   onMount(() => {
     // Initialize default category types with discovered categories
     const categories = detectCategories()
     const types: Record<string, 'income' | 'expense'> = {}
     categories.forEach((cat) => {
-      types[cat] = 'expense'
+      types[cat] = classifyCategory(cat)
     })
     setCategoryTypes(types)
   })

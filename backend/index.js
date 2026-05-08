@@ -4806,8 +4806,14 @@ app.post('/api/import/execute', apiRateLimiter, (req, res) => {
           const color = newCategoryColors[colorIndex % newCategoryColors.length];
           colorIndex++;
           const icon = 'tag';
-          // Use user-specified type, or fallback to auto-detected default
-          const catType = (categoryTypes && categoryTypes[catName]) || 'expense';
+          // Use user-specified type, or auto-detect from category name keywords
+          const catType = (categoryTypes && categoryTypes[catName]) || (() => {
+            const lower = String(catName).toLowerCase();
+            const incomeKeywords = ['salary', 'income', 'wages', 'wage', 'payroll', 'revenue',
+              'dividend', 'refund', 'bonus', 'paycheck', 'pay cheque', 'interest',
+              'credit', 'received', 'royalt'];
+            return incomeKeywords.some(kw => lower.includes(kw)) ? 'income' : 'expense';
+          })();
           const r = insertCat.run(String(catName).trim(), catType, color, icon, pid);
           return r.lastInsertRowid;
         })();
