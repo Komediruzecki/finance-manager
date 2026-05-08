@@ -122,13 +122,13 @@ export default function D3HeatmapChart(props: Props) {
         tooltipEl.innerHTML =
           val > 0 ? `${dateLabel}: ${amountLabel} ${props.type}` : `${dateLabel}: No ${props.type}`
         tooltipEl.style.display = 'block'
-        tooltipEl.style.left = `${event.pageX + 12}px`
-        tooltipEl.style.top = `${event.pageY - 40}px`
+        tooltipEl.style.left = `${event.clientX + 12}px`
+        tooltipEl.style.top = `${event.clientY - 40}px`
       })
       .on('mousemove', (event: MouseEvent) => {
         if (!tooltipEl) return
-        tooltipEl.style.left = `${event.pageX + 12}px`
-        tooltipEl.style.top = `${event.pageY - 40}px`
+        tooltipEl.style.left = `${event.clientX + 12}px`
+        tooltipEl.style.top = `${event.clientY - 40}px`
       })
       .on('mouseout', () => {
         if (!tooltipEl) return
