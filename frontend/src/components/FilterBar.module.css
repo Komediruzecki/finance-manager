@@ -206,3 +206,58 @@
   font-size: 10px;
   font-weight: 700;
 }
+
+.monthYearNav {
+  display: flex;
+  gap: 8px;
+}
+
+.monthYearSelect {
+  padding: 8px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: auto;
+}
+
+.monthYearSelect:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.monthYearSelect:hover {
+  border-color: var(--primary);
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.clearBtn:hover {
+  background: var(--bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}

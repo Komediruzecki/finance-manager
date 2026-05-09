@@ -61,7 +61,8 @@ export default function Loans() {
   const [showAddModal, setShowAddModal] = createSignal(false)
   const [editingLoan, setEditingLoan] = createSignal<Loan | null>(null)
   const [showAmortization, setShowAmortization] = createSignal(false)
-  const [showAmortizationId, setShowAmortizationId] = createSignal<number>(0)
+  const [amortizationLoan, setAmortizationLoan] = createSignal<Loan | null>(null)
+  const [amortizationRecalculateKey, setAmortizationRecalculateKey] = createSignal(0)
   const [showPrepayments, setShowPrepayments] = createSignal(false)
   const [prepaymentsLoanId, setPrepaymentsLoanId] = createSignal<number>(0)
   const [prepayments, setPrepayments] = createSignal<any[]>([])
@@ -151,6 +152,11 @@ export default function Loans() {
       showToast('Prepayment added', 'success')
       setPrepaymentForm({ month: '', amount: '', note: '' })
       loadPrepayments(loanId)
+      setAmortizationRecalculateKey((k) => k + 1)
+      if (amortizationLoan()?.id === loanId) {
+        const fresh = await apiGet<any>(`/api/loans/${loanId}`)
+        setAmortizationLoan({ ...amortizationLoan()!, prepayments: fresh.prepayments || [] })
+      }
     } catch (e: any) {
       showToast(e.message || 'Failed to add prepayment', 'error')
     }
@@ -161,6 +167,11 @@ export default function Loans() {
       await apiDelete(`/api/loans/${loanId}/prepayments/${prepayId}`)
       showToast('Prepayment deleted', 'success')
       loadPrepayments(loanId)
+      setAmortizationRecalculateKey((k) => k + 1)
+      if (amortizationLoan()?.id === loanId) {
+        const fresh = await apiGet<any>(`/api/loans/${loanId}`)
+        setAmortizationLoan({ ...amortizationLoan()!, prepayments: fresh.prepayments || [] })
+      }
     } catch (e: any) {
       showToast(e.message || 'Failed to delete prepayment', 'error')
     }
@@ -425,7 +436,7 @@ export default function Loans() {
                         class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
                         title="View Amortization"
                         onclick={() => {
-                          setShowAmortizationId(loan.id)
+                          setAmortizationLoan(loan)
                           setShowAmortization(true)
                         }}
                       >
@@ -531,25 +542,25 @@ export default function Loans() {
                 Principal vs Remaining
               </h4>
               <Chart
-                type="line"
+                type="bar"
                 data={{
                   labels: loans().map((l) => l.name),
                   datasets: [
                     {
                       label: 'Principal',
                       data: loans().map((l) => l.principal),
+                      backgroundColor: 'rgba(34, 197, 94, 0.7)',
                       borderColor: '#22c55e',
-                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                      fill: true,
-                      tension: 0.4,
+                      borderWidth: 0,
+                      borderRadius: 4,
                     },
                     {
                       label: 'Remaining',
                       data: loans().map((l) => calculateRemaining(l)),
+                      backgroundColor: 'rgba(220, 38, 38, 0.7)',
                       borderColor: '#dc2626',
-                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                      fill: true,
-                      tension: 0.4,
+                      borderWidth: 0,
+                      borderRadius: 4,
                     },
                   ],
                 }}
@@ -935,13 +946,14 @@ export default function Loans() {
       )}
 
       {/* Amortization Table */}
-      {showAmortization() &&
-        showAmortizationId() > 0 &&
-        (() => {
-          const loan = loans().find((l) => l.id === showAmortizationId())
-          if (!loan) return null
-          return <LoanAmortizationTable loanId={loan.id} loan={loan} showDetailed={false} />
-        })()}
+      {showAmortization() && amortizationLoan() && (
+        <LoanAmortizationTable
+          loanId={amortizationLoan()!.id}
+          loan={amortizationLoan()!}
+          showDetailed={false}
+          recalculateKey={amortizationRecalculateKey()}
+        />
+      )}
 
       {/* Prepayments Modal */}
       {showPrepayments() &&
