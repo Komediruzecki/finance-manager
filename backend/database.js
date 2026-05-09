@@ -597,6 +597,9 @@ function seedProfileData(profile) {
 
   // Set emergency fund config
   seedEmergencyFundConfig(profileId, tierConfig);
+
+  // Seed recurring transactions
+  seedRecurringTransactions(profileId, tierConfig, catId);
 }
 
 function getTierConfig(tier) {
@@ -1452,6 +1455,55 @@ function seedEmergencyFundConfig(profileId, config) {
   // Monthly expenses = roughly 80% of salary
   const monthlyExpenses = config.monthlySalary * 0.8;
   insertConfig.run(monthlyExpenses.toFixed(2), profileId);
+}
+
+function seedRecurringTransactions(profileId, config, catId) {
+  const today = new Date();
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const yyyy = nextMonth.getFullYear();
+  const mm = String(nextMonth.getMonth() + 1).padStart(2, '0');
+  const dd = '01';
+  const nextDate = `${yyyy}-${mm}-${dd}`;
+
+  const insert = db.prepare(
+    `INSERT INTO recurring_transactions (profile_id, description, amount, type, category_id, frequency, day_of_month, next_date, active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
+  );
+
+  const recurring = [
+    // Income
+    { desc: 'Monthly Salary', amount: config.monthlySalary, type: 'income', cat: 'Salary Income', freq: 'monthly', dom: 1 },
+    // Housing
+    { desc: 'Rent Payment', amount: Math.round((config.rent.min + config.rent.max) / 2), type: 'expense', cat: 'Rent / Mortgage', freq: 'monthly', dom: 5 },
+    // Utilities
+    { desc: 'Electric Bill', amount: Math.round(config.utilities.max * 0.6), type: 'expense', cat: 'Utilities', freq: 'monthly', dom: 10 },
+    { desc: 'Water Bill', amount: Math.round(config.utilities.max * 0.25), type: 'expense', cat: 'Utilities', freq: 'monthly', dom: 15 },
+    { desc: 'Internet Service', amount: Math.round(config.utilities.max * 0.35), type: 'expense', cat: 'Utilities', freq: 'monthly', dom: 20 },
+    // Subscriptions
+    { desc: 'Streaming Services', amount: Math.round(config.subscriptions.max * 0.6), type: 'expense', cat: 'Subscriptions', freq: 'monthly', dom: 3 },
+    { desc: 'Gym Membership', amount: Math.round(config.subscriptions.max * 0.4), type: 'expense', cat: 'Subscriptions', freq: 'monthly', dom: 1 },
+    // Transportation
+    { desc: 'Car Payment', amount: Math.round((config.carPayment.min + config.carPayment.max) / 2), type: 'expense', cat: 'Car', freq: 'monthly', dom: 7 },
+    { desc: 'Fuel', amount: Math.round((config.gas.min + config.gas.max) / 2), type: 'expense', cat: 'Transportation', freq: 'weekly', dom: null },
+    // Insurance
+    { desc: 'Health Insurance', amount: Math.round(config.healthcare.max * 0.7), type: 'expense', cat: 'Insurance', freq: 'monthly', dom: 1 },
+    { desc: 'Car Insurance', amount: Math.round(config.healthcare.max * 0.3), type: 'expense', cat: 'Insurance', freq: 'monthly', dom: 15 },
+    // Groceries
+    { desc: 'Weekly Groceries', amount: Math.round(config.groceries.max / 4), type: 'expense', cat: 'Groceries', freq: 'weekly', dom: null },
+  ];
+
+  // Add investments for mid and high tiers
+  if (config.investments) {
+    recurring.push({
+      desc: 'Monthly Investment', amount: Math.round((config.investments.min + config.investments.max) / 2), type: 'expense', cat: 'Investments / Stocks / ETF', freq: 'monthly', dom: 2,
+    });
+  }
+
+  for (const r of recurring) {
+    const catId_val = catId(r.cat);
+    const nextDate_adjusted = r.dom ? `${yyyy}-${mm}-${String(r.dom).padStart(2, '0')}` : nextDate;
+    insert.run(profileId, r.desc, r.amount, r.type, catId_val, r.freq, r.dom, nextDate_adjusted);
+  }
 }
 
 function randRange(min, max) {

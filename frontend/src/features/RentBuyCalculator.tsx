@@ -65,6 +65,7 @@ export default function RentBuyCalculator(props: Props) {
     insurance: '1200',
     maintenance: '1',
     hoa: '200',
+    horizon: '30',
   })
 
   const [showResults, setShowResults] = createSignal(false)
@@ -135,7 +136,7 @@ export default function RentBuyCalculator(props: Props) {
       const maintenancePct = n(raw.maintenance) / 100
       const hoa = n(raw.hoa)
 
-      const years = 30
+      const years = parseInt(raw.horizon) || 30
       const monthlyRate = interestRate / 12
       const totalMonths = loanTerm * 12
 
@@ -245,7 +246,7 @@ export default function RentBuyCalculator(props: Props) {
     <div class={sharedStyles.page}>
       <div class={sharedStyles.pageHeader}>
         <h1>Rent vs Buy Calculator</h1>
-        <p>Compare 30-year costs between renting and buying</p>
+        <p>Compare long-term costs between renting and buying</p>
       </div>
 
       <div class={styles.calcContainer}>
@@ -286,6 +287,18 @@ export default function RentBuyCalculator(props: Props) {
                 value={formData().investReturn}
                 oninput={(e) => {
                   handleInput('investReturn' as keyof typeof formData, e.target.value)
+                }}
+              />
+            </div>
+            <div class={styles.formGroup}>
+              <label>Time Horizon (years)</label>
+              <input
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*"
+                value={formData().horizon}
+                oninput={(e) => {
+                  handleInput('horizon' as keyof typeof formData, e.target.value)
                 }}
               />
             </div>
@@ -402,162 +415,169 @@ export default function RentBuyCalculator(props: Props) {
         (() => {
           const s = summary()!
           return (
-        <>
-          {/* Summary Cards */}
-          <div class={styles.summaryGrid}>
-            <div class={styles.summaryCard}>
-              <div class={styles.summaryTitle}>Rent Scenario (30 years)</div>
-              <div class={styles.summaryRow}>
-                <span>Total Rent Paid</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.rentCumulative, currency)}
-                </span>
+            <>
+              {/* Summary Cards */}
+              <div class={styles.summaryGrid}>
+                <div class={styles.summaryCard}>
+                  <div class={styles.summaryTitle}>Rent Scenario ({formData().horizon} years)</div>
+                  <div class={styles.summaryRow}>
+                    <span>Total Rent Paid</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(s.rentCumulative, currency)}
+                    </span>
+                  </div>
+                  <div class={styles.summaryRow}>
+                    <span>Investment Value</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(s.rentInvestmentValue, currency)}
+                    </span>
+                  </div>
+                  <div class={`${styles.summaryRow} ${styles.highlight}`}>
+                    <span>Net Cost</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(s.rentNetCost, currency)}
+                    </span>
+                  </div>
+                </div>
+                <div class={styles.summaryCard}>
+                  <div class={styles.summaryTitle}>Buy Scenario ({formData().horizon} years)</div>
+                  <div class={styles.summaryRow}>
+                    <span>Total Mortgage + Costs</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(s.buyCumulative, currency)}
+                    </span>
+                  </div>
+                  <div class={styles.summaryRow}>
+                    <span>Home Equity</span>
+                    <span class={styles.summaryValue}>{formatCurrency(s.buyEquity, currency)}</span>
+                  </div>
+                  <div class={`${styles.summaryRow} ${styles.highlight}`}>
+                    <span>Net Cost</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(s.buyNetCost, currency)}
+                    </span>
+                  </div>
+                </div>
+                <div class={`${styles.summaryCard} ${styles.verdict}`}>
+                  <div class={styles.summaryTitle}>Comparison</div>
+                  <div class={styles.summaryRow}>
+                    <span>Winner</span>
+                    <span
+                      class={`${styles.summaryValue} ${s.winner === 'buy' ? styles.success : styles.warning}`}
+                    >
+                      {s.winner === 'buy' ? 'Buying' : 'Renting'}
+                    </span>
+                  </div>
+                  <div class={styles.summaryRow}>
+                    <span>Savings</span>
+                    <span class={styles.summaryValue}>
+                      {formatCurrency(Math.abs(s.savings), currency)}
+                    </span>
+                  </div>
+                  <div class={`${styles.summaryRow} highlight`}>
+                    <span>Break-even</span>
+                    <span class={styles.summaryValue}>
+                      {s.breakEven ? `Year ${s.breakEven}` : 'Not reached'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div class={styles.summaryRow}>
-                <span>Investment Value</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.rentInvestmentValue, currency)}
-                </span>
-              </div>
-              <div class={`${styles.summaryRow} ${styles.highlight}`}>
-                <span>Net Cost</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.rentNetCost, currency)}
-                </span>
-              </div>
-            </div>
-            <div class={styles.summaryCard}>
-              <div class={styles.summaryTitle}>Buy Scenario (30 years)</div>
-              <div class={styles.summaryRow}>
-                <span>Total Mortgage + Costs</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.buyCumulative, currency)}
-                </span>
-              </div>
-              <div class={styles.summaryRow}>
-                <span>Home Equity</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.buyEquity, currency)}
-                </span>
-              </div>
-              <div class={`${styles.summaryRow} ${styles.highlight}`}>
-                <span>Net Cost</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(s.buyNetCost, currency)}
-                </span>
-              </div>
-            </div>
-            <div class={`${styles.summaryCard} ${styles.verdict}`}>
-              <div class={styles.summaryTitle}>Comparison</div>
-              <div class={styles.summaryRow}>
-                <span>Winner</span>
-                <span
-                  class={`${styles.summaryValue} ${s.winner === 'buy' ? styles.success : styles.warning}`}
-                >
-                  {s.winner === 'buy' ? 'Buying' : 'Renting'}
-                </span>
-              </div>
-              <div class={styles.summaryRow}>
-                <span>Savings</span>
-                <span class={styles.summaryValue}>
-                  {formatCurrency(Math.abs(s.savings), currency)}
-                </span>
-              </div>
-              <div class={`${styles.summaryRow} highlight`}>
-                <span>Break-even</span>
-                <span class={styles.summaryValue}>
-                  {s.breakEven ? `Year ${s.breakEven}` : 'Not reached'}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* Break-even message */}
-          {s.breakEven && (
-            <div class={`${styles.breakeven} ${s.winner === 'buy' ? '' : styles.neutral}`}>
-              <div class={styles.breakevenIcon}>
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div class={styles.breakevenText}>
-                <strong>
-                  After {s.breakEven} years, buying becomes cheaper than renting.
-                </strong>
-                <p>
-                  At this point, your home equity exceeds the cumulative cost advantage of renting
-                  plus investment returns.
-                </p>
-              </div>
-            </div>
-          )}
+              {/* Break-even message */}
+              {s.breakEven && (
+                <div class={`${styles.breakeven} ${s.winner === 'buy' ? '' : styles.neutral}`}>
+                  <div class={styles.breakevenIcon}>
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div class={styles.breakevenText}>
+                    <strong>After {s.breakEven} years, buying becomes cheaper than renting.</strong>
+                    <p>
+                      At this point, your home equity exceeds the cumulative cost advantage of
+                      renting plus investment returns.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-          {/* Chart */}
-          <div class={styles.chartSection}>
-            <ExportChartButton chart={chartRef()} filename="rent-buy-comparison" variant="inline" />
-            <Chart
-              id="rentBuyChart"
-              type="line"
-              data={{
-                labels: results().map((r) => `Year ${r.year}`),
-                datasets: [
-                  {
-                    label: 'Renting Net Cost',
-                    data: results().map((r) => r.rentNetCost),
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 2,
-                  },
-                  {
-                    label: 'Buying Net Cost',
-                    data: results().map((r) => r.buyNetCost),
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 2,
-                  },
-                ],
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    ticks: {
-                      callback: (v: number | string) =>
-                        formatCurrency(typeof v === 'number' ? v : Number(v), currency as any),
-                      color: chartColors().text,
+              {/* Chart */}
+              <div class={styles.chartSection}>
+                <ExportChartButton
+                  chart={chartRef()}
+                  filename="rent-buy-comparison"
+                  variant="inline"
+                />
+                <Chart
+                  id="rentBuyChart"
+                  type="line"
+                  data={{
+                    labels: results().map((r) => `Year ${r.year}`),
+                    datasets: [
+                      {
+                        label: 'Renting Net Cost',
+                        data: results().map((r) => r.rentNetCost),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                      },
+                      {
+                        label: 'Buying Net Cost',
+                        data: results().map((r) => r.buyNetCost),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                      y: {
+                        ticks: {
+                          callback: (v: number | string) =>
+                            formatCurrency(typeof v === 'number' ? v : Number(v), currency as any),
+                          color: chartColors().text,
+                        },
+                        grid: {
+                          color: chartColors().border,
+                        },
+                        title: {
+                          display: true,
+                          text: 'Net Cost (lower is better)',
+                          color: chartColors().text,
+                        },
+                      },
+                      x: {
+                        ticks: { color: chartColors().text, maxTicksLimit: 10 },
+                        grid: { color: chartColors().border },
+                      },
                     },
-                    grid: {
-                      color: chartColors().border,
+                    plugins: {
+                      legend: { position: 'top', labels: { color: chartColors().text } },
                     },
-                    title: {
-                      display: true,
-                      text: 'Net Cost (lower is better)',
-                      color: chartColors().text,
-                    },
-                  },
-                  x: {
-                    ticks: { color: chartColors().text, maxTicksLimit: 10 },
-                    grid: { color: chartColors().border },
-                  },
-                },
-                plugins: {
-                  legend: { position: 'top', labels: { color: chartColors().text } },
-                },
-              }}
-              height={300}
-              width="100%"
-              onReady={(chart: any) => {
-                setChartRef(chart)
-              }}
-            />
-          </div>
-        </>
-          )})()
+                  }}
+                  height={300}
+                  width="100%"
+                  onReady={(chart: any) => {
+                    setChartRef(chart)
+                  }}
+                />
+              </div>
+            </>
+          )
+        })()
       ) : (
         <div class={styles.cta}>
           <p>Enter your values above to see the comparison</p>

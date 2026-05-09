@@ -958,7 +958,7 @@ app.post('/api/settings/set-storage', apiRateLimiter, (req, res) => {
 // ========================
 // CATEGORIES (per-profile)
 // ========================
-app.get('/api/categories', apiRateLimiter, requireAuth, (req, res) => {
+app.get('/api/categories', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { type, income, expense } = req.query;
@@ -1152,7 +1152,7 @@ const MERCHANT_DICTIONARY = [
 ];
 
 // Get learned mappings for profile
-app.get('/api/categories/mappings', apiRateLimiter, requireAuth, (req, res) => {
+app.get('/api/categories/mappings', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const rows = db
@@ -1816,7 +1816,7 @@ app.get('/api/transactions/by-tag/:tagId', apiRateLimiter, (req, res) => {
 // ========================
 // TRANSACTIONS (per-profile, multi-profile for combined view)
 // ========================
-app.get('/api/transactions', apiRateLimiter, requireAuth, (req, res) => {
+app.get('/api/transactions', apiRateLimiter, (req, res) => {
   try {
     const pids = getProfileIds(req);
     const inClause = pids.map(() => '?').join(',');
