@@ -2,7 +2,7 @@
  * TransactionTable Component
  * Renders transaction list with sorting, filtering, and pagination
  */
-import { createEffect, createSignal, For } from 'solid-js'
+import { For } from 'solid-js'
 import styles from './TransactionTable.module.css'
 import type { Transaction } from '../types/models'
 
@@ -20,86 +20,7 @@ interface TransactionTableProps {
 }
 
 export default function TransactionTable(props: TransactionTableProps) {
-  const [filtered, setFiltered] = createSignal<Transaction[]>([])
-  const [sortConfig, setSortConfig] = createSignal<{ field: string; direction: 'asc' | 'desc' }>({
-    field: 'date',
-    direction: 'desc',
-  })
-
-  // Initialize sort config from props
-  createEffect(() => {
-    if (props.sortField !== undefined) {
-      setSortConfig({
-        field: props.sortField,
-        direction: props.sortOrder !== undefined ? props.sortOrder : 'desc',
-      })
-    }
-  })
-
-  // Apply filters based on sort and any global filters
-  createEffect(() => {
-    const items = [...props.transactions]
-
-    // Apply sorting
-    const { field, direction } = sortConfig()
-    items.sort((a, b) => {
-      let valA: string | number | undefined
-      let valB: string | number | undefined
-
-      switch (field) {
-        case 'date':
-          valA = a.date
-          valB = b.date
-          break
-        case 'description':
-          valA = a.description
-          valB = b.description
-          break
-        case 'amount':
-          valA = a.amount
-          valB = b.amount
-          break
-        case 'category':
-          valA = a.category_name
-          valB = b.category_name
-          break
-        default: {
-          const defaultValA = a[field as keyof Transaction]
-          const defaultValB = b[field as keyof Transaction]
-          valA =
-            typeof defaultValA === 'string' || typeof defaultValA === 'number'
-              ? defaultValA
-              : undefined
-          valB =
-            typeof defaultValB === 'string' || typeof defaultValB === 'number'
-              ? defaultValB
-              : undefined
-        }
-      }
-
-      if (valA !== undefined && valB !== undefined) {
-        if (typeof valA === 'string') {
-          return direction === 'asc'
-            ? valA.localeCompare(valB as string)
-            : (valB as string).localeCompare(valA)
-        }
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return direction === 'asc' ? (valA > valB ? 1 : -1) : valB > valA ? 1 : -1
-        }
-        return 0
-      }
-      return 0
-    })
-
-    setFiltered(items)
-  })
-
   const handleSort = (field: string) => {
-    let direction: 'asc' | 'desc' = 'asc'
-    if (sortConfig().field === field && sortConfig().direction === 'asc') {
-      direction = 'desc'
-    }
-    setSortConfig({ field, direction })
     props.onSort?.(field)
   }
 
@@ -120,12 +41,13 @@ export default function TransactionTable(props: TransactionTableProps) {
                 type="checkbox"
                 class={styles.checkbox}
                 checked={
-                  props.selectedTransactions.length === filtered().length && filtered().length > 0
+                  props.selectedTransactions.length === props.transactions.length &&
+                  props.transactions.length > 0
                 }
                 onChange={(e) => {
                   const checked = e.currentTarget.checked
                   if (checked) {
-                    props.onSelectionChange(filtered().map((t) => t.id))
+                    props.onSelectionChange(props.transactions.map((t) => t.id))
                   } else {
                     props.onSelectionChange([])
                   }
@@ -150,7 +72,12 @@ export default function TransactionTable(props: TransactionTableProps) {
                 handleSort('date')
               }}
             >
-              Date {sortConfig().field === 'date' && (sortConfig().direction === 'asc' ? '↑' : '↓')}
+              Date{' '}
+              {(props.sortField || 'date') === 'date'
+                ? (props.sortOrder || 'desc') === 'asc'
+                  ? '↑'
+                  : '↓'
+                : ''}
             </th>
             <th
               class={`${styles.col} ${styles.descriptionCol}`}
@@ -159,8 +86,11 @@ export default function TransactionTable(props: TransactionTableProps) {
               }}
             >
               Description{' '}
-              {sortConfig().field === 'description' &&
-                (sortConfig().direction === 'asc' ? '↑' : '↓')}
+              {(props.sortField || 'date') === 'description'
+                ? (props.sortOrder || 'desc') === 'asc'
+                  ? '↑'
+                  : '↓'
+                : ''}
             </th>
             <th
               class={`${styles.col} ${styles.categoryCol}`}
@@ -169,7 +99,11 @@ export default function TransactionTable(props: TransactionTableProps) {
               }}
             >
               Category{' '}
-              {sortConfig().field === 'category' && (sortConfig().direction === 'asc' ? '↑' : '↓')}
+              {(props.sortField || 'date') === 'category'
+                ? (props.sortOrder || 'desc') === 'asc'
+                  ? '↑'
+                  : '↓'
+                : ''}
             </th>
             <th class={`${styles.col} ${styles.counterPartyCol}`}>From/To</th>
             <th
@@ -179,14 +113,18 @@ export default function TransactionTable(props: TransactionTableProps) {
               }}
             >
               Amount{' '}
-              {sortConfig().field === 'amount' && (sortConfig().direction === 'asc' ? '↑' : '↓')}
+              {(props.sortField || 'date') === 'amount'
+                ? (props.sortOrder || 'desc') === 'asc'
+                  ? '↑'
+                  : '↓'
+                : ''}
             </th>
             <th class={`${styles.col} ${styles.typeCol}`}>Type</th>
             <th class={`${styles.col} ${styles.actionsCol}`}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <For each={filtered()}>
+          <For each={props.transactions}>
             {(transaction) => (
               <tr class={transaction.reconciled ? styles.reconciled : ''}>
                 <td class={styles.checkboxCol}>

@@ -241,7 +241,7 @@ export default function Transactions() {
   // Calculate filtered results
   const filteredTransactions = () => {
     const allTransactions = transactions()
-    return allTransactions.filter((tx) => {
+    const filtered = allTransactions.filter((tx) => {
       // Filter by type
       if (filterType() !== 'all' && tx.type !== filterType()) {
         return false
@@ -290,6 +290,49 @@ export default function Transactions() {
 
       return true
     })
+
+    // Apply sorting
+    const field = sortField()
+    const order = sortOrder()
+    filtered.sort((a, b) => {
+      let valA: string | number | undefined
+      let valB: string | number | undefined
+
+      switch (field) {
+        case 'date':
+          valA = a.date
+          valB = b.date
+          break
+        case 'description':
+          valA = a.description
+          valB = b.description
+          break
+        case 'amount':
+          valA = a.amount
+          valB = b.amount
+          break
+        case 'category':
+          valA = a.category_name
+          valB = b.category_name
+          break
+        default:
+          return 0
+      }
+
+      if (valA !== undefined && valB !== undefined) {
+        if (typeof valA === 'string') {
+          return order === 'asc'
+            ? valA.localeCompare(valB as string)
+            : (valB as string).localeCompare(valA)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return order === 'asc' ? (valA > valB ? 1 : -1) : valB > valA ? 1 : -1
+        }
+      }
+      return 0
+    })
+
+    return filtered
   }
 
   // Get uncategorized transactions

@@ -6710,6 +6710,27 @@ app.get('/api/export', apiRateLimiter, (req, res) => {
       )
       .all(...pids);
 
+    const profiles = db.prepare(`SELECT * FROM profiles`).all();
+
+    const goals = db
+      .prepare(
+        `
+      SELECT sg.* FROM savings_goals sg
+      WHERE sg.profile_id IN (${inClause})
+    `
+      )
+      .all(...pids);
+
+    const balanceHistory = db
+      .prepare(
+        `
+      SELECT abh.* FROM account_balance_history abh
+      JOIN accounts a ON a.id = abh.account_id
+      WHERE a.profile_id IN (${inClause})
+    `
+      )
+      .all(...pids);
+
     const settings = db
       .prepare(
         `
@@ -6730,14 +6751,14 @@ app.get('/api/export', apiRateLimiter, (req, res) => {
       version: '2.0',
       export_date: new Date().toISOString(),
       storage_mode: req.session.storageMode || 'self-hosted',
-      profiles: [],
+      profiles,
       categories,
       transactions,
       accounts,
       budgets,
-      goals: [],
+      goals,
       loans,
-      balanceHistory: [],
+      balanceHistory,
       settings: settingsObj,
     });
   } catch (err) {
@@ -6772,6 +6793,14 @@ app.post('/api/import', apiRateLimiter, (req, res) => {
 
     // Map category names to IDs for reference
     const categoryMap = new Map();
+
+    // Insert profiles
+    if (data.profiles && data.profiles.length > 0) {
+      const insertProfile = db.prepare(`INSERT INTO profiles (name, created_at) VALUES (?, ?)`);
+      for (const p of data.profiles) {
+        insertProfile.run(p.name, p.created_at || new Date().toISOString());
+      }
+    }
 
     // Insert categories
     const insertCat = db.prepare(`
@@ -6818,6 +6847,48 @@ app.post('/api/import', apiRateLimiter, (req, res) => {
       }
     }
 
+    // Insert budgets
+    const insertBudget = db.prepare(`
+      INSERT INTO budgets (category_id, amount, period, start_date, end_date, rollover_enabled, rollover_amount, profile_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    if (data.budgets && data.budgets.length > 0) {
+      for (const b of data.budgets) {
+        budgetId++;
+        insertBudget.run(
+          b.category_id || null,
+          b.amount || 0,
+          b.period || 'monthly',
+          b.start_date || new Date().toISOString(),
+          b.end_date || null,
+          b.rollover_enabled ? 1 : 0,
+          b.rollover_amount || 0,
+          pid
+        );
+      }
+    }
+
+    // Insert loans
+    const insertLoan = db.prepare(`
+      INSERT INTO loans (name, principal, interest_rate, start_date, term_months, profile_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    if (data.loans && data.loans.length > 0) {
+      for (const l of data.loans) {
+        loanId++;
+        insertLoan.run(
+          l.name,
+          l.principal || 0,
+          l.interest_rate || 5.0,
+          l.start_date || new Date().toISOString(),
+          l.term_months || 360,
+          pid
+        );
+      }
+    }
+
     // Insert transactions
     const insertTx = db.prepare(`
       INSERT INTO transactions (date, description, amount, type, currency, means_of_payment, beneficiary, payor, notes, category_id, profile_id, created_at)
@@ -6845,6 +6916,47 @@ app.post('/api/import', apiRateLimiter, (req, res) => {
           tx.created_at || new Date().toISOString()
         );
         importedCount++;
+      }
+    }
+
+    // Insert goals
+    if (data.goals && data.goals.length > 0) {
+      const insertGoal = db.prepare(`
+        INSERT INTO savings_goals (name, target_amount, current_amount, deadline, notes, profile_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      for (const g of data.goals) {
+        insertGoal.run(
+          g.name,
+          g.target_amount || 0,
+          g.current_amount || 0,
+          g.deadline || null,
+          g.notes || '',
+          pid
+        );
+      }
+    }
+
+    // Insert balance history
+    if (data.balanceHistory) {
+      if (Array.isArray(data.balanceHistory)) {
+        const insertBH = db.prepare(`
+          INSERT INTO account_balance_history (account_id, balance, recorded_at) VALUES (?, ?, ?)
+        `);
+        for (const entry of data.balanceHistory) {
+          insertBH.run(entry.account_id, entry.balance, entry.recorded_at || new Date().toISOString());
+        }
+      } else if (typeof data.balanceHistory === 'object') {
+        const insertBH = db.prepare(`
+          INSERT INTO account_balance_history (account_id, balance, recorded_at) VALUES (?, ?, ?)
+        `);
+        for (const [accountId, entries] of Object.entries(data.balanceHistory)) {
+          if (Array.isArray(entries)) {
+            for (const entry of entries) {
+              insertBH.run(parseInt(accountId), entry.balance, entry.recorded_at || new Date().toISOString());
+            }
+          }
+        }
       }
     }
 

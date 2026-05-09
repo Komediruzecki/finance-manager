@@ -438,14 +438,55 @@ export class IndexedDBAdapter implements StorageAdapter {
       await db.clear(store)
     }
 
-    // Import data
-    if (data.profiles) for (const p of data.profiles) await db.add('profiles', p)
-    if (data.categories) for (const c of data.categories) await db.add('categories', c)
-    if (data.accounts) for (const a of data.accounts) await db.add('accounts', a)
-    if (data.budgets) for (const b of data.budgets) await db.add('budgets', b)
-    if (data.goals) for (const g of data.goals) await db.add('goals', g)
-    if (data.loans) for (const l of data.loans) await db.add('loans', l)
-    if (data.transactions) for (const t of data.transactions) await db.add('transactions', t)
+    // Import profiles and build ID mapping (old SQLite ID → new IndexedDB ID)
+    const profileIdMap = new Map<number, number>()
+    if (data.profiles && data.profiles.length > 0) {
+      for (const p of data.profiles) {
+        const oldId = p.id
+        const newId = (await db.add('profiles', {
+          name: p.name,
+          created_at: p.created_at || new Date().toISOString(),
+        })) as number
+        profileIdMap.set(oldId, newId)
+      }
+    }
+
+    // If no profiles in export, create a default one
+    if (profileIdMap.size === 0) {
+      const defaultId = (await db.add('profiles', {
+        name: 'Main Profile',
+        created_at: new Date().toISOString(),
+      })) as number
+      // Map old profile_id=1 (common default) to the new default profile
+      profileIdMap.set(1, defaultId)
+    }
+
+    // Set current profile to the first imported/new profile
+    const firstProfileId = profileIdMap.values().next().value
+    if (firstProfileId) {
+      localStorage.setItem('currentProfileId', String(firstProfileId))
+    }
+
+    // Helper: remap profile_id on imported records
+    const remap = <T extends { profile_id?: number }>(record: T): T => {
+      if (record.profile_id && typeof record.profile_id === 'number') {
+        const mapped = profileIdMap.get(record.profile_id)
+        if (mapped !== undefined) {
+          record = { ...record, profile_id: mapped }
+        } else {
+          record = { ...record, profile_id: firstProfileId ?? 1 }
+        }
+      }
+      return record
+    }
+
+    // Import data with profile_id remapping
+    if (data.categories) for (const c of data.categories) await db.add('categories', remap(c))
+    if (data.accounts) for (const a of data.accounts) await db.add('accounts', remap(a))
+    if (data.budgets) for (const b of data.budgets) await db.add('budgets', remap(b))
+    if (data.goals) for (const g of data.goals) await db.add('goals', remap(g))
+    if (data.loans) for (const l of data.loans) await db.add('loans', remap(l))
+    if (data.transactions) for (const t of data.transactions) await db.add('transactions', remap(t))
 
     // Import settings
     for (const [key, value] of Object.entries(data.settings)) {
