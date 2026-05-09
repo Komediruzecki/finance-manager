@@ -105,18 +105,23 @@ export class ApiClient {
       const response = await apiFetch(url, requestOptions)
 
       if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 && method !== 'GET') {
           window.dispatchEvent(new Event('auth:required'))
         }
         const errorData = await response.json().catch(() => ({
           error: `HTTP ${response.status}`,
         }))
         const errorMsg = (errorData.error || errorData.message) ?? `HTTP ${response.status}`
-        logger.error(
-          'API Error',
-          { status: response.status, endpoint, message: errorMsg },
-          'ApiClient'
-        )
+
+        // Auth check 401s are expected when not logged in — don't log as errors
+        const isAuthEndpoint = endpoint === '/auth/check' || endpoint === '/auth/me'
+        if (!isAuthEndpoint || response.status !== 401) {
+          logger.error(
+            'API Error',
+            { status: response.status, endpoint, message: errorMsg },
+            'ApiClient'
+          )
+        }
         throw new Error(errorMsg)
       }
 
@@ -127,9 +132,13 @@ export class ApiClient {
 
       return await response.json()
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Network error'
-      logger.error('API Request Failed', { endpoint, method, message }, 'ApiClient')
-      throw new Error(message)
+      // Don't re-log errors from auth endpoints — already handled above or expected
+      const isAuthEndpoint = endpoint === '/auth/check' || endpoint === '/auth/me'
+      if (!isAuthEndpoint) {
+        const message = error instanceof Error ? error.message : 'Network error'
+        logger.error('API Request Failed', { endpoint, method, message }, 'ApiClient')
+      }
+      throw error instanceof Error ? error : new Error('Network error')
     }
   }
 

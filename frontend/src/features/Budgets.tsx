@@ -34,11 +34,12 @@ import { createEffect, createSignal, For, onMount } from 'solid-js'
 import Badge from '../components/Badge'
 import styles from '../components/BudgetsPage.module.css'
 import Button from '../components/Button'
-import { getCategorySvg } from '../components/CategoryIcon'
+import CategoryIcon, { getCategorySvg } from '../components/CategoryIcon'
 import Chart from '../components/Chart'
+import ConfirmButton from '../components/ConfirmButton'
 import { getLocalCurrency } from '../core/api'
 import { theme } from '../core/theme'
-import { apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
 
 type AllocationStatus = 'ok' | 'warning' | 'over'
 
@@ -91,6 +92,16 @@ interface ZeroBasedSummary {
   income: number
 }
 
+interface Category {
+  id: number
+  name: string
+  type: 'expense' | 'income'
+  color: string
+  icon: string | null
+  profile_id: number
+  budget?: number
+}
+
 export default function Budgets() {
   const [month, setMonth] = createSignal(new Date().toISOString().slice(0, 7))
   const [loading, setLoading] = createSignal(true)
@@ -106,6 +117,24 @@ export default function Budgets() {
   const [improvements, setImprovements] = createSignal<any[]>([])
   const [showMonthPicker, setShowMonthPicker] = createSignal(false)
   const [showYearPicker, setShowYearPicker] = createSignal(false)
+
+  // Categories state
+  const [categories, setCategories] = createSignal<Category[]>([])
+  const [showCatModal, setShowCatModal] = createSignal(false)
+  const [showCatBudgetModal, setShowCatBudgetModal] = createSignal(false)
+  const [editingCategory, setEditingCategory] = createSignal<Category | null>(null)
+  const [selectedCat, setSelectedCat] = createSignal<Category | null>(null)
+  const [catBudgetAmount, setCatBudgetAmount] = createSignal('')
+  const [filterType, setFilterType] = createSignal<'all' | 'expense' | 'income'>('all')
+  const [categoryBudgetSummary, setCategoryBudgetSummary] = createSignal<
+    Record<number, { spent: number; budget: number; remaining: number; percent_used: number }>
+  >({})
+  const [catFormData, setCatFormData] = createSignal({
+    name: '',
+    type: 'expense' as 'expense' | 'income',
+    color: '#3b82f6',
+    icon: '',
+  })
 
   const MONTHS = [
     'January',
@@ -315,9 +344,130 @@ export default function Budgets() {
     setShowAllocateModal(true)
   }
 
-  // Load improvements once on mount (6-month data, not month-specific)
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      const [allRes, budgetRes] = await Promise.all([
+        apiGet<Category[]>('/api/categories'),
+        apiGet<any[]>('/api/budgets/summary').catch(() => [] as any[]),
+      ])
+      setCategories(allRes)
+      const summary: Record<
+        number,
+        { spent: number; budget: number; remaining: number; percent_used: number }
+      > = {}
+      if (Array.isArray(budgetRes)) {
+        for (const b of budgetRes) {
+          summary[b.category_id] = {
+            spent: b.spent || 0,
+            budget: b.amount || 0,
+            remaining: b.remaining || 0,
+            percent_used: b.percentage || 0,
+          }
+        }
+      }
+      setCategoryBudgetSummary(summary)
+    } catch (err) {
+      console.error('Failed to load categories:', err)
+    }
+  }
+
+  // Handle category form submit
+  const handleCatSubmit = async (e: Event) => {
+    e.preventDefault()
+    const data = {
+      name: catFormData().name,
+      type: catFormData().type,
+      color: catFormData().color,
+      icon: catFormData().icon || null,
+    }
+
+    try {
+      if (editingCategory()) {
+        await apiPut(`/api/categories/${editingCategory()!.id}`, data)
+        showToast('Category updated successfully', 'success')
+      } else {
+        await apiPost('/api/categories', data)
+        showToast('Category created successfully', 'success')
+      }
+      setShowCatModal(false)
+      setEditingCategory(null)
+      setCatFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to save category:', err)
+      showToast('Failed to save category', 'error')
+    }
+  }
+
+  // Delete category
+  const deleteCategory = async (id: number) => {
+    try {
+      await apiDelete(`/api/categories/${id}`)
+      showToast('Category deleted successfully', 'success')
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to delete category:', err)
+      showToast('Failed to delete category', 'error')
+    }
+  }
+
+  // Update category color
+  const updateCategoryColor = async (id: number, color: string) => {
+    try {
+      await apiPut(`/api/categories/${id}`, { color })
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to update color:', err)
+      showToast('Failed to update color', 'error')
+    }
+  }
+
+  // Edit category
+  const editCategory = (category: Category) => {
+    setEditingCategory(category)
+    setCatFormData({
+      name: category.name,
+      type: category.type,
+      color: category.color,
+      icon: category.icon || '',
+    })
+    setShowCatModal(true)
+  }
+
+  // Open budget modal for a category
+  const openCatBudgetModal = (category: Category) => {
+    setSelectedCat(category)
+    setCatBudgetAmount('')
+    setShowCatBudgetModal(true)
+  }
+
+  // Update budget for a category
+  const updateCatBudget = async (amount: number) => {
+    if (!selectedCat()) return
+    try {
+      const now = new Date()
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      await apiPost('/api/budgets', {
+        category_id: selectedCat()!.id,
+        amount,
+        period: 'monthly',
+        start_date: startDate,
+      })
+      showToast('Budget set successfully', 'success')
+      setShowCatBudgetModal(false)
+      setSelectedCat(null)
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to set budget', err)
+      showToast('Failed to set budget', 'error')
+    }
+  }
+
+  // Load improvements and categories once on mount
   onMount(() => {
     loadImprovements()
+    loadCategories()
   })
 
   // Load data when month changes
@@ -630,85 +780,85 @@ export default function Budgets() {
       )}
 
       {/* Forecast Section */}
-        <div class={styles.budgetForecast}>
-          <div class={styles.forecastHeader}>
-            <div class={styles.forecastTitle}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                />
-              </svg>
-              <span>Budget Forecast</span>
-            </div>
+      <div class={styles.budgetForecast}>
+        <div class={styles.forecastHeader}>
+          <div class={styles.forecastTitle}>
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+              />
+            </svg>
+            <span>Budget Forecast</span>
           </div>
-
-          {forecastData() ? (
-            <>
-              {/* Adherence Stats */}
-              <div class={styles.forecastStats}>
-                <div class={styles.statItem}>
-                  <div class={styles.statLabel}>Historical Adherence</div>
-                  <div
-                    class={styles.statValue}
-                    classList={{
-                      [styles.positive]: forecastData()!.avg_adherence >= 80,
-                    }}
-                  >
-                    {forecastData()!.avg_adherence}%
-                  </div>
-                </div>
-                <div class={styles.statItem}>
-                  <div class={styles.statLabel}>Total Budget</div>
-                  <div class={styles.statValue}>{formatCurrency(forecastData()!.total_budget)}</div>
-                </div>
-              </div>
-
-              {/* Forecast Chart */}
-              <div class={styles.forecastChart}>
-                <div class={styles.chartRow}>
-                  <span class={styles.chartLabel}>Month</span>
-                  <span class={styles.chartLabel}>Budget</span>
-                  <span class={styles.chartLabel}>Predicted</span>
-                  <span class={styles.chartLabel}>Adherence</span>
-                  <span class={styles.chartLabel}>Status</span>
-                </div>
-                <For each={forecastData()!.forecast}>
-                  {(fm) => (
-                    <div class={styles.chartRow} data-index={fm.month}>
-                      <span class={styles.chartLabel}>{fm.label}</span>
-                      <span class={`${styles.chartValue} ${styles.budgetVal}`}>
-                        {formatCurrency(fm.budget_amount)}
-                      </span>
-                      <span class={`${styles.chartValue} ${styles.actualVal}`}>
-                        {formatCurrency(fm.predicted_spent)}
-                      </span>
-                      <span class={styles.chartValue}>{Math.round(fm.adherence)}%</span>
-                      <span
-                        class={`${styles.chartStatus} ${styles[`chartStatus${fm.status.charAt(0).toUpperCase() + fm.status.slice(1)}`]}`}
-                      >
-                        {fm.status === 'over'
-                          ? 'Over'
-                          : fm.status === 'warning'
-                            ? 'Warning'
-                            : 'On Track'}
-                      </span>
-                    </div>
-                  )}
-                </For>
-              </div>
-
-              {/* Refresh Forecast Button */}
-              <Button variant="outline" onClick={loadData}>
-                Refresh Forecast
-              </Button>
-            </>
-          ) : (
-            <div class={styles.emptyState}>Loading forecast...</div>
-          )}
         </div>
+
+        {forecastData() ? (
+          <>
+            {/* Adherence Stats */}
+            <div class={styles.forecastStats}>
+              <div class={styles.statItem}>
+                <div class={styles.statLabel}>Historical Adherence</div>
+                <div
+                  class={styles.statValue}
+                  classList={{
+                    [styles.positive]: forecastData()!.avg_adherence >= 80,
+                  }}
+                >
+                  {forecastData()!.avg_adherence}%
+                </div>
+              </div>
+              <div class={styles.statItem}>
+                <div class={styles.statLabel}>Total Budget</div>
+                <div class={styles.statValue}>{formatCurrency(forecastData()!.total_budget)}</div>
+              </div>
+            </div>
+
+            {/* Forecast Chart */}
+            <div class={styles.forecastChart}>
+              <div class={styles.chartRow}>
+                <span class={styles.chartLabel}>Month</span>
+                <span class={styles.chartLabel}>Budget</span>
+                <span class={styles.chartLabel}>Predicted</span>
+                <span class={styles.chartLabel}>Adherence</span>
+                <span class={styles.chartLabel}>Status</span>
+              </div>
+              <For each={forecastData()!.forecast}>
+                {(fm) => (
+                  <div class={styles.chartRow} data-index={fm.month}>
+                    <span class={styles.chartLabel}>{fm.label}</span>
+                    <span class={`${styles.chartValue} ${styles.budgetVal}`}>
+                      {formatCurrency(fm.budget_amount)}
+                    </span>
+                    <span class={`${styles.chartValue} ${styles.actualVal}`}>
+                      {formatCurrency(fm.predicted_spent)}
+                    </span>
+                    <span class={styles.chartValue}>{Math.round(fm.adherence)}%</span>
+                    <span
+                      class={`${styles.chartStatus} ${styles[`chartStatus${fm.status.charAt(0).toUpperCase() + fm.status.slice(1)}`]}`}
+                    >
+                      {fm.status === 'over'
+                        ? 'Over'
+                        : fm.status === 'warning'
+                          ? 'Warning'
+                          : 'On Track'}
+                    </span>
+                  </div>
+                )}
+              </For>
+            </div>
+
+            {/* Refresh Forecast Button */}
+            <Button variant="outline" onClick={loadData}>
+              Refresh Forecast
+            </Button>
+          </>
+        ) : (
+          <div class={styles.emptyState}>Loading forecast...</div>
+        )}
+      </div>
 
       {/* Error */}
       {error() && <div class={styles.toastError}>{error()}</div>}
@@ -874,6 +1024,206 @@ export default function Budgets() {
         )}
       </div>
 
+      {/* Categories Section */}
+      <div class={styles.categoriesSection}>
+        <div class={styles.categoriesHeader}>
+          <h2>Categories</h2>
+          <button
+            class={styles.btnPrimary}
+            onClick={() => {
+              setEditingCategory(null)
+              setCatFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
+              setShowCatModal(true)
+            }}
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Category
+          </button>
+        </div>
+
+        <div class={styles.categoriesFilter}>
+          <button
+            class={`${styles.filterTab} ${filterType() === 'all' ? styles.filterTabActive : ''}`}
+            onClick={() => setFilterType('all')}
+          >
+            All Categories
+          </button>
+          <button
+            class={`${styles.filterTab} ${filterType() === 'expense' ? styles.filterTabActive : ''}`}
+            onClick={() => setFilterType('expense')}
+          >
+            Expenses
+          </button>
+          <button
+            class={`${styles.filterTab} ${filterType() === 'income' ? styles.filterTabActive : ''}`}
+            onClick={() => setFilterType('income')}
+          >
+            Income
+          </button>
+        </div>
+
+        {categories().length === 0 ? (
+          <div class={styles.emptyState}>
+            <p>No categories yet</p>
+            <p>Create your first category to start organizing your transactions.</p>
+          </div>
+        ) : (
+          <div class={styles.categoriesGridScroll}>
+            <div class={styles.categoriesGrid}>
+              <For
+                each={categories().filter((c) =>
+                  filterType() === 'all' ? true : c.type === filterType()
+                )}
+              >
+                {(category) => {
+                  const summary = categoryBudgetSummary()[category.id]
+                  const spent = summary?.spent || 0
+                  const budget = summary?.budget || 0
+                  const remaining = summary?.remaining ?? budget - spent
+                  const percentUsed = summary?.percent_used || 0
+                  const isOverBudget = percentUsed > 100
+
+                  return (
+                    <div class={styles.categoryCard} style={`--cat-color: ${category.color}`}>
+                      <div class={styles.catCardHeader}>
+                        <div
+                          class={styles.catCardIcon}
+                          style={`background: ${category.color}20; color: ${category.color}`}
+                        >
+                          <CategoryIcon name={category.name} icon={category.icon} size={18} />
+                        </div>
+                        <div class={styles.catCardInfo}>
+                          <h3 class={styles.catCardName}>{category.name}</h3>
+                          <span class={styles.catCardType}>{category.type}</span>
+                        </div>
+                        <div class={styles.catCardActions}>
+                          <button
+                            class={styles.catActionBtn}
+                            onClick={() => {
+                              openCatBudgetModal(category)
+                            }}
+                            title="Set Budget"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                          <button
+                            class={styles.catActionBtn}
+                            onClick={() => {
+                              editCategory(category)
+                            }}
+                            title="Edit"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <ConfirmButton
+                            class={styles.catActionBtn}
+                            onConfirm={() => deleteCategory(category.id)}
+                            label={
+                              <svg
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div class={styles.catCardSpending}>
+                        <div class={styles.catSpendingHeader}>
+                          <span class={styles.catSpendingLabel}>Spent</span>
+                          <span
+                            class={`${styles.catSpendingAmount} ${isOverBudget ? styles.catOver : ''}`}
+                          >
+                            {formatCurrency(spent)}
+                          </span>
+                        </div>
+                        {category.type === 'expense' && budget > 0 && (
+                          <>
+                            <div class={styles.catProgressBar}>
+                              <div
+                                class={`${styles.catProgressFill} ${isOverBudget ? styles.catOver : ''}`}
+                                style={{ width: `${Math.min(100, percentUsed)}%` }}
+                              />
+                            </div>
+                            <div class={styles.catSpendingFooter}>
+                              <span class={styles.catBudgetLimit}>
+                                {formatCurrency(budget)} limit
+                              </span>
+                              <span
+                                class={`${styles.catRemaining} ${isOverBudget ? styles.catOver : ''}`}
+                              >
+                                {formatCurrency(remaining)} remaining
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div class={styles.catColorPicker}>
+                        <span class={styles.catColorLabel}>Color:</span>
+                        <div class={styles.catColorDots}>
+                          {[
+                            '#ef4444',
+                            '#f97316',
+                            '#eab308',
+                            '#22c55e',
+                            '#3b82f6',
+                            '#8b5cf6',
+                            '#ec4899',
+                            '#6b7280',
+                          ].map((color) => (
+                            <button
+                              class={`${styles.catColorDot} ${category.color === color ? styles.catColorDotActive : ''}`}
+                              style={{ background: color }}
+                              onClick={() => updateCategoryColor(category.id, color)}
+                              title={color}
+                            >
+                              {category.color === color && (
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  fill="none"
+                                  stroke="white"
+                                  stroke-width="3"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M20 6L9 17l-5-5" />
+                                </svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }}
+              </For>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Allocate Modal */}
       {showAllocateModal() && selectedCategory() && (
         <div
@@ -934,6 +1284,184 @@ export default function Budgets() {
                 disabled={parseFloat(allocateAmount()) <= 0 || !allocateAmount()}
               >
                 Allocate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Category Modal */}
+      {showCatModal() && (
+        <div
+          class={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCatModal(false)
+              setEditingCategory(null)
+              setCatFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
+            }
+          }}
+        >
+          <div
+            class={styles.modal}
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            <div class={styles.modalHeader}>
+              <h3>{editingCategory() ? 'Edit Category' : 'Add Category'}</h3>
+              <button
+                class={styles.modalClose}
+                onClick={() => {
+                  setShowCatModal(false)
+                  setEditingCategory(null)
+                  setCatFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
+                }}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form class={styles.modalBody} onSubmit={handleCatSubmit}>
+              <div class={styles.catFormGroup}>
+                <label class={styles.formLabel}>Category Name</label>
+                <input
+                  type="text"
+                  class={styles.formInput}
+                  placeholder="e.g., Food, Rent"
+                  value={catFormData().name}
+                  oninput={(e) => setCatFormData({ ...catFormData(), name: e.target.value })}
+                  required
+                />
+              </div>
+              <div class={styles.catFormGroup}>
+                <label class={styles.formLabel}>Category Type</label>
+                <select
+                  class={styles.formInput}
+                  value={catFormData().type}
+                  oninput={(e) => setCatFormData({ ...catFormData(), type: e.target.value as any })}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div class={styles.catFormGroup}>
+                <label class={styles.formLabel}>Icon (emoji)</label>
+                <input
+                  type="text"
+                  class={styles.formInput}
+                  placeholder="e.g., food, home, car"
+                  value={catFormData().icon}
+                  oninput={(e) => setCatFormData({ ...catFormData(), icon: e.target.value })}
+                  maxlength="2"
+                />
+              </div>
+              <div class={styles.catFormGroup}>
+                <label class={styles.formLabel}>Color</label>
+                <div class={styles.catColorDots}>
+                  {[
+                    '#ef4444',
+                    '#f97316',
+                    '#eab308',
+                    '#22c55e',
+                    '#3b82f6',
+                    '#8b5cf6',
+                    '#ec4899',
+                    '#6b7280',
+                  ].map((color) => (
+                    <button
+                      class={`${styles.catColorDot} ${styles.catColorDotLarge} ${catFormData().color === color ? styles.catColorDotActive : ''}`}
+                      style={{ background: color }}
+                      onClick={() => setCatFormData({ ...catFormData(), color })}
+                      title={color}
+                    >
+                      {catFormData().color === color && (
+                        <svg
+                          width="14"
+                          height="14"
+                          fill="none"
+                          stroke="white"
+                          stroke-width="3"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div class={styles.modalFooter}>
+                <button
+                  type="button"
+                  class={styles.btnGhost}
+                  onClick={() => {
+                    setShowCatModal(false)
+                    setEditingCategory(null)
+                    setCatFormData({ name: '', type: 'expense', color: '#3b82f6', icon: '' })
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" class={styles.btnPrimary}>
+                  {editingCategory() ? 'Update' : 'Add'} Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Category Budget Modal */}
+      {showCatBudgetModal() && selectedCat() && (
+        <div
+          class={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCatBudgetModal(false)
+          }}
+        >
+          <div
+            class={styles.modal}
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            <div class={styles.modalHeader}>
+              <h3>Set Budget</h3>
+              <button class={styles.modalClose} onClick={() => setShowCatBudgetModal(false)}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class={styles.modalBody}>
+              <p class={styles.modalText}>
+                Set a monthly budget for <strong>{selectedCat()!.name}</strong>
+              </p>
+              <div class={styles.catFormGroup}>
+                <label class={styles.formLabel}>Monthly Budget Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class={styles.formInput}
+                  placeholder="500.00"
+                  value={catBudgetAmount()}
+                  oninput={(e) => setCatBudgetAmount((e.target as HTMLInputElement).value)}
+                />
+              </div>
+            </div>
+            <div class={styles.modalFooter}>
+              <button class={styles.btnGhost} onClick={() => setShowCatBudgetModal(false)}>
+                Cancel
+              </button>
+              <button
+                class={styles.btnPrimary}
+                onClick={() => {
+                  updateCatBudget(parseFloat(catBudgetAmount()) || 0)
+                }}
+              >
+                Save Budget
               </button>
             </div>
           </div>

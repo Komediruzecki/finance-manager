@@ -78,21 +78,26 @@ function addLogEntry(entry: LogEntry): void {
 function writeLogToConsole(entry: LogEntry): void {
   const { timestamp, level, message, details } = entry
   const timestampFmt = new Date(timestamp).toLocaleTimeString()
+  const debugMode = isDebugMode()
 
   switch (level) {
     case 'debug':
-      if (isDebugMode()) {
+      if (debugMode) {
         console.info(`[${timestampFmt}] [DEBUG] ${message}`, details ?? '')
       }
       break
     case 'info':
-      console.info(`[${timestampFmt}] [${level.toUpperCase()}] ${message}`, details ?? '')
+      if (debugMode) {
+        console.info(`[${timestampFmt}] [INFO] ${message}`, details ?? '')
+      }
       break
     case 'warn':
-      console.warn(`[${timestampFmt}] [${level.toUpperCase()}] ${message}`, details ?? '')
+      if (debugMode) {
+        console.warn(`[${timestampFmt}] [WARN] ${message}`, details ?? '')
+      }
       break
     case 'error':
-      console.error(`[${timestampFmt}] [${level.toUpperCase()}] ${message}`, details ?? '')
+      console.error(`[${timestampFmt}] [ERROR] ${message}`, details ?? '')
       break
   }
 }

@@ -151,7 +151,9 @@ export async function transactionsCreate(body: unknown): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid transaction data' }, 400)
   const tx = body as Record<string, unknown>
   tx.profile_id = adapter.getCurrentProfileId ? await adapter.getCurrentProfileId() : 1
-  const id = await adapter.createTransaction(tx as unknown as Parameters<typeof adapter.createTransaction>[0])
+  const id = await adapter.createTransaction(
+    tx as unknown as Parameters<typeof adapter.createTransaction>[0]
+  )
   return json({ id, ...tx }, 201)
 }
 
@@ -292,7 +294,9 @@ export async function categoriesCreate(body: unknown): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid category data' }, 400)
   const cat = body as Record<string, unknown>
   cat.profile_id = await adapter.getCurrentProfileId()
-  const id = await adapter.createCategory(cat as unknown as Parameters<typeof adapter.createCategory>[0])
+  const id = await adapter.createCategory(
+    cat as unknown as Parameters<typeof adapter.createCategory>[0]
+  )
   return json({ id, ...cat }, 201)
 }
 
@@ -328,7 +332,9 @@ export async function accountsCreate(body: unknown): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid account data' }, 400)
   const acct = body as Record<string, unknown>
   acct.profile_id = await adapter.getCurrentProfileId()
-  const id = await adapter.createAccount(acct as unknown as Parameters<typeof adapter.createAccount>[0])
+  const id = await adapter.createAccount(
+    acct as unknown as Parameters<typeof adapter.createAccount>[0]
+  )
   return json({ id, ...acct }, 201)
 }
 
@@ -386,7 +392,9 @@ export async function budgetsCreate(body: unknown): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid budget data' }, 400)
   const budget = body as Record<string, unknown>
   budget.profile_id = await adapter.getCurrentProfileId()
-  const id = await adapter.createBudget(budget as unknown as Parameters<typeof adapter.createBudget>[0])
+  const id = await adapter.createBudget(
+    budget as unknown as Parameters<typeof adapter.createBudget>[0]
+  )
   return json({ id, ...budget }, 201)
 }
 
@@ -1063,9 +1071,8 @@ export async function budgetsFromExpenses(body: unknown): Promise<Response> {
 
     // Clear existing budgets for target month
     const currStart = monthStart(targetYear, targetMonth)
-    const currEnd = targetMonth === 12
-      ? monthStart(targetYear + 1, 1)
-      : monthStart(targetYear, targetMonth + 1)
+    const currEnd =
+      targetMonth === 12 ? monthStart(targetYear + 1, 1) : monthStart(targetYear, targetMonth + 1)
 
     const existingBudgets = (await db.getAllFromIndex('budgets', 'by_profile', pid)).filter(
       (b: Record<string, unknown>) =>

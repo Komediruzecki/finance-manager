@@ -805,10 +805,7 @@ export default function Loans() {
                             'font-size': '13px',
                           }}
                           oninput={(e) => {
-                            const i = idx()
-                            const updated = [...formData().rate_periods]
-                            updated[i] = { ...updated[i], rate: e.target.value }
-                            setFormData({ ...formData(), rate_periods: updated })
+                            rp.rate = e.target.value
                           }}
                         />
                         <span style={{ 'font-size': '12px', color: 'var(--text-secondary)' }}>
@@ -828,13 +825,7 @@ export default function Loans() {
                             'font-size': '13px',
                           }}
                           oninput={(e) => {
-                            const i = idx()
-                            const updated = [...formData().rate_periods]
-                            updated[i] = {
-                              ...updated[i],
-                              start_month: parseInt(e.target.value) || 0,
-                            }
-                            setFormData({ ...formData(), rate_periods: updated })
+                            rp.start_month = parseInt(e.target.value) || 0
                           }}
                         />
                         <input
@@ -851,11 +842,8 @@ export default function Loans() {
                             'font-size': '13px',
                           }}
                           oninput={(e) => {
-                            const i = idx()
                             const val = e.target.value
-                            const updated = [...formData().rate_periods]
-                            updated[i] = { ...updated[i], end_month: val ? parseInt(val) : null }
-                            setFormData({ ...formData(), rate_periods: updated })
+                            rp.end_month = val ? parseInt(val) : null
                           }}
                         />
                         <button

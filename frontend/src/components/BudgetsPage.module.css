@@ -942,6 +942,273 @@
   color: var(--text);
 }
 
+/* ============================================
+   Categories Section (merged from Categories page)
+   ============================================ */
+
+.categoriesSection {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.categoriesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.categoriesHeader h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.categoriesFilter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filterTab {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterTab:hover {
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.filterTabActive {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.categoriesGridScroll {
+  max-height: 420px;
+  overflow-y: auto;
+  border-radius: var(--radius);
+}
+
+.categoriesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.categoryCard {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--cat-color, var(--primary));
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: box-shadow 0.2s;
+}
+
+.categoryCard:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.catCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.catCardIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.catCardIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.catCardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.catCardName {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catCardType {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.catCardActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.categoryCard:hover .catCardActions {
+  opacity: 1;
+}
+
+.catActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.catActionBtn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.catCardSpending {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.catSpendingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.catSpendingLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.catSpendingAmount {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.catOver {
+  color: var(--danger, #ef4444);
+}
+
+.catProgressBar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.catProgressFill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+
+.catProgressFill.catOver {
+  background: var(--danger, #ef4444);
+}
+
+.catSpendingFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.catBudgetLimit {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.catRemaining {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.catRemaining.catOver {
+  color: var(--danger, #ef4444);
+}
+
+.catColorPicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.catColorLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.catColorDots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.catColorDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+  padding: 0;
+}
+
+.catColorDot:hover {
+  transform: scale(1.15);
+}
+
+.catColorDotActive {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.catColorDotLarge {
+  width: 28px;
+  height: 28px;
+}
+
+.catFormGroup {
+  margin-bottom: 16px;
+}
+
 @media (max-width: 768px) {
   .budget-summary .month-selector,
   .budgets-page .month-selector,
@@ -990,6 +1257,16 @@
   .budget-forecast {
     padding: 14px;
   }
+
+  .categoriesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .categoriesHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1020,5 +1297,17 @@
 
   .budgets-page h1 {
     font-size: 20px;
+  }
+
+  .categoriesGridScroll {
+    max-height: 350px;
+  }
+
+  .categoryCard {
+    padding: 12px;
+  }
+
+  .catCardName {
+    font-size: 14px;
   }
 }

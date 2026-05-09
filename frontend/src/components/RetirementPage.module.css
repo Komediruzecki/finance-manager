@@ -1,5 +1,6 @@
 .retirement-page {
   display: block;
+  width: 100%;
   padding: 24px;
 }
 .retirement-page .page-header {
@@ -96,8 +97,21 @@
 .retirement-page .detail-value.positive {
   color: var(--income);
 }
+.retirement-page .retirement-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  align-items: start;
+}
+.retirement-page .retirement-content .retirement-projection {
+  margin-bottom: 0;
+}
 .retirement-page .retirement-goals {
   margin-bottom: 24px;
+}
+.retirement-page .retirement-content .retirement-goals {
+  margin-bottom: 0;
 }
 .retirement-page .section-title {
   font-size: 18px;
@@ -500,6 +514,14 @@
 @media (max-width: 768px) {
   .retirement-page {
     padding: 16px;
+  }
+
+  .retirement-page .retirement-content {
+    grid-template-columns: 1fr;
+  }
+
+  .retirement-page .retirement-content .retirement-projection {
+    margin-bottom: 24px;
   }
 
   .retirement-page .form-row {

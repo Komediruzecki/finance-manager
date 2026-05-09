@@ -32,7 +32,7 @@
  */
 import { createSignal, For, onMount } from 'solid-js'
 import styles from '../components/CategoriesPage.module.css'
-import { getCategorySvg } from '../components/CategoryIcon'
+import CategoryIcon from '../components/CategoryIcon'
 import ConfirmButton from '../components/ConfirmButton'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
@@ -284,9 +284,7 @@ export default function Categories() {
                 <div class={styles.categoryCard}>
                   <div class={styles.categoryHeader}>
                     <div class={`${styles.categoryIcon} ${iconClass}`}>
-                      {category.icon && category.icon !== 'tag'
-                        ? category.icon
-                        : getCategorySvg(category.name)}
+                      <CategoryIcon name={category.name} icon={category.icon} size={18} />
                     </div>
                     <div class={styles.categoryInfo}>
                       <h3 class={styles.categoryName}>{category.name}</h3>

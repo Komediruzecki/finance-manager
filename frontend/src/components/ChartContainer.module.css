@@ -6,6 +6,11 @@
 .chart-container {
   position: relative;
   height: 100%;
+  overflow: hidden;
+}
+
+.chart-container canvas {
+  max-width: 100%;
 }
 
 .chart-container.tall {

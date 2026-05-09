@@ -19,10 +19,11 @@ import type { Category } from './types/models'
 
 export function App() {
   const [_currentPage, _setCurrentPage] = createSignal<PageName>('dashboard')
-  const [_isLoading, _setIsLoading] = createSignal(false)
+  const [_isLoading, _setIsLoading] = createSignal(true)
   const [activePage, setActivePage] = createSignal<PageName>('dashboard')
   const [profiles, setProfiles] = createSignal<any[]>([])
   const [currentProfile, setCurrentProfile] = createSignal<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = createSignal(false)
   const [showDropdown, setShowDropdown] = createSignal(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = createSignal(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = createSignal(false)
@@ -75,6 +76,7 @@ export function App() {
 
   const handleLoginSuccess = async () => {
     setIsLoginModalOpen(false)
+    setIsAuthenticated(true)
     await loadProfiles()
     if (profiles().length > 0) {
       const savedProfileId = localStorage.getItem('currentProfileId')
@@ -88,24 +90,20 @@ export function App() {
       }
     }
     setShowDropdown(false)
-    window.location.reload()
   }
 
   const handleLogout = async () => {
     try {
       await api.logout()
-      localStorage.removeItem('currentProfileId')
-      setCurrentProfile(null)
-      logger.info('User logged out', {}, 'App')
-      toast('Logged out successfully', 'info')
-      window.location.reload()
     } catch (_error) {
       logger.error('Logout API call failed', {}, 'App')
-      localStorage.removeItem('currentProfileId')
-      setCurrentProfile(null)
-      toast('Logged out', 'info')
-      window.location.reload()
     }
+    localStorage.removeItem('currentProfileId')
+    setIsAuthenticated(false)
+    setCurrentProfile(null)
+    await loadProfiles(true)
+    setShowDropdown(false)
+    toast('Logged out', 'info')
   }
 
   onMount(async () => {
@@ -121,6 +119,7 @@ export function App() {
     }
 
     await api.checkLogin().then(async (loggedIn) => {
+      setIsAuthenticated(loggedIn)
       if (loggedIn) {
         await loadProfiles(true)
       } else {
@@ -159,6 +158,8 @@ export function App() {
     onCleanup(() => {
       document.removeEventListener('keydown', handleQuickAddKey)
     })
+
+    _setIsLoading(false)
   })
 
   // Listen for hash changes (back/forward buttons, manual URL edits)
@@ -176,6 +177,7 @@ export function App() {
   // Listen for unauthorized API calls
   const handleAuthRequired = () => {
     // Clear profile state and prompt login
+    setIsAuthenticated(false)
     setCurrentProfile(null)
     localStorage.removeItem('currentProfileId')
     handleLogin()
@@ -184,8 +186,6 @@ export function App() {
   onCleanup(() => {
     window.removeEventListener('auth:required', handleAuthRequired)
   })
-
-  _setIsLoading?.(false)
 
   // Navigation items with icons for sidebar
   const navItems = [
@@ -282,13 +282,6 @@ export function App() {
       label: 'Analytics',
       icon: (
         <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      ),
-    },
-    {
-      name: 'categories' as PageName,
-      label: 'Categories',
-      icon: (
-        <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
       ),
     },
     {
@@ -416,7 +409,7 @@ export function App() {
                 Create Profile
               </div>
 
-              {currentProfile() && (
+              {isAuthenticated() && currentProfile() ? (
                 <>
                   <div class={profileStyles.profileDropdownDivider}></div>
                   <div
@@ -439,12 +432,30 @@ export function App() {
                     Manage Account
                   </div>
                 </>
+              ) : (
+                <>
+                  <div class={profileStyles.profileDropdownDivider}></div>
+                  <div class={profileStyles.profileDropdownItem} onClick={handleLogin}>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      style={{ 'margin-right': '8px' }}
+                    >
+                      <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
+                    </svg>
+                    Sign In
+                  </div>
+                </>
               )}
             </div>
           </div>
         </div>
         <div style={{ padding: '0 16px', 'margin-bottom': '12px' }}>
-          {currentProfile() ? (
+          {isAuthenticated() && currentProfile() ? (
             <div style={{ display: 'flex', 'align-items': 'center', gap: '8px', padding: '6px 0' }}>
               <svg
                 width="16"
@@ -490,11 +501,21 @@ export function App() {
             </div>
           ) : (
             <button
-              class={`${layoutStyles.btn} ${layoutStyles.btnSecondary} ${layoutStyles.btnSm}`}
+              class={`${layoutStyles.btn} ${layoutStyles.btnPrimary}`}
               style={{ width: '100%' }}
               onClick={handleLogin}
             >
-              Sign In
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
+              </svg>
+              Login
             </button>
           )}
         </div>

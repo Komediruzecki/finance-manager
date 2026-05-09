@@ -533,7 +533,6 @@ export default function Dashboard() {
                           },
                         ],
                       }}
-                      height={300}
                       showExport
                       filename="spending-by-category"
                     />
@@ -557,6 +556,7 @@ export default function Dashboard() {
                   labels: ['Income', 'Expenses', 'Net'],
                   datasets: [
                     {
+                      label: 'Amount',
                       data: [
                         metrics()!.totalIncome || 0,
                         metrics()!.totalExpenses || 0,
