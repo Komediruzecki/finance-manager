@@ -95,11 +95,35 @@ function migrate() {
       current_amount REAL NOT NULL DEFAULT 0,
       deadline TEXT,
       notes TEXT DEFAULT '',
+      category_id INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       profile_id INTEGER NOT NULL DEFAULT 1
     );
   `);
   db.exec('CREATE INDEX IF NOT EXISTS idx_savings_goals_profile ON savings_goals(profile_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_savings_goals_category ON savings_goals(category_id)');
+
+  // Add category_id column if upgrading from older schema
+  try { db.exec('ALTER TABLE savings_goals ADD COLUMN category_id INTEGER'); } catch (_) { /* exists */ }
+
+  // Create retirement_goals table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS retirement_goals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      target_amount REAL NOT NULL,
+      current_amount REAL NOT NULL DEFAULT 0,
+      deadline TEXT,
+      notes TEXT DEFAULT '',
+      current_age INTEGER DEFAULT 30,
+      retirement_age INTEGER DEFAULT 65,
+      monthly_contribution REAL DEFAULT 0,
+      expected_return_rate REAL DEFAULT 7,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      profile_id INTEGER NOT NULL DEFAULT 1
+    );
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_retirement_goals_profile ON retirement_goals(profile_id)');
 
   // Create emergency_fund_config table
   db.exec(`

@@ -78,14 +78,12 @@ export default function LoanAmortizationTable(props: Props) {
     loadAmortizationData()
   })
 
-  // Recalculate when prepayments change (parent signals via recalculateKey)
+  // Recalculate when prepayments change or loan changes
   createEffect(
     on(
-      () => props.recalculateKey,
+      () => [props.recalculateKey, props.loanId],
       () => {
-        if (props.recalculateKey !== undefined && props.recalculateKey > 0) {
-          loadAmortizationData()
-        }
+        loadAmortizationData()
       }
     )
   )
