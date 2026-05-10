@@ -2109,6 +2109,8 @@ app.post('/api/transactions', apiRateLimiter, requireAuth, (req, res) => {
         `SELECT * FROM transactions WHERE id = ? AND profile_id = ?`
       )
       .get(info.lastInsertRowid, pid);
+    // Recalculate linked goal progress
+    if (category_id) recalcGoalsByCategory(category_id);
     res.json(toCamelCase(created));
   } catch (err) {
     console.error(err.message);
@@ -2351,6 +2353,8 @@ app.put('/api/transactions/:id', apiRateLimiter, requireAuth, (req, res) => {
       .prepare(`UPDATE transactions SET ${updates.join(', ')} WHERE id=? AND profile_id=?`)
       .run(...params);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    // Recalculate linked goal progress
+    if (category_id !== undefined) recalcGoalsByCategory(category_id);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -2362,10 +2366,13 @@ app.put('/api/transactions/:id', apiRateLimiter, requireAuth, (req, res) => {
 app.delete('/api/transactions/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
+    // Fetch category_id before delete to recalc linked goals
+    const tx = db.prepare('SELECT category_id FROM transactions WHERE id=? AND profile_id=?').get(req.params.id, pid);
     const result = db
       .prepare('DELETE FROM transactions WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    if (tx && tx.category_id) recalcGoalsByCategory(tx.category_id);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -3729,15 +3736,15 @@ app.get('/api/savings-goals', apiRateLimiter, (req, res) => {
 app.post('/api/savings-goals', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { name, target_amount, current_amount, deadline, notes } = req.body;
+    const { name, target_amount, current_amount, deadline, notes, category_id } = req.body;
     if (!name || target_amount == null) {
       return res.status(400).json({ error: 'Name and target amount are required' });
     }
     const info = db
       .prepare(
-        'INSERT INTO savings_goals (profile_id, name, target_amount, current_amount, deadline, notes) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO savings_goals (profile_id, name, target_amount, current_amount, deadline, notes, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
       )
-      .run(pid, name, target_amount, current_amount || 0, deadline || null, notes || '');
+      .run(pid, name, target_amount, current_amount || 0, deadline || null, notes || '', category_id || null);
     res.json({
       id: info.lastInsertRowid,
       name,
@@ -3745,6 +3752,7 @@ app.post('/api/savings-goals', apiRateLimiter, (req, res) => {
       current_amount: current_amount || 0,
       deadline,
       notes,
+      category_id: category_id || null,
       profile_id: pid,
     });
   } catch (err) {
@@ -3757,12 +3765,12 @@ app.post('/api/savings-goals', apiRateLimiter, (req, res) => {
 app.put('/api/savings-goals/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { name, target_amount, current_amount, deadline, notes } = req.body;
+    const { name, target_amount, current_amount, deadline, notes, category_id } = req.body;
     const result = db
       .prepare(
-        'UPDATE savings_goals SET name=?, target_amount=?, current_amount=?, deadline=?, notes=? WHERE id=? AND profile_id=?'
+        'UPDATE savings_goals SET name=?, target_amount=?, current_amount=?, deadline=?, notes=?, category_id=? WHERE id=? AND profile_id=?'
       )
-      .run(name, target_amount, current_amount, deadline || null, notes || '', req.params.id, pid);
+      .run(name, target_amount, current_amount, deadline || null, notes || '', category_id !== undefined ? category_id : null, req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
@@ -3777,6 +3785,116 @@ app.delete('/api/savings-goals/:id', apiRateLimiter, (req, res) => {
     const pid = getProfileId(req);
     const result = db
       .prepare('DELETE FROM savings_goals WHERE id=? AND profile_id=?')
+      .run(req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    res.json(toCamelCase({ ok: true }));
+  } catch (err) {
+    console.error(err.message);
+    logError('error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Recalculate goal progress from linked category transactions
+function recalcGoalProgress(goalId) {
+  const goal = db.prepare('SELECT * FROM savings_goals WHERE id=?').get(goalId);
+  if (!goal || !goal.category_id) return;
+  const total = db
+    .prepare('SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions WHERE category_id=?')
+    .get(goal.category_id);
+  db.prepare('UPDATE savings_goals SET current_amount=? WHERE id=?').run(total.total, goalId);
+}
+
+// Recalculate all goals linked to a specific category
+function recalcGoalsByCategory(categoryId) {
+  if (!categoryId) return;
+  const goals = db.prepare('SELECT id FROM savings_goals WHERE category_id=?').all(categoryId);
+  for (const g of goals) recalcGoalProgress(g.id);
+}
+
+// ========================
+// RETIREMENT GOALS
+// ========================
+app.get('/api/retirement-goals', apiRateLimiter, (req, res) => {
+  try {
+    const pids = getProfileIds(req);
+    const inClause = pids.map(() => '?').join(',');
+    const rows = db
+      .prepare(
+        `SELECT * FROM retirement_goals WHERE profile_id IN (${inClause}) ORDER BY created_at DESC`
+      )
+      .all(...pids);
+    const settings = db
+      .prepare('SELECT * FROM settings WHERE key = ? AND profile_id = ?')
+      .get('retirement_settings', pids[0]);
+    res.json({
+      goals: rows,
+      settings: settings ? JSON.parse(settings.value) : {},
+    });
+  } catch (err) {
+    console.error(err.message);
+    logError('error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/retirement-goals', apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const {
+      name, target_amount, current_amount, deadline, target_date, notes,
+      current_age, retirement_age, monthly_contribution, expected_return_rate,
+    } = req.body;
+    const dl = deadline || target_date || null;
+    if (!name || target_amount == null) {
+      return res.status(400).json({ error: 'Name and target amount are required' });
+    }
+    const info = db
+      .prepare(
+        `INSERT INTO retirement_goals (profile_id, name, target_amount, current_amount, deadline, notes, current_age, retirement_age, monthly_contribution, expected_return_rate)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(pid, name, target_amount, current_amount || 0, dl, notes || '',
+        current_age || 30, retirement_age || 65, monthly_contribution || 0, expected_return_rate || 7);
+    res.json({ id: info.lastInsertRowid, name, target_amount, current_amount: current_amount || 0, deadline: dl, notes, profile_id: pid });
+  } catch (err) {
+    console.error(err.message);
+    logError('error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/retirement-goals/:id', apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const {
+      name, target_amount, current_amount, deadline, target_date, notes,
+      current_age, retirement_age, monthly_contribution, expected_return_rate,
+    } = req.body;
+    const dl = deadline || target_date || null;
+    const result = db
+      .prepare(
+        `UPDATE retirement_goals SET name=?, target_amount=?, current_amount=?, deadline=?, notes=?,
+         current_age=?, retirement_age=?, monthly_contribution=?, expected_return_rate=?
+         WHERE id=? AND profile_id=?`
+      )
+      .run(name, target_amount, current_amount, dl, notes || '',
+        current_age || 30, retirement_age || 65, monthly_contribution || 0, expected_return_rate || 7,
+        req.params.id, pid);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    res.json(toCamelCase({ ok: true }));
+  } catch (err) {
+    console.error(err.message);
+    logError('error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/retirement-goals/:id', apiRateLimiter, (req, res) => {
+  try {
+    const pid = getProfileId(req);
+    const result = db
+      .prepare('DELETE FROM retirement_goals WHERE id=? AND profile_id=?')
       .run(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
@@ -6747,6 +6865,15 @@ app.get('/api/export', apiRateLimiter, (req, res) => {
       settingsObj[settings.key] = settings.value;
     }
 
+    const retirementGoals = db
+      .prepare(
+        `
+      SELECT rg.* FROM retirement_goals rg
+      WHERE rg.profile_id IN (${inClause})
+    `
+      )
+      .all(...pids);
+
     res.json({
       version: '2.0',
       export_date: new Date().toISOString(),
@@ -6757,6 +6884,7 @@ app.get('/api/export', apiRateLimiter, (req, res) => {
       accounts,
       budgets,
       goals,
+      retirementGoals,
       loans,
       balanceHistory,
       settings: settingsObj,
@@ -6922,8 +7050,8 @@ app.post('/api/import', apiRateLimiter, (req, res) => {
     // Insert goals
     if (data.goals && data.goals.length > 0) {
       const insertGoal = db.prepare(`
-        INSERT INTO savings_goals (name, target_amount, current_amount, deadline, notes, profile_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO savings_goals (name, target_amount, current_amount, deadline, notes, category_id, profile_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       for (const g of data.goals) {
         insertGoal.run(
@@ -6932,6 +7060,29 @@ app.post('/api/import', apiRateLimiter, (req, res) => {
           g.current_amount || 0,
           g.deadline || null,
           g.notes || '',
+          g.category_id || null,
+          pid
+        );
+      }
+    }
+
+    // Insert retirement goals
+    if (data.retirementGoals && data.retirementGoals.length > 0) {
+      const insertRg = db.prepare(`
+        INSERT INTO retirement_goals (name, target_amount, current_amount, deadline, notes, current_age, retirement_age, monthly_contribution, expected_return_rate, profile_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const g of data.retirementGoals) {
+        insertRg.run(
+          g.name,
+          g.target_amount || 0,
+          g.current_amount || 0,
+          g.deadline || null,
+          g.notes || '',
+          g.current_age || 30,
+          g.retirement_age || 65,
+          g.monthly_contribution || 0,
+          g.expected_return_rate || 7,
           pid
         );
       }

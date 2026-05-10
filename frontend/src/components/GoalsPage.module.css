@@ -499,3 +499,8 @@
     padding: 12px;
   }
 }
+
+.goalCategory {
+  color: var(--primary);
+  font-weight: 500;
+}

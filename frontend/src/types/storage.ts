@@ -192,6 +192,7 @@ export interface ExportData {
   budgets: ExportBudget[]
   goals: ExportGoal[]
   loans: ExportLoan[]
+  retirementGoals?: ExportGoal[]
 
   settings: ExportSettings
 

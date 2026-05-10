@@ -437,6 +437,7 @@ export default function Loans() {
                         title="View Amortization"
                         onclick={() => {
                           setAmortizationLoan(loan)
+                          setAmortizationRecalculateKey((k) => k + 1)
                           setShowAmortization(true)
                         }}
                       >

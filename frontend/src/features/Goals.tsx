@@ -47,10 +47,20 @@ interface Goal {
   target_date: string
   profile_id: number
   created_at: string
+  category_id?: number | null
+  category_name?: string
+}
+
+interface CategoryOption {
+  id: number
+  name: string
+  color: string
+  type: string
 }
 
 export default function Goals() {
   const [goals, setGoals] = createSignal<Goal[]>([])
+  const [categories, setCategories] = createSignal<CategoryOption[]>([])
   const [loading, setLoading] = createSignal(true)
   const chartColors = () => theme.getChartColors()
   const [showAddModal, setShowAddModal] = createSignal(false)
@@ -60,6 +70,7 @@ export default function Goals() {
     target_amount: '',
     target_date: '',
     monthly_contribution: '',
+    category_id: '',
   })
 
   // Load goals
@@ -67,6 +78,9 @@ export default function Goals() {
     setLoading(true)
     try {
       const data = await apiGet<any[]>('/api/savings-goals')
+      // Also get category names for each goal
+      const cats = await apiGet<any[]>('/api/categories')
+      const catMap = new Map<number, string>(cats.map((c: any) => [c.id, c.name]))
       setGoals(
         data.map((s) => ({
           id: s.id,
@@ -77,6 +91,8 @@ export default function Goals() {
           target_date: s.deadline || s.target_date || new Date().toISOString().split('T')[0],
           profile_id: s.profile_id,
           created_at: s.created_at,
+          category_id: s.category_id || null,
+          category_name: s.category_id ? catMap.get(s.category_id) : undefined,
         }))
       )
     } catch (err) {
@@ -87,10 +103,20 @@ export default function Goals() {
     }
   }
 
+  // Load categories for selector
+  const loadCategories = async () => {
+    try {
+      const cats = await apiGet<any[]>('/api/categories')
+      setCategories(cats)
+    } catch {
+      // categories remain empty
+    }
+  }
+
   // Handle form submit (create or update)
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
-    const data = {
+    const data: Record<string, unknown> = {
       name: formData().name,
       target_amount: parseFloat(formData().target_amount),
       target_date: formData().target_date,
@@ -98,6 +124,8 @@ export default function Goals() {
         ? parseFloat(formData().monthly_contribution)
         : null,
     }
+    const catId = formData().category_id ? parseInt(formData().category_id) : null
+    if (catId) data.category_id = catId
 
     try {
       if (editingGoal()) {
@@ -109,7 +137,7 @@ export default function Goals() {
       }
       setShowAddModal(false)
       setEditingGoal(null)
-      setFormData({ name: '', target_amount: '', target_date: '', monthly_contribution: '' })
+      setFormData({ name: '', target_amount: '', target_date: '', monthly_contribution: '', category_id: '' })
       loadGoals()
     } catch (err) {
       console.error('Failed to save goal:', err)
@@ -136,7 +164,8 @@ export default function Goals() {
       name: goal.name,
       target_amount: goal.target_amount.toString(),
       target_date: goal.target_date,
-      monthly_contribution: '',
+      monthly_contribution: goal.monthly_contribution ? goal.monthly_contribution.toString() : '',
+      category_id: goal.category_id ? goal.category_id.toString() : '',
     })
     setShowAddModal(true)
   }
@@ -169,6 +198,7 @@ export default function Goals() {
 
   onMount(() => {
     loadGoals()
+    loadCategories()
   })
 
   return (
@@ -228,6 +258,11 @@ export default function Goals() {
                       </h3>
                       <p data-test-id="goal-date" class={styles.goalDate}>
                         {formatDate(goal.target_date)} • {daysUntil(goal.target_date)}
+                        {goal.category_name && (
+                          <span class={styles.goalCategory}>
+                            {' '}• {goal.category_name}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div data-test-id="goal-actions" class={styles.goalActions}>
@@ -464,6 +499,7 @@ export default function Goals() {
                     target_amount: '',
                     target_date: '',
                     monthly_contribution: '',
+                    category_id: '',
                   })
                 }}
               >
@@ -519,6 +555,28 @@ export default function Goals() {
                   }
                 />
               </div>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Linked Category (optional)</label>
+                <select
+                  class={styles.formControl}
+                  value={formData().category_id}
+                  onchange={(e) =>
+                    setFormData({ ...formData(), category_id: e.target.value })
+                  }
+                >
+                  <option value="">None — manual tracking</option>
+                  <For each={categories()}>
+                    {(cat) => (
+                      <option value={cat.id}>
+                        {cat.name} ({cat.type})
+                      </option>
+                    )}
+                  </For>
+                </select>
+                <p style={{ 'font-size': '11px', color: 'var(--text-secondary)', 'margin-top': '4px' }}>
+                  Transactions to this category will count toward goal progress
+                </p>
+              </div>
               <div class={styles.modalFooter}>
                 <button
                   type="button"
@@ -531,6 +589,7 @@ export default function Goals() {
                       target_amount: '',
                       target_date: '',
                       monthly_contribution: '',
+                      category_id: '',
                     })
                   }}
                 >
