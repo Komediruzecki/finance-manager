@@ -101,10 +101,11 @@ function migrate() {
     );
   `);
   db.exec('CREATE INDEX IF NOT EXISTS idx_savings_goals_profile ON savings_goals(profile_id)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_savings_goals_category ON savings_goals(category_id)');
 
   // Add category_id column if upgrading from older schema
   try { db.exec('ALTER TABLE savings_goals ADD COLUMN category_id INTEGER'); } catch (_) { /* exists */ }
+
+  try { db.exec('CREATE INDEX IF NOT EXISTS idx_savings_goals_category ON savings_goals(category_id)'); } catch (_) { /* missing column */ }
 
   // Create retirement_goals table
   db.exec(`
