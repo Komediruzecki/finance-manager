@@ -7,10 +7,9 @@ import {
   endSpotlight,
   nextSpotlightStep,
   prevSpotlightStep,
-  skipSection,
   spotlightActive,
   spotlightStep,
-  tourSteps
+  tourSteps,
 } from '../core/spotlightStore'
 import styles from './Spotlight.module.css'
 import type {SpotlightStep} from '../core/spotlightStore';
@@ -321,12 +320,9 @@ export default function Spotlight() {
 
         <div class={styles.actions}>
           <button class={styles.btnGhost} onClick={endSpotlight}>
-            Skip Tour
+            End Tour
           </button>
           <div class={styles.navActions}>
-            <button class={styles.btnGhost} onClick={skipSection} disabled={isFirst()}>
-              Skip Section
-            </button>
             <button class={styles.btnGhost} onClick={prevSpotlightStep} disabled={isFirst()}>
               Back
             </button>
