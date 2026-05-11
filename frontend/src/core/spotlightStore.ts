@@ -431,18 +431,9 @@ export const SPOTLIGHT_TOURS: SpotlightTour[] = [
       },
       {
         title: 'Google Sheets Import',
-        targetSelector: '.page-import input[placeholder*="Google Sheets"]',
+        targetSelector: 'input[placeholder="Paste Google Sheets URL"]',
         description:
           'Paste a Google Sheets link and click Fetch to pull data directly from your spreadsheet.',
-        placement: 'bottom',
-        section: 'import',
-        requiredPage: 'import',
-      },
-      {
-        title: 'Column Mapping',
-        targetSelector: '.page-import',
-        description:
-          'Map your spreadsheet columns to Finance Manager fields. The preview shows exactly what will be imported.',
         placement: 'bottom',
         section: 'import',
         requiredPage: 'import',
