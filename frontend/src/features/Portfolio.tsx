@@ -258,44 +258,46 @@ export default function Portfolio() {
                           {formatAmount(h.gain || 0)}
                           <div class={styles.gainPercent}>{formatPercent(h.gainPercent || 0)}</div>
                         </td>
-                        <td class={styles.actions}>
-                          <button
-                            class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
-                            onClick={() => {
-                              openEditModal(h)
-                            }}
-                            title="Edit"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              viewBox="0 0 24 24"
+                        <td class={styles.right}>
+                          <div class={styles.actions}>
+                            <button
+                              class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
+                              onClick={() => {
+                                openEditModal(h)
+                              }}
+                              title="Edit"
                             >
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                          <button
-                            class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
-                            onClick={() => {
-                              if (confirm(`Delete ${h.ticker} holding?`)) deleteHolding(h.id)
-                            }}
-                            title="Delete"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              viewBox="0 0 24 24"
+                              <svg
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                            <button
+                              class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
+                              onClick={() => {
+                                if (confirm(`Delete ${h.ticker} holding?`)) deleteHolding(h.id)
+                              }}
+                              title="Delete"
                             >
-                              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                              <svg
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )}
