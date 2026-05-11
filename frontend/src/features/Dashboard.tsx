@@ -537,10 +537,10 @@ export default function Dashboard() {
                       options={{
                         plugins: {
                           legend: {
-                            position: 'bottom',
-                            align: 'center',
+                            position: 'right',
+                            align: 'start',
                             labels: {
-                              padding: 10,
+                              padding: 8,
                               font: { size: 11 },
                               usePointStyle: true,
                               boxWidth: 8,
@@ -548,7 +548,7 @@ export default function Dashboard() {
                           },
                         },
                       }}
-                      height={420}
+                      height={360}
                       showExport
                       filename="spending-by-category"
                     />
@@ -588,6 +588,13 @@ export default function Dashboard() {
                       borderRadius: 8,
                     },
                   ],
+                }}
+                options={{
+                  scales: {
+                    y: {
+                      grace: '10%',
+                    },
+                  },
                 }}
                 height={250}
                 showExport

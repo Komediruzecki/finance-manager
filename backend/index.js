@@ -1311,6 +1311,11 @@ app.get('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
 app.put('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
+    const existing = db.prepare(
+      'SELECT name, color, icon, type, parent_id, tax_deductible FROM categories WHERE id=? AND profile_id=?'
+    ).get(req.params.id, pid);
+    if (!existing) return res.status(404).json({ error: 'Category not found' });
+
     const { name, color, icon, type, parent_id: parentIdParam, tax_deductible } = req.body;
     const parent_id = parentIdParam !== undefined ? parentIdParam : req.body.parentId || null;
     const result = db
@@ -1318,10 +1323,10 @@ app.put('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
         'UPDATE categories SET name=?, color=?, icon=?, type=?, parent_id=?, tax_deductible=? WHERE id=? AND profile_id=?'
       )
       .run(
-        name || '',
-        color || '',
-        icon || 'tag',
-        type || 'expense',
+        name !== undefined ? name : existing.name,
+        color !== undefined ? color : existing.color,
+        icon !== undefined ? icon : existing.icon,
+        type !== undefined ? type : existing.type,
         parent_id || null,
         tax_deductible ? 1 : 0,
         req.params.id,
@@ -5168,7 +5173,7 @@ app.post('/api/import/execute', apiRateLimiter, (req, res) => {
       for (const row of rows) {
         const categoryId = (() => {
           const catName = row[mapping.category] || row[mapping.Category] || row[mapping.CATEGORY];
-          if (!catName) return null;
+          if (!catName || !String(catName).trim()) return null;
           const existing = getCat.get(String(catName).trim(), pid);
           if (existing) return existing.id;
           // Reuse the same diverse color each time a new category is created (consistent within same import)
