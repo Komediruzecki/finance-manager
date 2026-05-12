@@ -629,7 +629,9 @@ export function App() {
       <main class={layoutStyles.main}>
         {Object.entries(allPages).map(([name, page]) => (
           <Show when={activePage() === name && !_isLoading()}>
-            <Dynamic component={page} data-testid={`page-${name}`} />
+            <Suspense fallback={<div class={layoutStyles.pageLoader}>Loading...</div>}>
+              <Dynamic component={page} data-testid={`page-${name}`} />
+            </Suspense>
           </Show>
         ))}
       </main>
