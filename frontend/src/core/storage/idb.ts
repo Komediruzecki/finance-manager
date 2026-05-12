@@ -627,9 +627,9 @@ export async function seedDemoProfiles(): Promise<void> {
       accountIds.push(id)
     }
 
-    // Generate transactions from 2020-01 through current month
+    // Generate transactions from 2000-01 through current month
     const now = new Date()
-    const startYear = 2020
+    const startYear = 2000
     const endYear = now.getFullYear()
     const endMonth = now.getMonth() // 0-indexed
 
