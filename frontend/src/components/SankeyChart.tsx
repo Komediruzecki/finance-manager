@@ -2,9 +2,16 @@
  * SankeyChart Component
  * D3-based Sankey diagram for budget → spending flow visualization
  */
-import * as d3 from 'd3'
 import { sankey, sankeyLinkHorizontal } from 'd3-sankey'
 import { createEffect, onCleanup, onMount } from 'solid-js'
+import type * as D3 from 'd3'
+
+let d3Module: typeof D3 | null = null
+
+async function getD3() {
+  if (!d3Module) d3Module = await import('d3')
+  return d3Module
+}
 
 interface SankeyNode {
   name: string
@@ -30,9 +37,11 @@ export default function SankeyChart(props: Props) {
   let containerRef: HTMLDivElement | undefined
   let resizeDebounce: ReturnType<typeof setTimeout> | undefined
 
-  const renderSankey = () => {
+  const renderSankey = async () => {
     const container = containerRef
     if (!container || !props.data?.nodes?.length) return
+
+    const d3 = await getD3()
 
     const width = props.width || container.clientWidth || 800
     if (width <= 0) return

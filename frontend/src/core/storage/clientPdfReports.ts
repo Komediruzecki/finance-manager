@@ -2,9 +2,9 @@
  * Client-side PDF Report Generation
  * Uses jsPDF + Chart.js offscreen canvas to generate reports matching backend layout.
  */
-import { jsPDF } from 'jspdf'
 import { getDB } from './idb'
 import type * as ChartJS from 'chart.js/auto'
+import type { jsPDF } from 'jspdf'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -306,6 +306,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
       : ''
 
   // Build PDF
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'px', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
   addTitle(doc, 'Monthly Financial Report', `${MONTHS[m - 1]} ${y}`, dark)
@@ -518,6 +519,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
       : ''
 
   // Build PDF
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'px', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
 
@@ -661,6 +663,7 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
   const nonTotal = nonDeductible.reduce((s, r) => s + r.total, 0)
   const totalExp = taxTotal + nonTotal
 
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'px', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
 
@@ -793,6 +796,7 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
     }))
     .sort((a, b) => b.total - a.total)
 
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'px', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
 

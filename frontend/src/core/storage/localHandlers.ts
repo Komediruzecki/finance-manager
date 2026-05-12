@@ -1,7 +1,6 @@
 /**
  * Local API Handlers — IndexedDB-backed route handlers for serverless mode
  */
-import * as XLSX from 'xlsx'
 import {
   generateAnnualPdf,
   generateMonthlyPdf,
@@ -10,6 +9,7 @@ import {
 } from './clientPdfReports'
 import { getDB, IndexedDBAdapter, seedDefaultCategories, seedDemoProfiles } from './idb'
 import { getStorageMode, setStorageMode } from './storageFactory'
+import type { WorkBook } from 'xlsx'
 import type { StorageMode } from './storageFactory'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -3008,15 +3008,16 @@ function toStr(v: unknown): string {
 }
 
 interface ImportSession {
-  workbook: XLSX.WorkBook
+  workbook: WorkBook
   uploadedAt: number
 }
 
 const importSessions = new Map<string, ImportSession>()
 
-function parseSheetData(workbook: XLSX.WorkBook) {
+async function parseSheetData(workbook: WorkBook) {
   const sheetName = workbook.SheetNames[0] || 'Sheet1'
   const sheet = workbook.Sheets[sheetName]
+  const XLSX = await import('xlsx')
   const raw: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
   const results: Record<string, unknown>[] = []
@@ -3086,8 +3087,9 @@ export async function importUpload(body: unknown): Promise<Response> {
 
     const ext = file.name.split('.').pop()?.toLowerCase()
     const buffer = await file.arrayBuffer()
-    let workbook: XLSX.WorkBook
+    let workbook: WorkBook
 
+    const XLSX = await import('xlsx')
     if (ext === 'csv') {
       const text = new TextDecoder().decode(buffer)
       workbook = XLSX.read(text, { type: 'string', raw: true })
@@ -3098,7 +3100,7 @@ export async function importUpload(body: unknown): Promise<Response> {
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     importSessions.set(sessionId, { workbook, uploadedAt: Date.now() })
 
-    const rows = parseSheetData(workbook)
+    const rows = await parseSheetData(workbook)
     return json({ session_id: sessionId, filename: file.name, rows, row_count: rows.length })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
@@ -3112,7 +3114,7 @@ export async function importFileSheet(body: unknown): Promise<Response> {
     const session = importSessions.get(sessionId)
     if (!session) return json({ error: 'Session expired or not found' }, 404)
 
-    const rows = parseSheetData(session.workbook)
+    const rows = await parseSheetData(session.workbook)
     const { duplicates, clean } = await detectDuplicates(rows)
     return json({
       rows,
@@ -3150,7 +3152,7 @@ export async function importExecute(body: unknown): Promise<Response> {
     const accountBalances = (data.accountBalances as Record<string, string>) || {}
     const accountBalanceDates = (data.accountBalanceDates as Record<string, string>) || {}
 
-    const rows = parseSheetData(session.workbook)
+    const rows = await parseSheetData(session.workbook)
     const { clean } = await detectDuplicates(rows)
 
     const profileId = getProfileIdFromStorage()

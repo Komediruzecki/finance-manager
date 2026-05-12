@@ -3,8 +3,15 @@
  * D3-based calendar heatmap for daily spending visualization
  * with HTML tooltip and click drill-down
  */
-import * as d3 from 'd3'
 import { createEffect, onCleanup, onMount } from 'solid-js'
+import type * as D3 from 'd3'
+
+let d3Module: typeof D3 | null = null
+
+async function getD3() {
+  if (!d3Module) d3Module = await import('d3')
+  return d3Module
+}
 
 interface Props {
   data: Map<string, number>
@@ -32,7 +39,7 @@ export default function D3HeatmapChart(props: Props) {
     }
   }
 
-  const renderHeatmap = () => {
+  const renderHeatmap = async () => {
     const container = containerRef
     if (!container) return
 
@@ -41,6 +48,7 @@ export default function D3HeatmapChart(props: Props) {
     const height = props.height || 160
     const margin = { top: 20, right: 20, bottom: 10, left: 40 }
 
+    const d3 = await getD3()
     d3.select(container).selectAll('svg').remove()
 
     ensureTooltip()
