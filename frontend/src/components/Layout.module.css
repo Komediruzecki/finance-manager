@@ -332,3 +332,12 @@
     font-size: 13px;
   }
 }
+
+.pageLoader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary, #6b7280);
+  font-size: 1rem;
+}
