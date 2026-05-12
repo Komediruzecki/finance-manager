@@ -144,7 +144,22 @@ export async function transactionsList(query: URLSearchParams): Promise<Response
   const txns = await adapter.listTransactions(
     filters as Parameters<typeof adapter.listTransactions>[0]
   )
-  return json(txns)
+
+  // Enrich transactions with category name/color (like the backend SQL JOIN)
+  const db = await getDB()
+  const pid = await adapter.getCurrentProfileId()
+  const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
+  const catMap = new Map(cats.map((c) => [c.id, c]))
+  const enriched = txns.map((t) => {
+    const cat = catMap.get(t.category_id)
+    return {
+      ...t,
+      category_name: cat?.name || null,
+      category_color: cat?.color || null,
+    }
+  })
+
+  return json(enriched)
 }
 
 export async function transactionsCreate(body: unknown): Promise<Response> {
