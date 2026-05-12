@@ -529,6 +529,9 @@ export default function Transactions() {
       {/* Transaction Modal */}
       <div
         class={`${styles.modalOverlay} ${isTransactionModalOpen() ? styles.show : ''}`}
+        data-test-id="tx-modal"
+        role="dialog"
+        aria-modal="true"
         onclick={() => {
           _closeModals()
         }}
@@ -554,9 +557,10 @@ export default function Transactions() {
               <input type="hidden" value={formId() ?? ''} />
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Type</label>
-                <div class={styles.typeSelector}>
+                <div class={styles.typeSelector} data-test-id="tx-type-selector">
                   <button
                     type="button"
+                    data-test-id="tx-type-expense"
                     class={`${styles.expense} ${type() === 'expense' ? styles.active : ''}`}
                     onClick={() => setType('expense')}
                   >
@@ -564,6 +568,7 @@ export default function Transactions() {
                   </button>
                   <button
                     type="button"
+                    data-test-id="tx-type-income"
                     class={`${styles.income} ${type() === 'income' ? styles.active : ''}`}
                     onClick={() => setType('income')}
                   >
@@ -571,6 +576,7 @@ export default function Transactions() {
                   </button>
                   <button
                     type="button"
+                    data-test-id="tx-type-transfer"
                     class={`${styles.transfer} ${type() === 'transfer' ? styles.active : ''}`}
                     onClick={() => setType('transfer')}
                   >
@@ -583,6 +589,7 @@ export default function Transactions() {
                 <input
                   type="text"
                   class={styles.formControl}
+                  data-test-id="tx-description"
                   value={formDescription()}
                   onInput={(e) => setFormDescription((e.target as HTMLInputElement).value)}
                   required
@@ -595,6 +602,7 @@ export default function Transactions() {
                     type="number"
                     step="0.01"
                     class={styles.formControl}
+                    data-test-id="tx-amount"
                     value={formAmount()}
                     onInput={(e) => setFormAmount((e.target as HTMLInputElement).value)}
                     required
@@ -604,6 +612,7 @@ export default function Transactions() {
                   <label class={styles.formLabel}>Currency</label>
                   <select
                     class={styles.formControl}
+                    data-test-id="tx-currency"
                     value={formCurrency()}
                     onInput={(e) => setFormCurrency((e.target as HTMLSelectElement).value)}
                   >
@@ -622,12 +631,13 @@ export default function Transactions() {
               <div class={styles.formRow}>
                 <div class={styles.formGroup}>
                   <label class={styles.formLabel}>Date</label>
-                  <input type="date" class={styles.formControl} value={formDate()} required />
+                  <input type="date" class={styles.formControl} data-test-id="tx-date" value={formDate()} required />
                 </div>
                 <div class={styles.formGroup}>
                   <label class={styles.formLabel}>Category</label>
                   <select
                     class={styles.formControl}
+                    data-test-id="tx-category"
                     value={formCategory() ?? ''}
                     onchange={(e) => {
                       const value = (e.target as HTMLSelectElement).value
@@ -648,6 +658,7 @@ export default function Transactions() {
                   <input
                     type="text"
                     class={styles.txTagNewInput}
+                    data-test-id="tx-tag-new-input"
                     placeholder="Type tag name, press Enter to create..."
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter') {
@@ -674,6 +685,7 @@ export default function Transactions() {
                   <input
                     type="text"
                     class={styles.formControl}
+                    data-test-id="tx-beneficiary"
                     placeholder="Who you paid"
                     value={formBeneficiary()}
                     onInput={(e) => setFormBeneficiary((e.target as HTMLInputElement).value)}
@@ -684,6 +696,7 @@ export default function Transactions() {
                   <input
                     type="text"
                     class={styles.formControl}
+                    data-test-id="tx-payor"
                     placeholder="Who paid you"
                     value={formPayor()}
                     onInput={(e) => setFormPayor((e.target as HTMLInputElement).value)}
@@ -697,6 +710,7 @@ export default function Transactions() {
                     type="number"
                     step="0.01"
                     class={styles.formControl}
+                    data-test-id="tx-amount-local"
                     value={formAmountLocal()}
                     onInput={(e) => setFormAmountLocal((e.target as HTMLInputElement).value)}
                   />
@@ -707,6 +721,7 @@ export default function Transactions() {
                     type="number"
                     step="0.0001"
                     class={styles.formControl}
+                    data-test-id="tx-exchange-rate"
                     value={formExchangeRate()}
                     onInput={(e) => setFormExchangeRate((e.target as HTMLInputElement).value)}
                   />
@@ -716,6 +731,7 @@ export default function Transactions() {
                 <label class={styles.formLabel}>Means of Payment</label>
                 <select
                   class={styles.formControl}
+                  data-test-id="tx-means"
                   value={formMeans()}
                   onInput={(e) => setFormMeans((e.target as HTMLSelectElement).value)}
                 >
@@ -814,6 +830,7 @@ export default function Transactions() {
                 <label class={styles.formLabel}>Notes</label>
                 <textarea
                   class={styles.formControl}
+                  data-test-id="tx-notes"
                   rows="2"
                   value={formNotes()}
                   onInput={(e) => setFormNotes((e.target as HTMLTextAreaElement).value)}
@@ -822,11 +839,12 @@ export default function Transactions() {
             </form>
           </div>
           <div class={styles.modalFooter}>
-            <button class={styles.btnSecondary} onclick={_closeModals}>
+            <button class={styles.btnSecondary} data-test-id="tx-cancel-btn" onclick={_closeModals}>
               Cancel
             </button>
             <button
               class={styles.btnPrimary}
+              data-test-id="tx-save-btn"
               onclick={async () => {
                 const txData: Record<string, unknown> = {
                   description: formDescription(),
