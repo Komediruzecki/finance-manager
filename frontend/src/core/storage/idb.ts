@@ -558,14 +558,14 @@ const DEMO_ACCOUNTS = [
 
 // Monthly expense templates — fractions of total monthly spending
 const MONTHLY_EXPENSES = [
-  { name: 'Housing', pct: 0.37 },
-  { name: 'Food', pct: 0.21 },
-  { name: 'Transportation', pct: 0.11 },
-  { name: 'Utilities', pct: 0.08 },
-  { name: 'Entertainment', pct: 0.07 },
-  { name: 'Shopping', pct: 0.06 },
-  { name: 'Insurance', pct: 0.05 },
-  { name: 'Subscriptions', pct: 0.05 },
+  { name: 'Housing', description: 'Monthly rent', pct: 0.37 },
+  { name: 'Food', description: 'Grocery shopping', pct: 0.21 },
+  { name: 'Transportation', description: 'Transport pass', pct: 0.11 },
+  { name: 'Utilities', description: 'Electric and water bill', pct: 0.08 },
+  { name: 'Entertainment', description: 'Dining out', pct: 0.07 },
+  { name: 'Shopping', description: 'Clothes and supplies', pct: 0.06 },
+  { name: 'Insurance', description: 'Auto insurance', pct: 0.05 },
+  { name: 'Subscriptions', description: 'Streaming services', pct: 0.05 },
 ]
 
 export async function seedDemoProfiles(): Promise<void> {
@@ -658,7 +658,7 @@ export async function seedDemoProfiles(): Promise<void> {
         if (!cat) continue
 
         await db.add('transactions', {
-          description: ex.name,
+          description: ex.description,
           amount,
           type: 'expense',
           category_id: cat.id,
