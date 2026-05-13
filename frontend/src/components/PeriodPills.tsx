@@ -25,6 +25,7 @@ const DEFAULT_PERIODS: PeriodPill[] = [
   { id: 'last7', label: 'Last 7 Days' },
   { id: 'last30', label: 'Last 30 Days' },
   { id: 'last90', label: 'Last 90 Days' },
+  { id: 'all', label: 'All Time' },
 ]
 
 export function PeriodPills(props: PeriodPillsProps) {

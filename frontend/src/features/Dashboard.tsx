@@ -111,20 +111,30 @@ export default function Dashboard() {
     }
   }
 
-  const loadMonthlyData = async () => {
+  const loadMonthlyData = async (dateFrom?: string, dateTo?: string) => {
     try {
       const [_chartsData, netWorthData] = await Promise.all([
         api.getDashboardCharts(12),
         api.getNetWorth(),
       ])
-      const labels = netWorthData.timeline.map((t) => {
+      let timeline = netWorthData.timeline
+      if (dateFrom && dateTo) {
+        timeline = timeline.filter((t) => {
+          const [y, m] = t.month.split('-')
+          const tDate = `${y}-${m.padStart(2, '0')}-01`
+          const fromKey = `${dateFrom.slice(0, 7)}-01`
+          const toKey = `${dateTo.slice(0, 7)}-31`
+          return tDate >= fromKey && tDate <= toKey
+        })
+      }
+      const labels = timeline.map((t) => {
         const [y, m] = t.month.split('-')
         const date = new Date(parseInt(y), parseInt(m) - 1)
         return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
       })
-      const netWorth = netWorthData.timeline.map((t) => t.balance)
-      const income = netWorthData.timeline.map((t) => (t.netChange > 0 ? t.netChange : 0))
-      const expenses = netWorthData.timeline.map((t) =>
+      const netWorth = timeline.map((t) => t.balance)
+      const income = timeline.map((t) => (t.netChange > 0 ? t.netChange : 0))
+      const expenses = timeline.map((t) =>
         t.netChange < 0 ? Math.abs(t.netChange) : 0
       )
       setMonthlyData({ labels, income, expenses, netWorth })
@@ -184,11 +194,19 @@ export default function Dashboard() {
         dateFrom = fmt(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000))
         dateTo = fmt(now)
         break
+      case 'all':
+        dateFrom = ''
+        dateTo = ''
+        m = now.getMonth() + 1
+        break
     }
 
     setMonth(m)
     setYear(y)
-    await loadDashboard(dateFrom, dateTo)
+    await Promise.all([
+      loadDashboard(dateFrom, dateTo),
+      loadMonthlyData(dateFrom || undefined, dateTo || undefined),
+    ])
   }
 
   const showSettings = () => setShowSettingsModal(true)
