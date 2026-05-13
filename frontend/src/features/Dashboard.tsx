@@ -31,6 +31,7 @@
  */
 
 import { createEffect, createSignal, For, onMount, Show } from 'solid-js'
+import { ChartErrorBoundary } from '../components/ChartErrorBoundary'
 import ChartWrapper from '../components/ChartWrapper'
 import BudgetAlertsCard from '../components/Dashboard/BudgetAlertsCard'
 import { PeriodNavigator } from '../components/Dashboard/PeriodNavigator'
@@ -388,26 +389,28 @@ export default function Dashboard() {
               </div>
               <div class={styles.chartContainerTall}>
                 {monthlyData() ? (
-                  <ChartWrapper
-                    type="line"
-                    data={{
-                      labels: monthlyData()!.labels,
-                      datasets: [
-                        {
-                          label: 'Net Worth',
-                          data: monthlyData()!.netWorth,
-                          borderColor: '#8B5CF6',
-                          backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                        },
-                      ],
-                    }}
-                    height={320}
-                    variant="tall"
-                    showExport
-                    filename="net-worth-over-time"
-                  />
+                  <ChartErrorBoundary title="Net Worth chart">
+                    <ChartWrapper
+                      type="line"
+                      data={{
+                        labels: monthlyData()!.labels,
+                        datasets: [
+                          {
+                            label: 'Net Worth',
+                            data: monthlyData()!.netWorth,
+                            borderColor: '#8B5CF6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                          },
+                        ],
+                      }}
+                      height={320}
+                      variant="tall"
+                      showExport
+                      filename="net-worth-over-time"
+                    />
+                  </ChartErrorBoundary>
                 ) : (
                   <div class={styles.emptyState}>Loading chart data...</div>
                 )}
@@ -420,34 +423,36 @@ export default function Dashboard() {
               </div>
               <div class={styles.chartContainerMedium}>
                 {monthlyData() ? (
-                  <ChartWrapper
-                    type="line"
-                    data={{
-                      labels: monthlyData()!.labels,
-                      datasets: [
-                        {
-                          label: 'Income',
-                          data: monthlyData()!.income,
-                          borderColor: '#22C55E',
-                          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                        },
-                        {
-                          label: 'Expenses',
-                          data: monthlyData()!.expenses,
-                          borderColor: '#EF4444',
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                        },
-                      ],
-                    }}
-                    height={300}
-                    variant="medium"
-                    showExport
-                    filename="cash-flow-12months"
-                  />
+                  <ChartErrorBoundary title="Cash Flow chart">
+                    <ChartWrapper
+                      type="line"
+                      data={{
+                        labels: monthlyData()!.labels,
+                        datasets: [
+                          {
+                            label: 'Income',
+                            data: monthlyData()!.income,
+                            borderColor: '#22C55E',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                          },
+                          {
+                            label: 'Expenses',
+                            data: monthlyData()!.expenses,
+                            borderColor: '#EF4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                          },
+                        ],
+                      }}
+                      height={300}
+                      variant="medium"
+                      showExport
+                      filename="cash-flow-12months"
+                    />
+                  </ChartErrorBoundary>
                 ) : (
                   <div class={styles.emptyState}>Loading chart data...</div>
                 )}
@@ -510,48 +515,50 @@ export default function Dashboard() {
                 </div>
                 <div class={styles.chartContainerTall}>
                   {metrics()!.expenseByCategory && metrics()!.expenseByCategory.length > 0 ? (
-                    <ChartWrapper
-                      type="doughnut"
-                      data={{
-                        labels: metrics()!.expenseByCategory.map(
-                          (item: any) => item.category_name || 'Uncategorized'
-                        ),
-                        datasets: [
-                          {
-                            data: metrics()!.expenseByCategory.map((item: any) => item.total),
-                            backgroundColor: [
-                              '#dc2626',
-                              '#f97316',
-                              '#eab308',
-                              '#22c55e',
-                              '#06b6d4',
-                              '#3b82f6',
-                              '#8b5cf6',
-                              '#ec4899',
-                              '#6b7280',
-                              '#14b8a6',
-                            ],
-                          },
-                        ],
-                      }}
-                      options={{
-                        plugins: {
-                          legend: {
-                            position: 'right',
-                            align: 'start',
-                            labels: {
-                              padding: 8,
-                              font: { size: 11 },
-                              usePointStyle: true,
-                              boxWidth: 8,
+                    <ChartErrorBoundary title="Spending by Category chart">
+                      <ChartWrapper
+                        type="doughnut"
+                        data={{
+                          labels: metrics()!.expenseByCategory.map(
+                            (item: any) => item.category_name || 'Uncategorized'
+                          ),
+                          datasets: [
+                            {
+                              data: metrics()!.expenseByCategory.map((item: any) => item.total),
+                              backgroundColor: [
+                                '#dc2626',
+                                '#f97316',
+                                '#eab308',
+                                '#22c55e',
+                                '#06b6d4',
+                                '#3b82f6',
+                                '#8b5cf6',
+                                '#ec4899',
+                                '#6b7280',
+                                '#14b8a6',
+                              ],
+                            },
+                          ],
+                        }}
+                        options={{
+                          plugins: {
+                            legend: {
+                              position: 'right',
+                              align: 'start',
+                              labels: {
+                                padding: 8,
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                boxWidth: 8,
+                              },
                             },
                           },
-                        },
-                      }}
-                      height={400}
-                      showExport
-                      filename="spending-by-category"
-                    />
+                        }}
+                        height={400}
+                        showExport
+                        filename="spending-by-category"
+                      />
+                    </ChartErrorBoundary>
                   ) : (
                     <div class={styles.emptyState}>No expense data to display</div>
                   )}

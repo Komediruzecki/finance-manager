@@ -2,7 +2,7 @@
  * Main App Component - Root component for the application
  */
 
-import { createEffect, createSignal, For, onCleanup, onMount, Show, Suspense } from 'solid-js'
+import { createEffect, createSignal, ErrorBoundary, For, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 import ConfirmDialog from './components/ConfirmDialog'
 import layoutStyles from './components/Layout.module.css'
@@ -630,7 +630,17 @@ export function App() {
         {Object.entries(allPages).map(([name, page]) => (
           <Show when={activePage() === name && !_isLoading()}>
             <Suspense fallback={<div class={layoutStyles.pageLoader}>Loading...</div>}>
-              <Dynamic component={page} data-testid={`page-${name}`} />
+              <ErrorBoundary
+                fallback={(err) => (
+                  <div class={layoutStyles.pageError}>
+                    <h3>Page Error</h3>
+                    <p>{err.toString()}</p>
+                    <button onClick={() => { window.location.reload(); }}>Reload</button>
+                  </div>
+                )}
+              >
+                <Dynamic component={page} data-testid={`page-${name}`} />
+              </ErrorBoundary>
             </Suspense>
           </Show>
         ))}

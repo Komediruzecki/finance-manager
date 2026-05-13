@@ -2,7 +2,7 @@
  * Chart Wrapper Component
  * Wrapper for Chart.js with reactive updates and export functionality
  */
-import { createEffect, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, ErrorBoundary, onCleanup } from 'solid-js'
 import ChartContainer from './ChartContainer.module.css'
 import ExportChartButton from './ExportChartButton'
 import type * as ChartJS from 'chart.js/auto'
@@ -170,15 +170,34 @@ export default function ChartWrapper(props: ChartWrapperProps) {
   const heightStyle = props.height ? `height: ${props.height}px` : undefined
 
   return (
-    <div
-      class={ChartContainer.chartContainer}
-      classList={{ [heightClass]: !!heightClass }}
-      style={heightStyle}
-    >
-      {props.showExport && props.filename && (
-        <ExportChartButton filename={props.filename} chart={chartInstance()} />
+    <ErrorBoundary
+      fallback={(_err) => (
+        <div
+          class={ChartContainer.chartContainer}
+          classList={{ [heightClass]: !!heightClass }}
+          style={{
+            ...(heightStyle ? { height: `${heightStyle.replace('height: ', '').replace('px', '')  }px` } : {}),
+            display: 'flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            color: 'var(--text-secondary, #6b7280)',
+            'font-size': '0.875rem',
+          }}
+        >
+          Chart failed to load
+        </div>
       )}
-      <canvas ref={(canvas: HTMLCanvasElement) => (canvasRef = canvas)} />
-    </div>
+    >
+      <div
+        class={ChartContainer.chartContainer}
+        classList={{ [heightClass]: !!heightClass }}
+        style={heightStyle}
+      >
+        {props.showExport && props.filename && (
+          <ExportChartButton filename={props.filename} chart={chartInstance()} />
+        )}
+        <canvas ref={(canvas: HTMLCanvasElement) => (canvasRef = canvas)} />
+      </div>
+    </ErrorBoundary>
   )
 }

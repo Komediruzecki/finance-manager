@@ -2,7 +2,7 @@
  * Chart Component
  * Wrapper for Chart.js integration with SolidJS
  */
-import { createEffect, onCleanup } from 'solid-js'
+import { createEffect, ErrorBoundary, onCleanup } from 'solid-js'
 import type * as ChartJS from 'chart.js/auto'
 
 export interface ChartProps {
@@ -67,16 +67,33 @@ export default function Chart(props: ChartProps) {
   })
 
   return (
-    <div
-      style={{
-        height: props.height ? `${props.height}px` : '300px',
-        width: '100%',
-        position: 'relative',
-      }}
+    <ErrorBoundary
+      fallback={(_err) => (
+        <div
+          style={{
+            display: 'flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            padding: '2rem',
+            'min-height': '150px',
+            color: 'var(--text-secondary, #6b7280)',
+            'font-size': '0.875rem',
+          }}
+        >
+          Chart failed to load
+        </div>
+      )}
     >
-      <canvas
-        id={props.id}
-        ref={(canvas: HTMLCanvasElement) => {
+      <div
+        style={{
+          height: props.height ? `${props.height}px` : '300px',
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        <canvas
+          id={props.id}
+          ref={(canvas: HTMLCanvasElement) => {
           canvasRef = canvas
         }}
         style={{
@@ -85,5 +102,6 @@ export default function Chart(props: ChartProps) {
         }}
       />
     </div>
+    </ErrorBoundary>
   )
 }
