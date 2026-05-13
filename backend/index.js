@@ -11,6 +11,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const db = require('./database');
 const loanCalc = require('./models/loanCalculator');
 const mime = require('mime-types');
+const { reposMiddleware } = require('./repositories');
 
 // Helper function to convert snake_case keys to camelCase
 function toCamelCase(obj) {
@@ -465,6 +466,9 @@ app.use(
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
 
+// Repository middleware — attaches req.repos to every request
+app.use(reposMiddleware(db));
+
 // Health check endpoint (no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'connected' });
@@ -736,37 +740,17 @@ app.get('/api/profiles', apiRateLimiter, (req, res) => {
   try {
     let profiles;
     if (req.session.userId) {
-      // Logged in: return only user's own profiles
-      profiles = db
-        .prepare('SELECT * FROM profiles WHERE user_id = ? ORDER BY id')
-        .all(req.session.userId);
-      // Auto-create a default profile if user has none
+      profiles = req.repos.profiles.listByUserId(req.session.userId);
       if (profiles.length === 0) {
-        db.prepare('INSERT INTO profiles (name, user_id) VALUES (?, ?)').run(
-          'Default',
-          req.session.userId
-        );
-        profiles = db
-          .prepare('SELECT * FROM profiles WHERE user_id = ? ORDER BY id')
-          .all(req.session.userId);
+        req.repos.profiles.create('Default', req.session.userId);
+        profiles = req.repos.profiles.listByUserId(req.session.userId);
       }
     } else {
-      // Not logged in: return all example profiles (1, 2, 3)
-      profiles = db.prepare('SELECT * FROM profiles WHERE id IN (1, 2, 3) ORDER BY id').all();
+      profiles = req.repos.profiles.allByIds([1, 2, 3]);
     }
-    // Include transaction, account, and budget counts
-    const txCounts = {};
-    db.prepare('SELECT profile_id, COUNT(*) as c FROM transactions GROUP BY profile_id')
-      .all()
-      .forEach((r) => { txCounts[r.profile_id] = r.c; });
-    const acctCounts = {};
-    db.prepare('SELECT profile_id, COUNT(*) as c FROM accounts GROUP BY profile_id')
-      .all()
-      .forEach((r) => { acctCounts[r.profile_id] = r.c; });
-    const budgetCounts = {};
-    db.prepare('SELECT profile_id, COUNT(*) as c FROM budgets GROUP BY profile_id')
-      .all()
-      .forEach((r) => { budgetCounts[r.profile_id] = r.c; });
+    const txCounts = req.repos.transactions.countsByProfile('transactions');
+    const acctCounts = req.repos.accounts.countsByProfile('accounts');
+    const budgetCounts = req.repos.budgets.countsByProfile('budgets');
     const result = profiles.map((p) => ({
       ...p,
       transaction_count: txCounts[p.id] || 0,
@@ -788,17 +772,11 @@ app.post('/api/profiles', apiRateLimiter, (req, res) => {
     }
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
-    // Check name uniqueness across all profiles
-    const existing = db
-      .prepare('SELECT id FROM profiles WHERE LOWER(name) = LOWER(?)')
-      .get(name.trim());
+    const existing = req.repos.profiles.getByName(name.trim());
     if (existing) return res.status(400).json({ error: 'A profile with this name already exists' });
-    db.prepare('INSERT INTO profiles (name, user_id) VALUES (?, ?)').run(
-      name.trim(),
-      req.session.userId
-    );
+    const id = req.repos.profiles.create(name.trim(), req.session.userId);
     res.json({
-      id: db.prepare('SELECT last_insert_rowid() as id').get().id,
+      id,
       name: name.trim(),
       transaction_count: 0,
       account_count: 0,
@@ -818,16 +796,16 @@ app.patch('/api/profiles/:id', apiRateLimiter, (req, res) => {
     }
     const pid = parseInt(req.params.id);
     const { name } = req.body;
-    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    const profile = req.repos.profiles.getById(pid);
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     if (profile.user_id !== req.session.userId) {
       return res.status(403).json({ error: "Cannot modify another user's profile" });
     }
     if (name !== undefined) {
       if (!name.trim()) return res.status(400).json({ error: 'Name is required' });
-      db.prepare('UPDATE profiles SET name = ? WHERE id = ?').run(name.trim(), pid);
+      req.repos.profiles.updateName(pid, name.trim());
     }
-    const updated = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    const updated = req.repos.profiles.getById(pid);
     res.json(updated);
   } catch (err) {
     console.error(err.message);
@@ -843,20 +821,13 @@ app.delete('/api/profiles/:id', apiRateLimiter, (req, res) => {
     }
     const pid = parseInt(req.params.id);
     if (pid === 1) return res.status(400).json({ error: 'Cannot delete the default profile' });
-    // Only allow deleting profiles owned by this user
-    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(pid);
+    const profile = req.repos.profiles.getById(pid);
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     if (profile.user_id !== req.session.userId) {
       return res.status(403).json({ error: "Cannot delete another user's profile" });
     }
-    const count = db.prepare('SELECT COUNT(*) as c FROM profiles').get();
-    if (count.c <= 1) return res.status(400).json({ error: 'Cannot delete the last profile' });
-    // Delete all data for this profile (cascades via foreign keys)
-    db.prepare('DELETE FROM transactions WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM budgets WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM categories WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM loans WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM profiles WHERE id = ?').run(pid);
+    if (req.repos.profiles.profileCount() <= 1) return res.status(400).json({ error: 'Cannot delete the last profile' });
+    req.repos.profiles.deleteAllDataForProfile(pid);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -869,37 +840,30 @@ app.delete('/api/profile/data', apiRateLimiter, (req, res) => {
   // Nuke all data for the current profile but keep the profile itself
   try {
     const pid = getProfileId(req);
-    db.prepare(
-      'DELETE FROM loan_prepayments WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
-    ).run(pid);
-    db.prepare(
-      'DELETE FROM loan_rate_periods WHERE loan_id IN (SELECT id FROM loans WHERE profile_id = ?)'
-    ).run(pid);
-    db.prepare('DELETE FROM transactions WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM budgets WHERE profile_id = ?').run(pid);
-    db.prepare('DELETE FROM loans WHERE profile_id = ?').run(pid);
+    req.repos.transactions.deleteAll(pid);
+    req.repos.budgets.deleteAll(pid);
+    req.repos.loans.deleteAll(pid);
+    req.repos.categories.deleteAll(pid);
+    req.repos.accounts.deleteAll(pid);
+    req.repos.goals.deleteAll(pid);
     // Reset categories to defaults
-    db.prepare('DELETE FROM categories WHERE profile_id = ?').run(pid);
     const defaults = [
-      ['Housing', '#ef4444', 'home', 'expense'],
-      ['Food & Dining', '#f97316', 'utensils', 'expense'],
-      ['Transportation', '#eab308', 'car', 'expense'],
-      ['Healthcare', '#22c55e', 'heart', 'expense'],
-      ['Entertainment', '#06b6d4', 'film', 'expense'],
-      ['Shopping', '#8b5cf6', 'shopping-bag', 'expense'],
-      ['Utilities', '#64748b', 'zap', 'expense'],
-      ['Education', '#ec4899', 'book', 'expense'],
-      ['Personal Care', '#f43f5e', 'smile', 'expense'],
-      ['Travel', '#14b8a6', 'plane', 'expense'],
-      ['Salary', '#10b981', 'briefcase', 'income'],
-      ['Freelance', '#3b82f6', 'laptop', 'income'],
-      ['Investments', '#6366f1', 'trending-up', 'income'],
-      ['Other Income', '#8b5cf6', 'plus-circle', 'income'],
+      { name: 'Housing', color: '#ef4444', icon: 'home', type: 'expense', tax_deductible: 0 },
+      { name: 'Food & Dining', color: '#f97316', icon: 'utensils', type: 'expense', tax_deductible: 0 },
+      { name: 'Transportation', color: '#eab308', icon: 'car', type: 'expense', tax_deductible: 0 },
+      { name: 'Healthcare', color: '#22c55e', icon: 'heart', type: 'expense', tax_deductible: 0 },
+      { name: 'Entertainment', color: '#06b6d4', icon: 'film', type: 'expense', tax_deductible: 0 },
+      { name: 'Shopping', color: '#8b5cf6', icon: 'shopping-bag', type: 'expense', tax_deductible: 0 },
+      { name: 'Utilities', color: '#64748b', icon: 'zap', type: 'expense', tax_deductible: 0 },
+      { name: 'Education', color: '#ec4899', icon: 'book', type: 'expense', tax_deductible: 0 },
+      { name: 'Personal Care', color: '#f43f5e', icon: 'smile', type: 'expense', tax_deductible: 0 },
+      { name: 'Travel', color: '#14b8a6', icon: 'plane', type: 'expense', tax_deductible: 0 },
+      { name: 'Salary', color: '#10b981', icon: 'briefcase', type: 'income', tax_deductible: 0 },
+      { name: 'Freelance', color: '#3b82f6', icon: 'laptop', type: 'income', tax_deductible: 0 },
+      { name: 'Investments', color: '#6366f1', icon: 'trending-up', type: 'income', tax_deductible: 0 },
+      { name: 'Other Income', color: '#8b5cf6', icon: 'plus-circle', type: 'income', tax_deductible: 0 },
     ];
-    const insertCat = db.prepare(
-      'INSERT INTO categories (name, color, icon, type, profile_id) VALUES (?, ?, ?, ?, ?)'
-    );
-    for (const c of defaults) insertCat.run(...c, pid);
+    req.repos.categories.seedDefaults(pid, defaults);
     res.json({
       ok: true,
       message: 'All profile data has been deleted and categories reset to defaults',
@@ -1046,28 +1010,28 @@ app.post('/api/categories', apiRateLimiter, requireAuth, (req, res) => {
     } = req.body;
     const parent_id = parentIdParam !== undefined ? parentIdParam : req.body.parentId || null;
 
-    // Validation: ensure name is required
     if (!name || typeof name !== 'string' || name.trim() === '') {
       return res.status(400).json({ error: 'Category name is required' });
     }
 
-    // Check for duplicate category name for same profile
-    const existing = db
-      .prepare('SELECT id FROM categories WHERE name=? AND profile_id=?')
-      .get(name.trim(), pid);
+    const existing = req.repos.categories.getByName(name.trim(), pid);
     if (existing) {
       return res.status(400).json({ error: 'Category name already exists for this profile' });
     }
 
-    const info = db
-      .prepare(
-        'INSERT INTO categories (name, color, icon, type, parent_id, tax_deductible, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      )
-      .run(name.trim(), color.trim(), icon, type, parent_id, tax_deductible ? 1 : 0, pid);
+    const id = req.repos.categories.create({
+      name: name.trim(),
+      color: color.trim(),
+      icon,
+      type: type.trim(),
+      parent_id,
+      tax_deductible: tax_deductible ? 1 : 0,
+      profile_id: pid,
+    });
 
     res.json(
       toCamelCase({
-        id: info.lastInsertRowid,
+        id,
         name: name.trim(),
         color: color.trim(),
         icon: icon,
@@ -1280,7 +1244,7 @@ app.delete('/api/categories/mappings/:id', apiRateLimiter, requireAuth, (req, re
 app.delete('/api/categories', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
-    db.prepare('DELETE FROM categories WHERE profile_id=?').run(pid);
+    req.repos.categories.deleteAll(pid);
     res.json({ ok: true, message: 'All categories deleted' });
   } catch (err) {
     console.error(err.message);
@@ -1292,11 +1256,7 @@ app.delete('/api/categories', apiRateLimiter, requireAuth, (req, res) => {
 app.get('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const cat = db
-      .prepare(
-        'SELECT id, name, color, icon, type, parent_id, tax_deductible, created_at FROM categories WHERE id=? AND profile_id=?'
-      )
-      .get(req.params.id, pid);
+    const cat = req.repos.categories.getById(req.params.id, pid);
     if (!cat) {
       return res.status(404).json({ error: 'Not found' });
     }
@@ -1311,28 +1271,19 @@ app.get('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
 app.put('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const existing = db.prepare(
-      'SELECT name, color, icon, type, parent_id, tax_deductible FROM categories WHERE id=? AND profile_id=?'
-    ).get(req.params.id, pid);
+    const existing = req.repos.categories.getById(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Category not found' });
 
     const { name, color, icon, type, parent_id: parentIdParam, tax_deductible } = req.body;
     const parent_id = parentIdParam !== undefined ? parentIdParam : req.body.parentId || null;
-    const result = db
-      .prepare(
-        'UPDATE categories SET name=?, color=?, icon=?, type=?, parent_id=?, tax_deductible=? WHERE id=? AND profile_id=?'
-      )
-      .run(
-        name !== undefined ? name : existing.name,
-        color !== undefined ? color : existing.color,
-        icon !== undefined ? icon : existing.icon,
-        type !== undefined ? type : existing.type,
-        parent_id || null,
-        tax_deductible ? 1 : 0,
-        req.params.id,
-        pid
-      );
-    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    req.repos.categories.update(req.params.id, pid, {
+      name: name !== undefined ? name : existing.name,
+      color: color !== undefined ? color : existing.color,
+      icon: icon !== undefined ? icon : existing.icon,
+      type: type !== undefined ? type : existing.type,
+      parent_id: parent_id || null,
+      tax_deductible: tax_deductible ? 1 : 0,
+    });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -1344,9 +1295,7 @@ app.put('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
 app.delete('/api/categories/:id', apiRateLimiter, requireAuth, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const result = db
-      .prepare('DELETE FROM categories WHERE id=? AND profile_id=?')
-      .run(req.params.id, pid);
+    const result = req.repos.categories.deleteById(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
@@ -2933,20 +2882,16 @@ app.post('/api/budgets', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
-    const info = db
-      .prepare(
-        'INSERT INTO budgets (category_id, amount, period, start_date, end_date, rollover_enabled, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      )
-      .run(
-        category_id,
-        amount,
-        period || 'monthly',
-        start_date,
-        end_date || null,
-        rollover_enabled ? 1 : 0,
-        pid
-      );
-    res.json({ id: info.lastInsertRowid, ...req.body, profile_id: pid });
+    const id = req.repos.budgets.create({
+      category_id,
+      amount,
+      period: period || 'monthly',
+      start_date,
+      end_date: end_date || null,
+      rollover_enabled: rollover_enabled ? 1 : 0,
+      profile_id: pid,
+    });
+    res.json({ id, ...req.body, profile_id: pid });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -2958,20 +2903,14 @@ app.put('/api/budgets/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { category_id, amount, period, start_date, end_date, rollover_enabled } = req.body;
-    const result = db
-      .prepare(
-        'UPDATE budgets SET category_id=?, amount=?, period=?, start_date=?, end_date=?, rollover_enabled=? WHERE id=? AND profile_id=?'
-      )
-      .run(
-        category_id,
-        amount,
-        period,
-        start_date,
-        end_date || null,
-        rollover_enabled ? 1 : 0,
-        req.params.id,
-        pid
-      );
+    const result = req.repos.budgets.update(req.params.id, pid, {
+      category_id,
+      amount,
+      period,
+      start_date,
+      end_date: end_date || null,
+      rollover_enabled: rollover_enabled ? 1 : 0,
+    });
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
@@ -2984,9 +2923,7 @@ app.put('/api/budgets/:id', apiRateLimiter, (req, res) => {
 app.delete('/api/budgets/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const result = db
-      .prepare('DELETE FROM budgets WHERE id=? AND profile_id=?')
-      .run(req.params.id, pid);
+    const result = req.repos.budgets.deleteById(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
@@ -3193,25 +3130,11 @@ app.post('/api/budgets/duplicate-last', apiRateLimiter, (req, res) => {
       return res.json({ ok: false, message: 'No budgets found for previous month' });
     }
 
-    // Create current month start date
     const currYear = year || new Date().getFullYear();
     const currMonth = month || new Date().getMonth() + 1;
-    const currStart = `${currYear}-${String(currMonth).padStart(2, '0')}-01`;
+    const count = req.repos.budgets.duplicateLast(pid, currYear, currMonth);
 
-    // Clear existing budgets for current month and insert from previous
-    db.prepare(
-      'DELETE FROM budgets WHERE profile_id = ? AND start_date >= ? AND start_date < ?'
-    ).run(pid, currStart, `${currYear}-${String(currMonth + 1).padStart(2, '0')}-01`);
-
-    const insert = db.prepare(
-      'INSERT INTO budgets (category_id, amount, period, start_date, profile_id) VALUES (?, ?, ?, ?, ?)'
-    );
-
-    for (const b of prevBudgets) {
-      insert.run(b.category_id, b.amount, b.period, currStart, pid);
-    }
-
-    res.json({ ok: true, count: prevBudgets.length });
+    res.json({ ok: true, count });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -4156,24 +4079,17 @@ app.post('/api/loans', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, principal, interest_rate, start_date, term_months, rate_periods } = req.body;
-    const info = db
-      .prepare(
-        'INSERT INTO loans (name, principal, interest_rate, start_date, term_months, profile_id) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-      .run(name, principal, interest_rate || 5.0, start_date, term_months, pid);
-    const loanId = info.lastInsertRowid;
+    const interestRate = interest_rate || 5.0;
+    const loanId = req.repos.loans.create({
+      name, principal, interest_rate: interestRate, start_date, term_months, profile_id: pid,
+    });
 
     if (rate_periods && rate_periods.length > 0) {
-      const insert = db.prepare(
-        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
-      );
       for (const rp of rate_periods) {
-        insert.run(loanId, rp.rate, rp.start_month, rp.end_month || null);
+        req.repos.loans.addRatePeriod({ loan_id: loanId, rate: rp.rate, start_month: rp.start_month, end_month: rp.end_month || null });
       }
-    } else if (interest_rate !== undefined) {
-      db.prepare(
-        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
-      ).run(loanId, interest_rate, 1, null);
+    } else {
+      req.repos.loans.addRatePeriod({ loan_id: loanId, rate: interestRate, start_month: 1, end_month: null });
     }
 
     res.json({
@@ -4195,16 +4111,10 @@ app.post('/api/loans', apiRateLimiter, (req, res) => {
 app.get('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const loan = db
-      .prepare('SELECT * FROM loans WHERE id=? AND profile_id=?')
-      .get(req.params.id, pid);
+    const loan = req.repos.loans.getById(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Not found' });
-    loan.rate_periods = db
-      .prepare('SELECT * FROM loan_rate_periods WHERE loan_id=? ORDER BY start_month')
-      .all(req.params.id);
-    loan.prepayments = db
-      .prepare('SELECT * FROM loan_prepayments WHERE loan_id=? ORDER BY month')
-      .all(req.params.id);
+    loan.rate_periods = req.repos.loans.getRatePeriods(req.params.id);
+    loan.prepayments = req.repos.loans.getPrepayments(req.params.id);
     res.json(loan);
   } catch (err) {
     console.error(err.message);
@@ -4217,22 +4127,15 @@ app.put('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, principal, interest_rate, start_date, term_months, rate_periods } = req.body;
-    const result = db
-      .prepare(
-        'UPDATE loans SET name=?, principal=?, interest_rate=?, start_date=?, term_months=? WHERE id=? AND profile_id=?'
-      )
-      .run(name, principal, interest_rate || 5.0, start_date, term_months, req.params.id, pid);
+    const result = req.repos.loans.update(req.params.id, pid, {
+      name, principal, interest_rate: interest_rate || 5.0, start_date, term_months,
+    });
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
 
     if (rate_periods !== undefined) {
-      db.prepare('DELETE FROM loan_rate_periods WHERE loan_id=?').run(req.params.id);
-      if (rate_periods.length > 0) {
-        const insert = db.prepare(
-          'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
-        );
-        for (const rp of rate_periods) {
-          insert.run(req.params.id, rp.rate, rp.start_month, rp.end_month || null);
-        }
+      req.repos.loans.deleteRatePeriods(req.params.id);
+      for (const rp of rate_periods) {
+        req.repos.loans.addRatePeriod({ loan_id: req.params.id, rate: rp.rate, start_month: rp.start_month, end_month: rp.end_month || null });
       }
     }
 
@@ -4247,9 +4150,7 @@ app.put('/api/loans/:id', apiRateLimiter, (req, res) => {
 app.delete('/api/loans/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const result = db
-      .prepare('DELETE FROM loans WHERE id=? AND profile_id=?')
-      .run(req.params.id, pid);
+    const result = req.repos.loans.deleteById(req.params.id, pid);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
@@ -4263,17 +4164,11 @@ app.delete('/api/loans/:id', apiRateLimiter, (req, res) => {
 app.post('/api/loans/:id/rates', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const loan = db
-      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
-      .get(req.params.id, pid);
+    const loan = req.repos.loans.getById(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { rate, start_month, end_month } = req.body;
-    const info = db
-      .prepare(
-        'INSERT INTO loan_rate_periods (loan_id, rate, start_month, end_month) VALUES (?, ?, ?, ?)'
-      )
-      .run(req.params.id, rate, start_month, end_month || null);
-    res.json({ id: info.lastInsertRowid });
+    const id = req.repos.loans.addRatePeriod({ loan_id: req.params.id, rate, start_month, end_month: end_month || null });
+    res.json({ id });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -4289,9 +4184,7 @@ app.put('/api/loans/:id/rates/:rateId', apiRateLimiter, (req, res) => {
       .get(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { rate, start_month, end_month } = req.body;
-    db.prepare(
-      'UPDATE loan_rate_periods SET rate=?, start_month=?, end_month=? WHERE id=? AND loan_id=?'
-    ).run(rate, start_month, end_month || null, req.params.rateId, req.params.id);
+    req.repos.loans.updateRatePeriod(req.params.rateId, req.params.id, { rate, start_month, end_month: end_month || null });
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -4303,14 +4196,9 @@ app.put('/api/loans/:id/rates/:rateId', apiRateLimiter, (req, res) => {
 app.delete('/api/loans/:id/rates/:rateId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const loan = db
-      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
-      .get(req.params.id, pid);
+    const loan = req.repos.loans.getById(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
-    db.prepare('DELETE FROM loan_rate_periods WHERE id=? AND loan_id=?').run(
-      req.params.rateId,
-      req.params.id
-    );
+    req.repos.loans.deleteRatePeriodById(req.params.rateId, req.params.id);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -4328,10 +4216,8 @@ app.post('/api/loans/:id/prepayments', apiRateLimiter, (req, res) => {
       .get(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
     const { month, amount, note } = req.body;
-    const info = db
-      .prepare('INSERT INTO loan_prepayments (loan_id, month, amount, note) VALUES (?, ?, ?, ?)')
-      .run(req.params.id, month, amount, note || '');
-    res.json({ id: info.lastInsertRowid });
+    const id = req.repos.loans.addPrepayment({ loan_id: req.params.id, month, amount, note: note || '' });
+    res.json({ id });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -4342,14 +4228,9 @@ app.post('/api/loans/:id/prepayments', apiRateLimiter, (req, res) => {
 app.delete('/api/loans/:id/prepayments/:prepayId', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const loan = db
-      .prepare('SELECT id FROM loans WHERE id=? AND profile_id=?')
-      .get(req.params.id, pid);
+    const loan = req.repos.loans.getById(req.params.id, pid);
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
-    db.prepare('DELETE FROM loan_prepayments WHERE id=? AND loan_id=?').run(
-      req.params.prepayId,
-      req.params.id
-    );
+    req.repos.loans.deletePrepayment(req.params.prepayId, req.params.id);
     res.json(toCamelCase({ ok: true }));
   } catch (err) {
     console.error(err.message);
@@ -5322,9 +5203,7 @@ app.post('/api/import/execute', apiRateLimiter, (req, res) => {
 app.get('/api/accounts', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const accounts = db
-      .prepare('SELECT * FROM accounts WHERE profile_id = ? ORDER BY type, name')
-      .all(pid);
+    const accounts = req.repos.accounts.list(pid);
     res.json(accounts);
   } catch (err) {
     console.error(err.message);
@@ -5342,12 +5221,17 @@ app.post('/api/accounts', apiRateLimiter, (req, res) => {
     const accountType = validTypes.includes(type) ? type : 'giro';
     const startBalance = starting_balance !== undefined ? parseFloat(starting_balance) : (parseFloat(balance) || 0);
     const startDate = starting_date || null;
-    const result = db
-      .prepare(
-        'INSERT INTO accounts (name, type, currency, balance, notes, profile_id, starting_balance, starting_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-      .run(name.trim(), accountType, currency || 'USD', startBalance, notes || '', pid, startBalance, startDate);
-    res.json({ id: result.lastInsertRowid, message: 'Account created' });
+    const id = req.repos.accounts.create({
+      name: name.trim(),
+      type: accountType,
+      currency: currency || 'USD',
+      balance: startBalance,
+      notes: notes || '',
+      profile_id: pid,
+      starting_balance: startBalance,
+      starting_date: startDate,
+    });
+    res.json({ id, message: 'Account created' });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -5359,29 +5243,22 @@ app.put('/api/accounts/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
     const { name, type, currency, balance, notes, starting_balance, starting_date } = req.body;
-    const existing = db
-      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
-      .get(req.params.id, pid);
+    const existing = req.repos.accounts.getById(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Account not found' });
     const validTypes = ['giro', 'ib', 'savings', 'cash'];
     const accountType = validTypes.includes(type) ? type : 'giro';
 
-    let updateSql = 'UPDATE accounts SET name = ?, type = ?, currency = ?, balance = ?, notes = ?';
-    const params = [name.trim(), accountType, currency || 'USD', parseFloat(balance) || 0, notes || ''];
+    const data = {
+      name: name.trim(),
+      type: accountType,
+      currency: currency || 'USD',
+      balance: parseFloat(balance) || 0,
+      notes: notes || '',
+    };
+    if (starting_balance !== undefined) data.starting_balance = parseFloat(starting_balance) || 0;
+    if (starting_date !== undefined) data.starting_date = starting_date || null;
 
-    if (starting_balance !== undefined) {
-      updateSql += ', starting_balance = ?';
-      params.push(parseFloat(starting_balance) || 0);
-    }
-    if (starting_date !== undefined) {
-      updateSql += ', starting_date = ?';
-      params.push(starting_date || null);
-    }
-
-    updateSql += ' WHERE id = ? AND profile_id = ?';
-    params.push(req.params.id, pid);
-
-    db.prepare(updateSql).run(...params);
+    req.repos.accounts.update(req.params.id, pid, data);
     res.json({ message: 'Account updated' });
   } catch (err) {
     console.error(err.message);
@@ -5393,11 +5270,9 @@ app.put('/api/accounts/:id', apiRateLimiter, (req, res) => {
 app.delete('/api/accounts/:id', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const existing = db
-      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
-      .get(req.params.id, pid);
+    const existing = req.repos.accounts.getById(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Account not found' });
-    db.prepare('DELETE FROM accounts WHERE id = ? AND profile_id = ?').run(req.params.id, pid);
+    req.repos.accounts.deleteById(req.params.id, pid);
     res.json({ message: 'Account deleted' });
   } catch (err) {
     console.error(err.message);
@@ -5412,16 +5287,10 @@ app.delete('/api/accounts/:id', apiRateLimiter, (req, res) => {
 app.get('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const account = db
-      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
-      .get(req.params.id, pid);
+    const account = req.repos.accounts.getById(req.params.id, pid);
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    const history = db
-      .prepare(
-        'SELECT id, balance, recorded_at FROM account_balance_history WHERE account_id = ? ORDER BY recorded_at DESC'
-      )
-      .all(req.params.id);
+    const history = req.repos.accounts.getBalanceHistory(req.params.id);
     res.json(history);
   } catch (err) {
     console.error(err.message);
@@ -5433,19 +5302,13 @@ app.get('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
 app.post('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const account = db
-      .prepare('SELECT balance FROM accounts WHERE id = ? AND profile_id = ?')
-      .get(req.params.id, pid);
+    const account = req.repos.accounts.getById(req.params.id, pid);
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    // Use balance from request body, or current account balance as fallback
     const balance = parseFloat(req.body.balance ?? account.balance);
-    const result = db
-      .prepare(
-        "INSERT INTO account_balance_history (account_id, balance, recorded_at) VALUES (?, ?, datetime('now'))"
-      )
-      .run(req.params.id, balance);
-    res.json({ id: result.lastInsertRowid, balance, recorded_at: new Date().toISOString() });
+    const recordedAt = new Date().toISOString();
+    const id = req.repos.accounts.addBalanceEntry(req.params.id, balance, recordedAt);
+    res.json({ id, balance, recorded_at: recordedAt });
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -5456,12 +5319,10 @@ app.post('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
 app.delete('/api/accounts/:id/history', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const account = db
-      .prepare('SELECT id FROM accounts WHERE id = ? AND profile_id = ?')
-      .get(req.params.id, pid);
+    const account = req.repos.accounts.getById(req.params.id, pid);
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    db.prepare('DELETE FROM account_balance_history WHERE account_id = ?').run(req.params.id);
+    req.repos.accounts.deleteBalanceHistory(req.params.id);
     res.json({ message: 'Balance history deleted' });
   } catch (err) {
     console.error(err.message);
