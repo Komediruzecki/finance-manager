@@ -5,6 +5,7 @@
 import { getDB } from './idb'
 import type * as ChartJS from 'chart.js/auto'
 import type { jsPDF } from 'jspdf'
+import type { Category, Transaction } from '../../types/models'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -234,17 +235,17 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
   const [y, m] = month.split('-').map(Number)
 
   const txns = (await db.getAllFromIndex('transactions', 'by_profile', pid)).filter(
-    (t: any) => t.date >= `${month}-01` && t.date < `${y}-${String(m + 1).padStart(2, '0')}-01`
+    (t: Transaction) => t.date >= `${month}-01` && t.date < `${y}-${String(m + 1).padStart(2, '0')}-01`
   )
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
-  const catMap = new Map(cats.map((c: any) => [c.id, c]))
+  const catMap = new Map(cats.map((c: Category) => [c.id, c]))
 
   const incomeByCat: Record<string, { name: string; color: string; total: number }> = {}
   const expenseByCat: Record<string, { name: string; color: string; total: number }> = {}
   let totalIncome = 0
   let totalExpense = 0
 
-  for (const t of txns as any[]) {
+  for (const t of txns as Transaction[]) {
     const cat = catMap.get(t.category_id)
     const name = cat?.name || 'Uncategorized'
     const color = cat?.color || '#94a3b8'
@@ -404,10 +405,10 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
   const pid = getProfileId()
 
   const txns = (await db.getAllFromIndex('transactions', 'by_profile', pid)).filter(
-    (t: any) => t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
+    (t: Transaction) => t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
   )
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
-  const catMap = new Map(cats.map((c: any) => [c.id, c]))
+  const catMap = new Map(cats.map((c: Category) => [c.id, c]))
 
   // Category breakdown
   const byCategory: Record<string, { name: string; color: string; total: number }> = {}
@@ -419,7 +420,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
     monthly.push({ month: MONTHS_SHORT[m - 1], income: 0, expense: 0 })
   }
 
-  for (const t of txns as any[]) {
+  for (const t of txns as Transaction[]) {
     const cat = catMap.get(t.category_id)
     const name = cat?.name || 'Uncategorized'
     const color = cat?.color || '#94a3b8'
@@ -629,15 +630,15 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
   const db = await getDB()
   const pid = getProfileId()
   const txns = (await db.getAllFromIndex('transactions', 'by_profile', pid)).filter(
-    (t: any) => t.type === 'expense' && t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
+    (t: Transaction) => t.type === 'expense' && t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
   )
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
-  const catMap = new Map(cats.map((c: any) => [c.id, c]))
+  const catMap = new Map(cats.map((c: Category) => [c.id, c]))
 
   const taxMap: Record<string, { count: number; total: number }> = {}
   const nonMap: Record<string, { count: number; total: number }> = {}
 
-  for (const t of txns as any[]) {
+  for (const t of txns as Transaction[]) {
     const cat = catMap.get(t.category_id)
     const name = cat?.name || 'Uncategorized'
     const amt = Math.abs(t.amount)
@@ -677,12 +678,12 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
       {
         label: 'Non-Deductible',
         value: `€${fmt(nonTotal)}`,
-        color: dark ? ([148, 163, 184] as any) : ([100, 116, 139] as any),
+        color: (dark ? [148, 163, 184] : [100, 116, 139]) as [number, number, number],
       },
       {
         label: 'Total Expenses',
         value: `€${fmt(totalExp)}`,
-        color: dark ? ([226, 232, 240] as any) : ([30, 41, 59] as any),
+        color: (dark ? [226, 232, 240] : [30, 41, 59]) as [number, number, number],
       },
     ],
     42,
@@ -750,17 +751,17 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
   const db = await getDB()
   const pid = getProfileId()
   const txns = (await db.getAllFromIndex('transactions', 'by_profile', pid)).filter(
-    (t: any) => t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
+    (t: Transaction) => t.date >= `${year}-01-01` && t.date <= `${year}-12-31`
   )
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
-  const catMap = new Map(cats.map((c: any) => [c.id, c]))
+  const catMap = new Map(cats.map((c: Category) => [c.id, c]))
 
   const incomeMap: Record<string, { count: number; total: number }> = {}
   const expenseMap: Record<string, { count: number; total: number }> = {}
   let totalIncome = 0
   let totalExpense = 0
 
-  for (const t of txns as any[]) {
+  for (const t of txns as Transaction[]) {
     const cat = catMap.get(t.category_id)
     const name = cat?.name || 'Uncategorized'
     const amt = Math.abs(t.amount)
