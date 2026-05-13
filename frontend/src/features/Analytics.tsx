@@ -35,12 +35,13 @@ import SankeyChart from '../components/SankeyChart'
 import { formatCurrency } from '../core/api'
 import { theme } from '../core/theme'
 import { apiGet, showToast } from '../utils/api'
+import type { AnalyticsApiResponse, AnalyticsSummary, CategoryTrendItem, SankeyData, Transaction } from '../types/models'
 import { downloadBlob } from '../utils/chartExport'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
   byMonth: Array<{ month: string; income: number; expense: number }>
-  recentTransactions: Array<any>
+  recentTransactions: Transaction[]
   savingsRate: number
 }
 
@@ -57,7 +58,7 @@ export default function Analytics() {
   const [sankeyMonth, setSankeyMonth] = createSignal(
     new Date().getMonth() === 0 ? 12 : new Date().getMonth()
   )
-  const [sankeyData, setSankeyData] = createSignal<{ nodes: any[]; links: any[] }>({
+  const [sankeyData, setSankeyData] = createSignal<SankeyData>({
     nodes: [],
     links: [],
   })
@@ -81,7 +82,7 @@ export default function Analytics() {
   const [heatmapModal, setHeatmapModal] = createSignal<{
     dateStr: string
     amount: number
-    transactions: any[]
+    transactions: Transaction[]
     loading: boolean
   } | null>(null)
   const [categoryChart, setCategoryChart] = createSignal<any>(undefined)
@@ -115,7 +116,7 @@ export default function Analytics() {
       return
     }
     try {
-      const res = await apiGet<any>(`/api/analytics/weeks?year=${year}&month=${month}`)
+      const res = await apiGet<AnalyticsApiResponse>(`/api/analytics/weeks?year=${year}&month=${month}`)
       setWeeks(res.weeks || [])
     } catch (_e) {
       console.error('Failed to load weeks')
@@ -128,7 +129,7 @@ export default function Analytics() {
     setHeatmapModal({ dateStr, amount, transactions: [], loading: true })
     try {
       const type = heatmapType()
-      const res = await apiGet<any>(
+      const res = await apiGet<AnalyticsApiResponse>(
         `/api/transactions?startDate=${dateStr}&endDate=${dateStr}&type=${type}&limit=20`
       )
       const list = Array.isArray(res?.transactions)
@@ -150,29 +151,29 @@ export default function Analytics() {
     setLoading(true)
     try {
       const [categoryRes, transactionsRes, monthlyRes] = await Promise.all([
-        apiGet<any>(`/api/analytics/category-trends?type=${categoryType()}`),
-        apiGet<any>('/api/transactions/summary'),
-        apiGet<any>('/api/stats/monthly?months=24'),
+        apiGet<AnalyticsApiResponse>(`/api/analytics/category-trends?type=${categoryType()}`),
+        apiGet<AnalyticsApiResponse>('/api/transactions/summary'),
+        apiGet<AnalyticsApiResponse>('/api/stats/monthly?months=24'),
       ])
 
       // Transform category-trends response
-      const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: any, i: number) => ({
+      const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: CategoryTrendItem, i: number) => ({
         category_id: i,
-        category_name: d.category,
-        amount: Array.isArray(d.data) ? d.data.reduce((sum: number, v: number) => sum + v, 0) : 0,
+        category_name: d.category_name,
+        amount: d.total || 0,
       }))
 
       // Monthly data from /api/stats/monthly
       const byMonth = Array.isArray(monthlyRes)
-        ? monthlyRes.map((m: any) => ({
-            month: m.month,
-            income: m.income || 0,
-            expense: m.expense || 0,
+        ? monthlyRes.map((m: Record<string, unknown>) => ({
+            month: m.month as string,
+            income: (m.income as number) || 0,
+            expense: (m.expense as number) || 0,
           }))
         : []
 
       // Recent transactions from summary
-      const recentTransactions: any[] = []
+      const recentTransactions: Transaction[] = []
 
       setData({
         byCategory,
@@ -196,7 +197,7 @@ export default function Analytics() {
   // Load heatmap data
   const loadHeatmapData = async () => {
     try {
-      const res = await apiGet<any>(
+      const res = await apiGet<AnalyticsApiResponse>(
         `/api/analytics/daily-heatmap?year=${heatmapYear()}&type=${heatmapType()}`
       )
       const dataMap = new Map<string, number>()
@@ -217,7 +218,7 @@ export default function Analytics() {
   // Load sankey data
   const loadSankeyData = async () => {
     try {
-      const res = await apiGet<any>(
+      const res = await apiGet<AnalyticsApiResponse>(
         `/api/analytics/sankey?year=${sankeyYear()}&month=${sankeyMonth()}`
       )
       setSankeyData({ nodes: res.nodes || [], links: res.links || [] })
@@ -239,7 +240,7 @@ export default function Analytics() {
       }
       const week = selectedWeek()
       if (week) params.set('week', week)
-      const res = await apiGet<any>(`/api/analytics/category-trends?${params.toString()}`)
+      const res = await apiGet<AnalyticsApiResponse>(`/api/analytics/category-trends?${params.toString()}`)
       setStackedData({
         labels: res.labels || [],
         datasets: res.datasets || [],
@@ -255,7 +256,7 @@ export default function Analytics() {
         const week = selectedWeek()
         if (week) cmpParams.set('week', week)
         try {
-          const cmpRes = await apiGet<any>(`/api/analytics/category-trends?${cmpParams.toString()}`)
+          const cmpRes = await apiGet<AnalyticsApiResponse>(`/api/analytics/category-trends?${cmpParams.toString()}`)
           setCompareData({
             labels: cmpRes.labels || [],
             datasets: cmpRes.datasets || [],
@@ -879,7 +880,7 @@ export default function Analytics() {
                     ) : (
                       <div style="max-height:200px;overflow-y:auto;">
                         <For each={heatmapModal()!.transactions.slice(0, 10)}>
-                          {(tx: any) => (
+                          {(tx: Transaction) => (
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;">
                               <span style="color:var(--text);">
                                 {tx.description || tx.category || '-'}
@@ -1156,7 +1157,7 @@ export default function Analytics() {
             <h3 class={styles.sectionTitle}>Recent Transactions</h3>
             <div class={styles.transactionList}>
               <For each={data()!.recentTransactions}>
-                {(tx: any) => (
+                {(tx: Transaction) => (
                   <div class={styles.transactionItem}>
                     <div
                       class={styles.transactionIcon}

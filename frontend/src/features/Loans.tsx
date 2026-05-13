@@ -39,6 +39,7 @@ import styles from '../components/LoansPage.module.css'
 import { api as _api, formatCurrency } from '../core/api'
 import { theme } from '../core/theme'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import type { Loan, LoanDetail, LoanPrepayment } from '../types/models'
 
 interface Loan {
   id: number
@@ -128,8 +129,8 @@ export default function Loans() {
   // Prepayment management
   const loadPrepayments = async (loanId: number) => {
     try {
-      const full = await apiGet<any>(`/api/loans/${loanId}`)
-      setPrepayments(full.prepayments || [])
+      const full = await apiGet<LoanDetail>(`/api/loans/${loanId}`)
+      setPrepayments((full as LoanDetail).prepayments || [])
     } catch {
       setPrepayments([])
     }
@@ -154,11 +155,11 @@ export default function Loans() {
       loadPrepayments(loanId)
       setAmortizationRecalculateKey((k) => k + 1)
       if (amortizationLoan()?.id === loanId) {
-        const fresh = await apiGet<any>(`/api/loans/${loanId}`)
+        const fresh = await apiGet<LoanDetail>(`/api/loans/${loanId}`)
         setAmortizationLoan({ ...amortizationLoan()!, prepayments: fresh.prepayments || [] })
       }
-    } catch (e: any) {
-      showToast(e.message || 'Failed to add prepayment', 'error')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to add prepayment', 'error')
     }
   }
 
@@ -169,11 +170,11 @@ export default function Loans() {
       loadPrepayments(loanId)
       setAmortizationRecalculateKey((k) => k + 1)
       if (amortizationLoan()?.id === loanId) {
-        const fresh = await apiGet<any>(`/api/loans/${loanId}`)
+        const fresh = await apiGet<LoanDetail>(`/api/loans/${loanId}`)
         setAmortizationLoan({ ...amortizationLoan()!, prepayments: fresh.prepayments || [] })
       }
-    } catch (e: any) {
-      showToast(e.message || 'Failed to delete prepayment', 'error')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete prepayment', 'error')
     }
   }
 
@@ -243,8 +244,8 @@ export default function Loans() {
     setEditingLoan(loan)
     let ratePeriods: RatePeriod[] = []
     try {
-      const full = await apiGet<any>(`/api/loans/${loan.id}`)
-      ratePeriods = (full.rate_periods || []).map((rp: any) => ({
+      const full = await apiGet<LoanDetail>(`/api/loans/${loan.id}`)
+      ratePeriods = ((full as LoanDetail).rate_periods || []).map((rp) => ({
         rate: String(rp.rate),
         start_month: rp.start_month,
         end_month: rp.end_month || null,
@@ -997,7 +998,7 @@ export default function Loans() {
                       <label class={styles.formLabel}>Existing Prepayments</label>
                       <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px' }}>
                         <For each={prepayments()}>
-                          {(p: any) => (
+                          {(p: LoanPrepayment) => (
                             <div
                               style={{
                                 display: 'flex',
