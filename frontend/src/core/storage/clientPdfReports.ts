@@ -1,9 +1,9 @@
 /**
  * Client-side PDF Report Generation
- * Uses jsPDF + Chart.js offscreen canvas to generate reports matching backend layout.
+ * Uses jsPDF + Chart.js offscreen canvas (via Web Worker) to generate reports.
  */
 import { getDB } from './idb'
-import type * as ChartJS from 'chart.js/auto'
+import type { ChartData } from 'chart.js'
 import type { jsPDF } from 'jspdf'
 import type { Category, Transaction } from '../../types/models'
 
@@ -48,59 +48,49 @@ const MONTHS_SHORT = [
   'Dec',
 ]
 
-// ── Chart rendering (offscreen) ─────────────────────────────────────────────
+// ── Chart rendering via Web Worker ───────────────────────────────────────────
 
-async function renderChartToDataUrl(
-  type: 'doughnut' | 'bar' | 'line',
-  data: ChartJS.ChartData,
+let _chartWorker: Worker | null = null
+let _workerRequestId = 0
+
+function getChartWorker(): Worker {
+  if (!_chartWorker) {
+    _chartWorker = new Worker(
+      new URL('../../workers/chartWorker.ts', import.meta.url),
+      { type: 'module' }
+    )
+  }
+  return _chartWorker
+}
+
+function renderChartViaWorker(
+  chartType: 'doughnut' | 'bar' | 'line',
+  chartData: ChartData,
   width: number,
   height: number,
   dark: boolean
 ): Promise<string> {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
+  return new Promise((resolve, reject) => {
+    const worker = getChartWorker()
+    const id = ++_workerRequestId
 
-  const { default: Chart } = await import('chart.js/auto')
+    const handler = (e: MessageEvent) => {
+      if (e.data.id !== id) return
+      worker.removeEventListener('message', handler)
 
-  const textColor = dark ? '#E5E7EB' : '#374151'
-  const gridColor = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
-  const isPie = type === 'doughnut'
+      if (e.data.error) {
+        reject(new Error(e.data.error))
+      } else if (e.data.blob) {
+        const url = URL.createObjectURL(e.data.blob)
+        resolve(url)
+      } else {
+        resolve('')
+      }
+    }
 
-  const chart = new Chart(ctx, {
-    type,
-    data,
-    options: {
-      responsive: false,
-      maintainAspectRatio: false,
-      animation: false,
-      layout: isPie ? { padding: { left: 0, right: 0, top: 0, bottom: 0 } } : undefined,
-      plugins: {
-        legend: {
-          display: false,
-        },
-        tooltip: { enabled: false },
-      },
-      scales: isPie
-        ? {}
-        : {
-            x: {
-              grid: { color: gridColor, drawBorder: false },
-              ticks: { color: textColor, font: { size: 10 } },
-            },
-            y: {
-              grid: { color: gridColor, drawBorder: false },
-              ticks: { color: textColor, font: { size: 10 }, callback: (v) => v as number },
-            },
-          },
-    } as any,
+    worker.addEventListener('message', handler)
+    worker.postMessage({ id, chartType, chartData, width, height, dark })
   })
-
-  const dataUrl = canvas.toDataURL('image/png')
-  chart.destroy()
-  return dataUrl
 }
 
 // ── jsPDF helpers ────────────────────────────────────────────────────────────
@@ -246,7 +236,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
   let totalExpense = 0
 
   for (const t of txns as Transaction[]) {
-    const cat = catMap.get(t.category_id)
+    const cat = t.category_id !== null && t.category_id !== undefined ? catMap.get(t.category_id)! : undefined
     const name = cat?.name || 'Uncategorized'
     const color = cat?.color || '#94a3b8'
     const amt = Math.abs(t.amount)
@@ -268,7 +258,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
   // Render charts offscreen
   const incomeChartUrl =
     incomeSorted.length > 0
-      ? await renderChartToDataUrl(
+      ? await renderChartViaWorker(
           'doughnut',
           {
             labels: incomeSorted.map((c) => c.name),
@@ -288,7 +278,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
 
   const expenseChartUrl =
     expenseSorted.length > 0
-      ? await renderChartToDataUrl(
+      ? await renderChartViaWorker(
           'doughnut',
           {
             labels: expenseSorted.map((c) => c.name),
@@ -421,7 +411,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
   }
 
   for (const t of txns as Transaction[]) {
-    const cat = catMap.get(t.category_id)
+    const cat = t.category_id !== null && t.category_id !== undefined ? catMap.get(t.category_id)! : undefined
     const name = cat?.name || 'Uncategorized'
     const color = cat?.color || '#94a3b8'
     const amt = Math.abs(t.amount)
@@ -448,7 +438,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
   // Render charts
   const doughnutUrl =
     topCategories.length > 0
-      ? await renderChartToDataUrl(
+      ? await renderChartViaWorker(
           'doughnut',
           {
             labels: topCategories.map((c) => c.name),
@@ -468,7 +458,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
 
   const barUrl =
     monthly.length > 0
-      ? await renderChartToDataUrl(
+      ? await renderChartViaWorker(
           'bar',
           {
             labels: monthly.map((m) => m.month),
@@ -497,7 +487,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
 
   const lineUrl =
     cashFlow.length > 0
-      ? await renderChartToDataUrl(
+      ? await renderChartViaWorker(
           'line',
           {
             labels: monthly.map((m) => m.month),
@@ -639,7 +629,7 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
   const nonMap: Record<string, { count: number; total: number }> = {}
 
   for (const t of txns as Transaction[]) {
-    const cat = catMap.get(t.category_id)
+    const cat = t.category_id !== null && t.category_id !== undefined ? catMap.get(t.category_id)! : undefined
     const name = cat?.name || 'Uncategorized'
     const amt = Math.abs(t.amount)
     if (cat?.tax_deductible) {
@@ -762,7 +752,7 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
   let totalExpense = 0
 
   for (const t of txns as Transaction[]) {
-    const cat = catMap.get(t.category_id)
+    const cat = t.category_id !== null && t.category_id !== undefined ? catMap.get(t.category_id)! : undefined
     const name = cat?.name || 'Uncategorized'
     const amt = Math.abs(t.amount)
     if (t.type === 'income') {
