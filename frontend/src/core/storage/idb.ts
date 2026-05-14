@@ -19,7 +19,7 @@ import type {
 } from '../../types/storage'
 
 const DB_NAME = 'finance-manager'
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
   db.createObjectStore('profiles', { keyPath: 'id', autoIncrement: true })
@@ -74,6 +74,12 @@ function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
   if (oldVersion < 4) {
     const recurring = db.createObjectStore('recurring', { keyPath: 'id', autoIncrement: true })
     recurring.createIndex('by_profile', 'profile_id')
+  }
+
+  // v5: tags store
+  if (oldVersion < 5) {
+    const tags = db.createObjectStore('tags', { keyPath: 'id', autoIncrement: true })
+    tags.createIndex('by_profile', 'profile_id')
   }
 }
 
@@ -540,6 +546,7 @@ export class IndexedDBAdapter implements StorageAdapter {
       'bills',
       'housings',
       'recurring',
+      'tags',
     ]
     for (const store of stores) {
       try {

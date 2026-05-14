@@ -617,21 +617,19 @@ const routes: RouteDef[] = [
     handler: dispatch({ POST: (ctx) => h.billsPayOrMarkPaid(ctx.params) }),
   },
 
-  // Tags (LS6 no store)
+  // Tags
   {
     pattern: /^\/tags$/,
     methods: ['GET', 'POST'],
-    handler: stub('/api/tags'),
-  },
-  {
-    pattern: /^\/tags\/(\d+)$/,
-    methods: ['GET', 'PUT', 'DELETE'],
-    handler: stub('/api/tags'),
+    handler: dispatch({
+      GET: () => h.tagsList(),
+      POST: (ctx) => h.tagsCreate(ctx.body),
+    }),
   },
   {
     pattern: /^\/tags\/(\d+)\/transactions$/,
     methods: ['GET'],
-    handler: stub('/api/tags/:id/transactions'),
+    handler: dispatch({ GET: (ctx) => h.tagsGetTransactions(ctx.params) }),
   },
 
   // Recurring
