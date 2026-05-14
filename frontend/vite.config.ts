@@ -1,10 +1,8 @@
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
-// @ts-expect-error -- Bundle analyzer may not be installed
 import bundleAnalyzer from 'vite-bundle-analyzer'
 import { VitePWA } from 'vite-plugin-pwa'
 import solidPlugin from 'vite-plugin-solid'
-import solidSvg from 'vite-plugin-solid-svg'
 import { devtoolsPlugin as devtools } from 'solid-devtools/vite'
 import fs from 'fs'
 
@@ -34,10 +32,9 @@ export default defineConfig({
   plugins: [
     solidPlugin(),
     ANALYZE_BUNDLE ? bundleAnalyzer() : undefined,
-    solidSvg({ defaultAsComponent: true }),
-    devtools({
-      targetOrigin: 'auto',
-    }),
+    ...(process.env.NODE_ENV !== 'production'
+      ? [devtools({ targetOrigin: 'auto' })]
+      : []),
     {
       name: 'copy-export-html',
       writeBundle() {

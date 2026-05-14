@@ -36,7 +36,7 @@ import { formatCurrency } from '../core/api'
 import { theme } from '../core/theme'
 import { apiGet, showToast } from '../utils/api'
 import { downloadBlob } from '../utils/chartExport'
-import type { CategoryTrendItem, SankeyData, Transaction } from '../types/models'
+import type { SankeyData, Transaction } from '../types/models'
 
 interface AnalyticsData {
   byCategory: Array<{ category_id: number; category_name: string; amount: number }>
@@ -158,11 +158,15 @@ export default function Analytics() {
       ])
 
       // Transform category-trends response
-      const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: CategoryTrendItem, i: number) => ({
-        category_id: i,
-        category_name: d.category_name,
-        amount: d.total || 0,
-      }))
+      const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: Record<string, unknown>, i: number) => {
+        const dataArr = (d.data as number[]) || []
+        const total = dataArr.reduce((a: number, b: number) => a + b, 0)
+        return {
+          category_id: i,
+          category_name: (d.category as string) || (d.category_name as string) || 'Unknown',
+          amount: total,
+        }
+      })
 
       // Monthly data from /api/stats/monthly
       const byMonth = Array.isArray(monthlyRes)
@@ -686,7 +690,7 @@ export default function Analytics() {
                     value={categoryType()}
                     onchange={(e) => {
                       setCategoryType(e.currentTarget.value as 'expense' | 'income')
-                      loadData()
+                      loadStackedData()
                     }}
                   >
                     <option value="expense">Expenses</option>

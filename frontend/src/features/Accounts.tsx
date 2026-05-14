@@ -183,6 +183,12 @@ export default function Accounts() {
     return accounts().reduce((sum, acc) => sum + acc.balance, 0)
   }
 
+  // Filter transactions by account
+  const getAccountTransactions = (accountId: number) => {
+    const txs = transactions()
+    return Array.isArray(txs) ? txs.filter((t) => t.account_id === accountId) : []
+  }
+
   // Compute monthly income from loaded transactions
   const monthlyIncome = () => {
     const now = new Date()
