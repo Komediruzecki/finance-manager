@@ -117,6 +117,21 @@ export class IndexedDBAdapter implements StorageAdapter {
     return stored ? parseInt(stored, 10) : 1
   }
 
+  /**
+   * Get all selected profile IDs (for household/multi-profile view).
+   * Falls back to the single current profile ID if nothing stored.
+   */
+  getCurrentProfileIds(): number[] {
+    const stored = localStorage.getItem('selectedProfileIds')
+    if (stored) {
+      try {
+        const ids = JSON.parse(stored) as number[]
+        if (Array.isArray(ids) && ids.length > 0) return ids
+      } catch { /* ignore */ }
+    }
+    return [this.getProfileId()]
+  }
+
   // ---- Profiles ----
 
   async getCurrentProfileId(): Promise<number> {
@@ -171,8 +186,12 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    let txns = await db.getAllFromIndex('transactions', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    let txns: Transaction[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('transactions', 'by_profile', pid)
+      txns.push(...rows)
+    }
 
     if (filters) {
       if (filters.type) txns = txns.filter((t) => t.type === filters.type)
@@ -224,8 +243,12 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listCategories(type?: 'income' | 'expense'): Promise<Category[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    let cats = await db.getAllFromIndex('categories', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    let cats: Category[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('categories', 'by_profile', pid)
+      cats.push(...rows)
+    }
     if (type) cats = cats.filter((c) => c.type === type)
     return cats
   }
@@ -260,8 +283,13 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listAccounts(): Promise<Account[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    return db.getAllFromIndex('accounts', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    const result: Account[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('accounts', 'by_profile', pid)
+      result.push(...rows)
+    }
+    return result
   }
 
   async createAccount(account: Account): Promise<number> {
@@ -289,8 +317,13 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listBudgets(): Promise<Budget[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    return db.getAllFromIndex('budgets', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    const result: Budget[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('budgets', 'by_profile', pid)
+      result.push(...rows)
+    }
+    return result
   }
 
   async createBudget(budget: Budget): Promise<number> {
@@ -318,8 +351,13 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listGoals(): Promise<Goal[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    return db.getAllFromIndex('goals', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    const result: Goal[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('goals', 'by_profile', pid)
+      result.push(...rows)
+    }
+    return result
   }
 
   async createGoal(goal: Goal): Promise<number> {
@@ -347,8 +385,13 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async listLoans(): Promise<Loan[]> {
     const db = await getDB()
-    const profileId = await this.getCurrentProfileId()
-    return db.getAllFromIndex('loans', 'by_profile', profileId)
+    const pids = this.getCurrentProfileIds()
+    const result: Loan[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('loans', 'by_profile', pid)
+      result.push(...rows)
+    }
+    return result
   }
 
   async createLoan(loan: Loan): Promise<number> {
