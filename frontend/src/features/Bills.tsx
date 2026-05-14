@@ -380,8 +380,8 @@ export default function Bills() {
           </div>
         )}
 
-        {/* All Bills Section */}
-        <div data-test-id="bills-all-section" class={styles.billsSection}>
+        {/* Paid Bills Section */}
+        <div data-test-id="bills-paid-section" class={styles.billsSection}>
           <h2 class={styles.sectionTitle}>
             <span>
               <svg
@@ -395,8 +395,8 @@ export default function Bills() {
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </span>{' '}
-            All Bills
-            <span class={styles.sectionSubtitle}>{bills().length} total</span>
+            Paid Bills
+            <span class={styles.sectionSubtitle}>{bills().filter((b) => b.paid).length} paid</span>
           </h2>
           {loading() ? (
             <div data-test-id="loading-state" class={styles.emptyState}>
@@ -416,7 +416,7 @@ export default function Bills() {
             </div>
           ) : (
             <div class={styles.billsList}>
-              <For each={bills()}>
+              <For each={bills().filter((b) => b.paid)}>
                 {(bill) => (
                   <div
                     class={`${styles.billCard} ${bill.paid ? styles.paid : ''} ${isOverdue(bill.due_date) && !bill.paid ? styles.overdue : ''}`}
