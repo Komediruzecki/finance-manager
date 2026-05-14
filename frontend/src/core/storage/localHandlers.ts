@@ -258,9 +258,7 @@ export async function transactionsExport(query: URLSearchParams): Promise<Respon
 }
 
 export async function transactionsSummary(): Promise<Response> {
-  const pid = await adapter.getCurrentProfileId()
-  const allTxns = await adapter.listTransactions()
-  const txns = allTxns.filter((t) => t.profile_id === pid)
+  const txns = await adapter.listTransactions()
   const totalIncome = txns.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const totalExpenses = txns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
   return json({ totalIncome, totalExpenses, count: txns.length })
@@ -2029,7 +2027,6 @@ function prevMonth(y: number, m: number): { year: number; month: number } {
 
 export async function dashboardMain(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const now = new Date()
     const allTime = query.get('all') === 'true'
     const dateFrom = query.get('date_from')
@@ -2057,8 +2054,7 @@ export async function dashboardMain(query: URLSearchParams): Promise<Response> {
     const prevLastDay = new Date(pm.year, pm.month, 0).getDate()
     const prevEnd = `${pm.year}-${String(pm.month).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`
 
-    const allTxns = await adapter.listTransactions()
-    const profileTxns = allTxns.filter((t) => t.profile_id === pid)
+    const profileTxns = await adapter.listTransactions()
 
     // Current period
     const currentTxns = profileTxns.filter((t) => t.date >= startDate && t.date <= endDate)
@@ -2136,7 +2132,6 @@ export async function dashboardMain(query: URLSearchParams): Promise<Response> {
 
 export async function dashboardSummary(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const now = new Date()
     const y = parseInt(query.get('year')!) || now.getFullYear()
     const mRaw = query.get('month')
@@ -2155,8 +2150,7 @@ export async function dashboardSummary(query: URLSearchParams): Promise<Response
       endDate = `${y + 1}-01-01`
     }
 
-    const allTxns = await adapter.listTransactions()
-    const profileTxns = allTxns.filter((t) => t.profile_id === pid)
+    const profileTxns = await adapter.listTransactions()
     const periodTxns = profileTxns.filter((t) => t.date >= startDate && t.date < endDate)
 
     const income = periodTxns
@@ -2219,7 +2213,6 @@ export async function dashboardSummary(query: URLSearchParams): Promise<Response
 
 export async function dashboardCharts(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const monthsCount = parseInt(query.get('months')!) || 12
     const endDate = new Date()
     const startDate = new Date()
@@ -2229,8 +2222,7 @@ export async function dashboardCharts(query: URLSearchParams): Promise<Response>
     const endStr = endDate.toISOString().split('T')[0]
 
     const allTxns = await adapter.listTransactions()
-    const profileTxns = allTxns.filter((t) => t.profile_id === pid)
-    const rangeTxns = profileTxns.filter((t) => t.date >= startStr && t.date <= endStr)
+    const rangeTxns = allTxns.filter((t) => t.date >= startStr && t.date <= endStr)
 
     // By category
     const cats = await adapter.listCategories()
@@ -2289,14 +2281,13 @@ export async function dashboardCharts(query: URLSearchParams): Promise<Response>
 
 export async function dashboardNetWorth(): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const accts = await adapter.listAccounts()
     const totalNetWorth = accts.reduce((s, a) => s + (a.balance || 0), 0)
 
     // Monthly net flow from all transactions
     const allTxns = await adapter.listTransactions()
     const profileTxns = allTxns.filter(
-      (t) => t.profile_id === pid && (t.type === 'income' || t.type === 'expense')
+      (t) => t.type === 'income' || t.type === 'expense'
     )
     const monthlyMap: Record<string, { month: string; net: number }> = {}
     for (const t of profileTxns) {
@@ -2384,9 +2375,8 @@ export async function analyticsDailyHeatmap(query: URLSearchParams): Promise<Res
     const type = query.get('type') === 'income' ? 'income' : 'expense'
 
     const allTxns = await adapter.listTransactions()
-    const pid = await adapter.getCurrentProfileId()
     const rows = allTxns.filter(
-      (t) => t.profile_id === pid && t.date.startsWith(String(year)) && t.type === type
+      (t) => t.date.startsWith(String(year)) && t.type === type
     )
 
     const dates: Record<string, number> = {}
@@ -2403,7 +2393,6 @@ export async function analyticsDailyHeatmap(query: URLSearchParams): Promise<Res
 
 export async function analyticsCategoryTrends(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const year = parseInt(query.get('year')!) || new Date().getFullYear()
     const month = query.get('month') ? parseInt(query.get('month')!) : null
     const week = query.get('week') ? parseInt(query.get('week')!) : null
@@ -2436,7 +2425,7 @@ export async function analyticsCategoryTrends(query: URLSearchParams): Promise<R
     const allTxns = await adapter.listTransactions()
     const cats = await adapter.listCategories(type as 'income' | 'expense')
     const txns = allTxns.filter(
-      (t) => t.profile_id === pid && t.type === type && t.date >= startStr && t.date <= endStr
+      (t) => t.type === type && t.date >= startStr && t.date <= endStr
     )
 
     // Generate labels based on view level
@@ -2542,7 +2531,7 @@ export async function analyticsCategoryTrends(query: URLSearchParams): Promise<R
         cmpEnd = `${cmpYear}-12-31`
       }
       const cmpTxns = allTxns.filter(
-        (t) => t.profile_id === pid && t.type === type && t.date >= cmpStart && t.date <= cmpEnd
+        (t) => t.type === type && t.date >= cmpStart && t.date <= cmpEnd
       )
 
       const cmpCatData: Record<string, { category: string; color: string; data: number[] }> = {}
@@ -2579,7 +2568,6 @@ export async function analyticsCategoryTrends(query: URLSearchParams): Promise<R
 
 export async function analyticsSankey(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const year = parseInt(query.get('year')!) || new Date().getFullYear()
     const month = query.get('month') ? parseInt(query.get('month')!) : null
 
@@ -2604,7 +2592,7 @@ export async function analyticsSankey(query: URLSearchParams): Promise<Response>
 
     // Get actual spending for this month
     const profileTxns = allTxns.filter(
-      (t) => t.profile_id === pid && t.type === 'expense' && t.date >= startStr && t.date <= endStr
+      (t) => t.type === 'expense' && t.date >= startStr && t.date <= endStr
     )
 
     const actualMap = new Map<number, number>()
@@ -2716,10 +2704,8 @@ export async function analyticsSankey(query: URLSearchParams): Promise<Response>
 
 export async function statsMonthly(query: URLSearchParams): Promise<Response> {
   try {
-    const pid = await adapter.getCurrentProfileId()
     const months = parseInt(query.get('months') || '24')
-    const allTxns = await adapter.listTransactions()
-    const profileTxns = allTxns.filter((t) => t.profile_id === pid)
+    const profileTxns = await adapter.listTransactions()
 
     const now = new Date()
     const result: Array<{ month: string; income: number; expense: number }> = []
