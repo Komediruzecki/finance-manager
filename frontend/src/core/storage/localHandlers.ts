@@ -1723,6 +1723,48 @@ export async function billsPayOrMarkPaid(params: Record<string, string>): Promis
   return ok()
 }
 
+// ── Tags ────────────────────────────────────────────────────────────────────
+
+export async function tagsList(): Promise<Response> {
+  const db = await getDB()
+  const pid = await adapter.getCurrentProfileId()
+  try {
+    const all = await db.getAllFromIndex('tags', 'by_profile', pid)
+    return json(all)
+  } catch {
+    return json([])
+  }
+}
+
+export async function tagsCreate(body: unknown): Promise<Response> {
+  if (!body || typeof body !== 'object') return json({ error: 'Invalid data' }, 400)
+  const b = body as Record<string, unknown>
+  const name = (b.name as string) || ''
+  if (!name.trim()) return json({ error: 'Tag name is required' }, 400)
+  const db = await getDB()
+  const pid = await adapter.getCurrentProfileId()
+  const id = await db.add('tags', {
+    profile_id: pid,
+    name: name.trim(),
+    color: (b.color as string) || '#6366f1',
+    created_at: new Date().toISOString(),
+  })
+  return json({ id, name: name.trim(), color: (b.color as string) || '#6366f1' }, 201)
+}
+
+export async function tagsGetTransactions(params: Record<string, string>): Promise<Response> {
+  // Return transactions associated with a tag
+  const db = await getDB()
+  const pid = await adapter.getCurrentProfileId()
+  const tagId = idParam(params)
+  const allTxns = await db.getAllFromIndex('transactions', 'by_profile', pid)
+  const filtered = allTxns.filter((t: Record<string, unknown>) => {
+    const tagIds = (t.tag_ids as number[]) || []
+    return tagIds.includes(tagId)
+  })
+  return json(filtered)
+}
+
 // ── Recurring ───────────────────────────────────────────────────────────────
 
 export async function recurringList(): Promise<Response> {

@@ -60,7 +60,7 @@ describe('localApiRouter - route matching', () => {
 describe('localApiRouter - stub handlers', () => {
   it('stub GET returns empty array', async () => {
     const { routeApiRequest } = await loadModule()
-    const res = await routeApiRequest('http://localhost/api/tags')
+    const res = await routeApiRequest('http://localhost/api/categories/mappings')
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(Array.isArray(data)).toBe(true)
@@ -69,7 +69,7 @@ describe('localApiRouter - stub handlers', () => {
 
   it('stub POST returns { id: 1 } with 201', async () => {
     const { routeApiRequest } = await loadModule()
-    const res = await routeApiRequest('http://localhost/api/tags', {
+    const res = await routeApiRequest('http://localhost/api/categories/mappings', {
       method: 'POST',
       body: JSON.stringify({ name: 'test' }),
     })
@@ -80,7 +80,7 @@ describe('localApiRouter - stub handlers', () => {
 
   it('stub DELETE returns { ok: true }', async () => {
     const { routeApiRequest } = await loadModule()
-    const res = await routeApiRequest('http://localhost/api/tags/1', { method: 'DELETE' })
+    const res = await routeApiRequest('http://localhost/api/categories/mappings/1', { method: 'DELETE' })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.ok).toBe(true)
@@ -121,8 +121,8 @@ describe('localApiRouter - loan calculate mock', () => {
 describe('localApiRouter - path with params', () => {
   it('matches paths with numeric IDs', async () => {
     const { routeApiRequest } = await loadModule()
-    // Tags/:id with DELETE returns stub { ok: true }
-    const res = await routeApiRequest('http://localhost/api/tags/42', { method: 'DELETE' })
+    // Categories/mappings/:id with DELETE returns stub { ok: true }
+    const res = await routeApiRequest('http://localhost/api/categories/mappings/42', { method: 'DELETE' })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.ok).toBe(true)
@@ -139,8 +139,8 @@ describe('localApiRouter - path with params', () => {
 describe('localApiRouter - body parsing', () => {
   it('parses JSON body string', async () => {
     const { routeApiRequest } = await loadModule()
-    // Use a POST route that processes body - tags creation (stub)
-    const res = await routeApiRequest('http://localhost/api/tags', {
+    // Use a POST route that processes body - categories mappings (stub)
+    const res = await routeApiRequest('http://localhost/api/categories/mappings', {
       method: 'POST',
       body: JSON.stringify({ name: 'Netflix', amount: 14.99 }),
     })
