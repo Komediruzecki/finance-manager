@@ -174,6 +174,20 @@ export default function Import() {
   const [accountTypes, setAccountTypes] = createSignal<Record<string, string>>({})
   const [accountBalances, setAccountBalances] = createSignal<Record<string, string>>({})
   const [accountBalanceDates, setAccountBalanceDates] = createSignal<Record<string, string>>({})
+  const [universalStartDate, setUniversalStartDate] = createSignal('')
+
+  const applyUniversalStartDate = (date: string) => {
+    setUniversalStartDate(date)
+    if (!date) return
+    const types = categoryTypes()
+    const dates = { ...accountBalanceDates() }
+    for (const cat of detectCategories()) {
+      if (types[cat] === 'account') {
+        dates[cat] = date
+      }
+    }
+    setAccountBalanceDates(dates)
+  }
 
   // Preview state
   const [_rows, setRows] = createSignal<string[][]>([])
@@ -936,7 +950,25 @@ export default function Import() {
 
         {/* Category type review */}
         <div class={styles.categoryReview}>
-          <h3 class={styles.categoryReviewTitle}>Category Types</h3>
+          <div style={{ display: 'flex', 'align-items': 'center', gap: '16px', 'margin-bottom': '16px', 'flex-wrap': 'wrap' }}>
+            <h3 class={styles.categoryReviewTitle} style={{ margin: 0 }}>Category Types</h3>
+            <label style={{ display: 'flex', 'align-items': 'center', gap: '6px', 'font-size': '13px', color: 'var(--text-secondary)' }}>
+              Tracking start date:
+              <input
+                type="date"
+                value={universalStartDate()}
+                onchange={(e) => { applyUniversalStartDate(e.currentTarget.value) }}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid var(--border)',
+                  'border-radius': '4px',
+                  'font-size': '13px',
+                  background: 'var(--bg)',
+                  color: 'var(--text)',
+                }}
+              />
+            </label>
+          </div>
           <div style="max-height: 400px; overflow-y: auto;">
             <table class={styles.categoryTable}>
               <thead>
