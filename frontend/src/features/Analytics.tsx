@@ -147,17 +147,18 @@ export default function Analytics() {
 
   const closeHeatmapModal = () => setHeatmapModal(null)
 
-  // Load analytics data
+  // Load analytics data (summary stats + doughnut + income/expense line)
   const loadData = async () => {
     setLoading(true)
+    const year = stackedYear()
     try {
       const [categoryRes, transactionsRes, monthlyRes] = await Promise.all([
-        apiGet<Record<string, unknown>>(`/api/analytics/category-trends?type=${categoryType()}`),
+        apiGet<Record<string, unknown>>(`/api/analytics/category-trends?type=${categoryType()}&year=${year}`),
         apiGet<Record<string, unknown>>('/api/transactions/summary'),
         apiGet<Record<string, unknown>>('/api/stats/monthly?months=24'),
       ])
 
-      // Transform category-trends response
+      // Transform category-trends response into doughnut data
       const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: Record<string, unknown>, i: number) => {
         const dataArr = (d.data as number[]) || []
         const total = dataArr.reduce((a: number, b: number) => a + b, 0)
@@ -168,13 +169,16 @@ export default function Analytics() {
         }
       })
 
-      // Monthly data from /api/stats/monthly
+      // Monthly data from /api/stats/monthly, filtered to selected year
+      const yearPrefix = String(year)
       const byMonth = Array.isArray(monthlyRes)
-        ? monthlyRes.map((m: Record<string, unknown>) => ({
-            month: m.month as string,
-            income: (m.income as number) || 0,
-            expense: (m.expense as number) || 0,
-          }))
+        ? monthlyRes
+            .filter((m: Record<string, unknown>) => (m.month as string).startsWith(yearPrefix))
+            .map((m: Record<string, unknown>) => ({
+              month: m.month as string,
+              income: (m.income as number) || 0,
+              expense: (m.expense as number) || 0,
+            }))
         : []
 
       // Recent transactions from summary
@@ -372,14 +376,14 @@ export default function Analytics() {
               <div class={`${styles.statValue} ${styles.positive}`}>
                 {formatAmount(totalIncome())}
               </div>
-              <div class={styles.statDesc}>Last 6 months</div>
+              <div class={styles.statDesc}>{stackedYear()}</div>
             </div>
             <div class={styles.statCard}>
               <div class={styles.statLabel}>Total Expense</div>
               <div class={`${styles.statValue} ${styles.negative}`}>
                 {formatAmount(totalExpense())}
               </div>
-              <div class={styles.statDesc}>Last 6 months</div>
+              <div class={styles.statDesc}>{stackedYear()}</div>
             </div>
             <div class={styles.statCard}>
               <div class={styles.statLabel}>Net Savings</div>
@@ -677,7 +681,7 @@ export default function Analytics() {
             <div class={styles.analyticsChart}>
               <div class={styles.heatmapHeader}>
                 <h3 class={styles.chartTitle}>
-                  {categoryType() === 'expense' ? 'Spending' : 'Income'} by Category
+                  {categoryType() === 'expense' ? 'Spending' : 'Income'} by Category ({stackedYear()})
                 </h3>
                 <div class={styles.heatmapControls}>
                   <ExportChartButton
@@ -750,7 +754,7 @@ export default function Analytics() {
 
             <div class={styles.analyticsChart}>
               <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>Monthly Income vs Expense</h3>
+                <h3 class={styles.chartTitle}>Monthly Income vs Expense ({stackedYear()})</h3>
                 <div class={styles.heatmapControls}>
                   <ExportChartButton
                     chart={monthlyChart()}
