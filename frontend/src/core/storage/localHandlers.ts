@@ -3850,9 +3850,23 @@ export async function importExecute(body: unknown): Promise<Response> {
     const accountBalanceDates = (data.accountBalanceDates as Record<string, string>) || {}
 
     // Accept rows directly (from paste/Google Sheets) or via session_id (from file upload)
-    let rows: string[][]
+    let rows: Record<string, unknown>[]
     if (Array.isArray(data.rows)) {
-      rows = data.rows as string[][]
+      // Convert string[][] from frontend into named-object rows using the mapping
+      const rawRows = data.rows as string[][]
+      const idxToField: Record<number, string> = {}
+      for (const [field, idx] of Object.entries(mapping)) {
+        const n = Number(idx)
+        if (!isNaN(n)) idxToField[n] = field
+      }
+      rows = rawRows.map((r) => {
+        const obj: Record<string, unknown> = {}
+        for (let c = 0; c < r.length; c++) {
+          const field = idxToField[c] || `col_${c}`
+          obj[field] = r[c]
+        }
+        return obj
+      })
     } else {
       const sessionId = toStr(data.session_id)
       const session = importSessions.get(sessionId)
@@ -3891,32 +3905,16 @@ export async function importExecute(body: unknown): Promise<Response> {
 
     for (let i = 0; i < clean.length; i++) {
       const row = clean[i]
-      const description = mapping.description
-        ? toStr(row[mapping.description]) || toStr(row.description)
-        : toStr(row.description)
-      const date = mapping.date ? toStr(row[mapping.date]) || toStr(row.date) : toStr(row.date)
-      const amount = parseFloat(
-        mapping.amount
-          ? toStr(row[mapping.amount]) || toStr(row.amount) || '0'
-          : toStr(row.amount) || '0'
-      )
+      const description = toStr(row.description)
+      const date = toStr(row.date)
+      const amount = parseFloat(toStr(row.amount) || '0')
       // Determine transaction type: use type column > categoryTypes > amount sign
       let type = 'expense'
-      if (mapping.type) {
-        const rawType = toStr(row[mapping.type]).trim().toLowerCase()
-        if (['income', 'expense', 'transfer'].includes(rawType)) {
-          type = rawType
-        } else {
-          const catName = mapping.category ? toStr(row[mapping.category]).toLowerCase().trim() : ''
-          const catType = categoryTypes[catName]
-          if (catType && (catType === 'income' || catType === 'expense')) {
-            type = catType
-          } else {
-            type = amount < 0 ? 'expense' : amount > 0 ? 'income' : 'expense'
-          }
-        }
+      const rawType = toStr(row.type).trim().toLowerCase()
+      if (['income', 'expense', 'transfer'].includes(rawType)) {
+        type = rawType
       } else {
-        const catName = mapping.category ? toStr(row[mapping.category]).toLowerCase().trim() : ''
+        const catName = toStr(row.category).toLowerCase().trim()
         const catType = categoryTypes[catName]
         if (catType && (catType === 'income' || catType === 'expense')) {
           type = catType
@@ -3935,8 +3933,9 @@ export async function importExecute(body: unknown): Promise<Response> {
 
       let categoryId: number | null = null
       let accountId: number | null = null
-      if (mapping.category && row[mapping.category]) {
-        const catName = toStr(row[mapping.category]).toLowerCase().trim()
+      const rawCat = toStr(row.category)
+      if (rawCat) {
+        const catName = rawCat.toLowerCase().trim()
         let cat = categories.find((c) => c.name.toLowerCase().trim() === catName)
         // Auto-create category if not found
         if (!cat) {
@@ -3965,9 +3964,9 @@ export async function importExecute(body: unknown): Promise<Response> {
         date,
         amount: type === 'income' ? Math.abs(amount) : -Math.abs(amount),
         category_id: categoryId,
-        notes: mapping.notes ? toStr(row[mapping.notes]) : '',
-        beneficiary: mapping.beneficiary ? toStr(row[mapping.beneficiary]) : '',
-        payor: mapping.payor ? toStr(row[mapping.payor]) : '',
+        notes: toStr(row.notes),
+        beneficiary: toStr(row.beneficiary),
+        payor: toStr(row.payor),
         account_id: accountId || data.account_id ? Number(accountId || data.account_id) : null,
         created_at: new Date().toISOString(),
       }
