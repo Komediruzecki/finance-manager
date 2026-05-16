@@ -148,17 +148,12 @@ export class IndexedDBAdapter implements StorageAdapter {
     if (!hadProfiles) {
       localStorage.setItem('finance_had_profiles', '1')
       await seedDemoProfiles()
+      const seeded = await db.getAll('profiles')
+      if (seeded.length > 0) return seeded[0].id
     }
-    const newProfiles = await db.getAll('profiles')
-    if (newProfiles.length > 0) {
-      const stored = localStorage.getItem('currentProfileId')
-      if (stored) {
-        const parsed = parseInt(stored, 10)
-        if (newProfiles.find((p) => p.id === parsed)) return parsed
-      }
-      return newProfiles[0].id
-    }
-    return this.createProfile('My Finances')
+    // If user deleted all profiles, don't force-create one — return 0 so UI can handle it
+    localStorage.removeItem('currentProfileId')
+    return 0
   }
 
   async createProfile(name: string): Promise<number> {
@@ -600,6 +595,10 @@ export class IndexedDBAdapter implements StorageAdapter {
         // Skip stores that don't exist (schema mismatch)
       }
     }
+    // Clear profile-related localStorage so the app doesn't reference stale IDs
+    localStorage.removeItem('currentProfileId')
+    localStorage.removeItem('selectedProfileIds')
+    localStorage.removeItem('finance_had_profiles')
   }
 }
 
