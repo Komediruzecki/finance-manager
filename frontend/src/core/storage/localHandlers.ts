@@ -4264,3 +4264,333 @@ export async function portfolioPrices(body: unknown): Promise<Response> {
   }
 }
 
+// ── Transaction Tags ─────────────────────────────────────────────────────────
+
+export async function transactionTagsGet(params: Record<string, string>): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const txId = idParam(params)
+    const tx = await db.get('transactions', txId)
+    if (!tx || tx.profile_id !== pid) return notFound('Transaction')
+    const tagIds: number[] = tx.tag_ids || []
+    if (tagIds.length === 0) return json([])
+    const allTags = await db.getAllFromIndex('tags', 'by_profile', pid)
+    const result = (allTags as Record<string, unknown>[]).filter((t) =>
+      tagIds.includes(t.id as number)
+    )
+    return json(result)
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+export async function transactionTagsSet(
+  params: Record<string, string>,
+  body: unknown
+): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const txId = idParam(params)
+    const tx = await db.get('transactions', txId)
+    if (!tx || tx.profile_id !== pid) return notFound('Transaction')
+    const data = body as Record<string, unknown>
+    const tagIds = data.tagIds as number[] | undefined
+    if (!Array.isArray(tagIds)) return json({ error: 'tagIds must be an array' }, 400)
+    const updated = { ...tx, tag_ids: tagIds, tags: [] as { id: number; name: string; color: string }[] }
+    if (tagIds.length > 0) {
+      const allTags = await db.getAllFromIndex('tags', 'by_profile', pid)
+      updated.tags = (allTags as Record<string, unknown>[])
+        .filter((t) => tagIds.includes(t.id as number))
+        .map((t) => ({ id: t.id as number, name: t.name as string, color: t.color as string }))
+    }
+    await db.put('transactions', updated)
+    return ok()
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+export async function transactionsByTag(params: Record<string, string>): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const tagId = idParam(params)
+    const allTxns = await db.getAllFromIndex('transactions', 'by_profile', pid)
+    const filtered = (allTxns as Record<string, unknown>[]).filter((t) => {
+      const tagIds = (t.tag_ids as number[]) || []
+      return tagIds.includes(tagId)
+    })
+    return json({ rows: filtered, total: filtered.length })
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+// ── Transaction Bulk Operations ────────────────────────────────────────────────
+
+export async function transactionsBulk(body: unknown): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pids = adapter.getCurrentProfileIds()
+    const data = body as Record<string, unknown>
+    const ids = (data.ids || data.transactionIds) as number[] | undefined
+    const action = ((data.action || data._method || 'update') as string).toLowerCase()
+    const updateData = (data.data || data) as Record<string, unknown>
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return json({ error: 'No transaction IDs provided' }, 400)
+    }
+    if (ids.length > 1000) {
+      return json({ error: 'Cannot update more than 1000 transactions at once' }, 400)
+    }
+
+    if (action === 'delete') {
+      let deleted = 0
+      for (const id of ids) {
+        const tx = await db.get('transactions', id)
+        if (tx && pids.includes(tx.profile_id)) {
+          await db.delete('transactions', id)
+          deleted++
+        }
+      }
+      return json({ ok: true, deleted })
+    }
+
+    if (action === 'update') {
+      if (!updateData || typeof updateData !== 'object') {
+        return json({ error: 'No update data provided' }, 400)
+      }
+      const allowedFields = ['category_id', 'type', 'description', 'beneficiary', 'payor', 'notes', 'reconciled']
+      let updated = 0
+      for (const id of ids) {
+        const tx = await db.get('transactions', id)
+        if (!tx || !pids.includes(tx.profile_id)) continue
+        const patch: Record<string, unknown> = {}
+        for (const field of allowedFields) {
+          if (field in updateData) {
+            if (field === 'reconciled') {
+              patch.reconciled = updateData.reconciled ? 1 : 0
+            } else if (field === 'type') {
+              const t = updateData.type as string
+              if (!['income', 'expense', 'transfer'].includes(t)) continue
+              patch.type = t
+            } else {
+              patch[field] = updateData[field]
+            }
+          }
+        }
+        if (Object.keys(patch).length > 0) {
+          await db.put('transactions', { ...tx, ...patch })
+          updated++
+        }
+      }
+      return json({ ok: true, updated })
+    }
+
+    return json({ error: `Unknown action: ${action}` }, 400)
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+// ── Category Auto-Map ─────────────────────────────────────────────────────────
+
+export async function categoriesAutoMap(body: unknown): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const data = body as Record<string, unknown>
+    const transactionIds = data.transaction_ids as number[] | undefined
+
+    // Get all categories for this profile
+    const categories = await db.getAllFromIndex('categories', 'by_profile', pid)
+    const catMap = new Map<string, Record<string, unknown>>()
+    for (const c of categories as Record<string, unknown>[]) {
+      catMap.set((c.name as string).toLowerCase(), c)
+    }
+
+    // Get category mappings for learned patterns
+    const mappingPatterns: { pattern: string; categoryId: number }[] = []
+    try {
+      const rawMappings = await db.getAll('category_mappings')
+      for (const m of rawMappings as Record<string, unknown>[]) {
+        if (m.profile_id === pid) {
+          mappingPatterns.push({ pattern: (m.pattern as string).toLowerCase(), categoryId: m.category_id as number })
+        }
+      }
+    } catch {
+      // category_mappings store may not exist yet
+    }
+
+    // Get uncategorized transactions
+    let txns: Record<string, unknown>[]
+    if (transactionIds && transactionIds.length > 0) {
+      txns = []
+      for (const id of transactionIds) {
+        const t = await db.get('transactions', id)
+        if (t && t.profile_id === pid) txns.push(t)
+      }
+    } else {
+      const all = await db.getAllFromIndex('transactions', 'by_profile', pid)
+      txns = (all as Record<string, unknown>[]).filter(
+        (t) => !t.category_id || t.category_id === 0
+      )
+    }
+
+    let mapped = 0
+    for (const tx of txns) {
+      const toStr = (v: unknown) => (typeof v === 'string' ? v : '')
+      const searchText = `${toStr(tx.description)} ${toStr(tx.beneficiary)} ${toStr(tx.payor)}`.toLowerCase()
+      const normalized = searchText.replace(/[^a-z0-9]/g, '')
+
+      // Check learned mappings first
+      let bestCategoryId: number | null = null
+      for (const mp of mappingPatterns) {
+        if (normalized.includes(mp.pattern.replace(/[^a-z0-9]/g, ''))) {
+          bestCategoryId = mp.categoryId
+          break
+        }
+      }
+
+      // Check keyword-based classification
+      if (bestCategoryId === null) {
+        const incomeKeywords = ['salary', 'wage', 'income', 'revenue', 'refund', 'dividend', 'interest', 'bonus', 'freelance', 'deposit', 'paycheck']
+        const expenseKeywords = ['groceries', 'restaurant', 'rent', 'utility', 'insurance', 'health', 'transport', 'shopping', 'entertainment', 'subscription', 'phone', 'internet', 'electric', 'water', 'gas', 'gym', 'travel', 'education', 'medical', 'dental', 'pharmacy', 'clothing', 'charity', 'gift', 'tax', 'fee', 'bank fee', 'maintenance', 'repair', 'fuel', 'parking', 'toll', 'hotel', 'flight', 'coffee', 'food', 'drink']
+        const accountKeywords = ['revolut', 'rev', 'n26', 'wise', 'paypal', 'pbz', 'current', 'giro', 'savings', 'wallet', 'transfer', 'wire']
+
+        for (const kw of incomeKeywords) {
+          if (normalized.includes(kw)) { bestCategoryId = (catMap.get('income') || catMap.get('salary'))?.id as number; break }
+        }
+        if (bestCategoryId === null) {
+          for (const kw of accountKeywords) {
+            if (normalized.includes(kw)) { bestCategoryId = (catMap.get('transfer') || catMap.get('account transfer'))?.id as number; break }
+          }
+        }
+        if (bestCategoryId === null) {
+          for (const kw of expenseKeywords) {
+            if (normalized.includes(kw)) { bestCategoryId = (catMap.get('other'))?.id as number; break }
+          }
+        }
+      }
+
+      if (bestCategoryId !== null) {
+        await db.put('transactions', { ...tx, category_id: bestCategoryId })
+        mapped++
+      }
+    }
+
+    return json({ ok: true, mapped })
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+export async function categoriesApplyMappings(body: unknown): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const data = body as Record<string, unknown>
+    const mappingIds = data.mapping_ids as number[] | undefined
+    const applyTo = (data.apply_to || 'uncategorized') as string
+
+    // Get category mappings (either specific or all)
+    const patterns: { pattern: string; categoryId: number }[] = []
+    if (mappingIds && mappingIds.length > 0) {
+      try {
+        const allMappings = await db.getAll('category_mappings')
+        for (const m of allMappings as Record<string, unknown>[]) {
+          if (m.profile_id === pid && mappingIds.includes(m.id as number)) {
+            patterns.push({ pattern: (m.pattern as string).toLowerCase(), categoryId: m.category_id as number })
+          }
+        }
+      } catch { /* store may not exist */ }
+    }
+
+    // Get transactions to apply to
+    const allTxns = await db.getAllFromIndex('transactions', 'by_profile', pid)
+    const targets = (allTxns as Record<string, unknown>[]).filter((t) => {
+      if (applyTo === 'all') return true
+      return !t.category_id || t.category_id === 0
+    })
+
+    let applied = 0
+    for (const tx of targets) {
+      const toStr = (v: unknown) => (typeof v === 'string' ? v : '')
+      const searchText = `${toStr(tx.description)} ${toStr(tx.beneficiary)} ${toStr(tx.payor)}`.toLowerCase()
+      const normalized = searchText.replace(/[^a-z0-9]/g, '')
+      for (const mp of patterns) {
+        if (normalized.includes(mp.pattern.replace(/[^a-z0-9]/g, ''))) {
+          await db.put('transactions', { ...tx, category_id: mp.categoryId })
+          applied++
+          break
+        }
+      }
+    }
+
+    return json({ ok: true, applied })
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+// ── Account History & Reconciliation ──────────────────────────────────────────
+
+export async function accountsTimeline(): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pids = adapter.getCurrentProfileIds()
+    const allHistory = await db.getAll('balanceHistory')
+    const timeline = new Map<string, number>()
+    for (const entry of allHistory as Record<string, unknown>[]) {
+      const accountId = entry.account_id as number
+      // Get account to check profile
+      try {
+        const acct = await db.get('accounts', accountId)
+        if (!acct || !pids.includes(acct.profile_id)) continue
+      } catch { continue }
+      const date = (entry.recorded_at as string || entry.date as string || '').slice(0, 10)
+      const balance = entry.balance as number
+      timeline.set(date, (timeline.get(date) || 0) + balance)
+    }
+    const result = Array.from(timeline.entries())
+      .map(([date, netWorth]) => ({ date, net_worth: netWorth }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    return json(result)
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
+export async function accountsReconciliationSummary(
+  params: Record<string, string>
+): Promise<Response> {
+  try {
+    const db = await getDB()
+    const pid = await adapter.getCurrentProfileId()
+    const accountId = idParam(params)
+    const account = await db.get('accounts', accountId)
+    if (!account || account.profile_id !== pid) return notFound('Account')
+
+    const allTxns = await db.getAllFromIndex('transactions', 'by_profile', pid)
+    const txns = (allTxns as Record<string, unknown>[]).filter(
+      (t) => t.account_id === accountId
+    )
+
+    const unreconciled = txns.filter((t) => !t.reconciled)
+    const reconciled = txns.filter((t) => !!t.reconciled)
+
+    return json({
+      account_id: accountId,
+      account_name: account.name,
+      unreconciled_count: unreconciled.length,
+      unreconciled_total: unreconciled.reduce((s, t) => s + (t.amount as number || 0), 0),
+      reconciled_count: reconciled.length,
+      total_transactions: txns.length,
+    })
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500)
+  }
+}
+
