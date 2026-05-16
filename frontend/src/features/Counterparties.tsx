@@ -3,10 +3,10 @@
  * Aggregates beneficiary/payor data to show "who owes who"
  */
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from '../components/CounterpartiesPage.module.css'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { apiGet } from '../utils/api'
+import styles from './CounterpartiesPage.module.css'
 
 interface Counterparty {
   name: string

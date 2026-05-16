@@ -32,12 +32,12 @@
  */
 
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from '../components/AccountsPage.module.css'
 import Badge from '../components/Badge'
 import ConfirmButton from '../components/ConfirmButton'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { apiDelete, apiGet, apiPost, showToast } from '../utils/api'
+import styles from './AccountsPage.module.css'
 
 interface Account {
   id: number

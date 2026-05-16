@@ -29,10 +29,10 @@
 import { createEffect, createSignal, For, onMount } from 'solid-js'
 import Badge from '../components/Badge'
 import ConfirmButton from '../components/ConfirmButton'
-import styles from '../components/HousingPage.module.css'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { apiDelete, apiGet, apiPost, showToast } from '../utils/api'
+import styles from './HousingPage.module.css'
 
 interface Housing {
   id: number

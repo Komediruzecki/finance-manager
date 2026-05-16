@@ -57,11 +57,11 @@
  */
 
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from '../components/BillsPage.module.css'
 import ConfirmButton from '../components/ConfirmButton'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { apiDelete, apiGet, apiPost, showToast } from '../utils/api'
+import styles from './BillsPage.module.css'
 
 interface Bill {
   id: number

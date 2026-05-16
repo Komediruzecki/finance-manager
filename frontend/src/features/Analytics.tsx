@@ -27,7 +27,6 @@
  * Visualizes financial data with charts and insights
  */
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from '../components/AnalyticsPage.module.css'
 import Chart from '../components/Chart'
 import D3HeatmapChart from '../components/D3HeatmapChart'
 import ExportChartButton from '../components/ExportChartButton'
@@ -37,6 +36,7 @@ import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import { apiGet, showToast } from '../utils/api'
 import { downloadBlob } from '../utils/chartExport'
+import styles from './AnalyticsPage.module.css'
 import type { SankeyData, Transaction } from '../types/models'
 
 interface AnalyticsData {
