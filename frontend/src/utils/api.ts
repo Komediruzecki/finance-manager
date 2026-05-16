@@ -10,12 +10,6 @@ export interface ApiError {
   details?: string
 }
 
-export interface ApiResponse<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
 // Default fetch options
 function getProfileHeader() {
   const id = localStorage.getItem('currentProfileId')
