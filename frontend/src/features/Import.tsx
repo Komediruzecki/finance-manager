@@ -109,6 +109,11 @@ export default function Import() {
   type ImportTab = 'google-sheets' | 'file-upload' | 'paste-csv'
   const [activeImportTab, setActiveImportTab] = createSignal<ImportTab>('google-sheets')
 
+  const profileHeaders = () => {
+    const pid = localStorage.getItem('currentProfileId') || '1'
+    return { 'X-Profile-Id': pid }
+  }
+
   // Step state
   const [activeStep, setActiveStep] = createSignal<Step>('upload')
 
@@ -301,17 +306,12 @@ export default function Import() {
     setResultMessage(null)
 
     try {
-      const getProfileHeaders = () => {
-        const pid = localStorage.getItem('currentProfileId') || '1'
-        return { 'X-Profile-Id': pid }
-      }
-
       const formData = new FormData()
       formData.append('file', file)
 
       const response = await apiFetch('/api/import/upload', {
         method: 'POST',
-        headers: getProfileHeaders(),
+        headers: profileHeaders(),
         body: formData,
       })
 
@@ -362,14 +362,9 @@ export default function Import() {
     setError(null)
 
     try {
-      const getProfileHeaders = () => {
-        const pid = localStorage.getItem('currentProfileId') || '1'
-        return { 'X-Profile-Id': pid }
-      }
-
       const response = await apiFetch('/api/import/googlesheet', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getProfileHeaders() },
+        headers: { 'Content-Type': 'application/json', ...profileHeaders() },
         body: JSON.stringify({ url, sheetName: selectedSheet() }),
       })
 
@@ -479,17 +474,12 @@ export default function Import() {
         rowsToImport = rowsToImport.filter((_, i) => selectedRows().has(i))
       }
 
-      const getProfileHeaders = () => {
-        const pid = localStorage.getItem('currentProfileId') || '1'
-        return { 'X-Profile-Id': pid }
-      }
-
       // Server-side duplicate detection for new-only mode
       const dupCount = hasDuplicateCount() ?? 0
       if (mode === 'new' && dupCount > 0) {
         const previewResponse = await apiFetch('/api/import/file-sheet', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getProfileHeaders() },
+          headers: { 'Content-Type': 'application/json', ...profileHeaders() },
           body: JSON.stringify({
             fileId: fileId(),
             sheetName: selectedSheet(),
@@ -505,7 +495,7 @@ export default function Import() {
 
       const response = await apiFetch('/api/import/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getProfileHeaders() },
+        headers: { 'Content-Type': 'application/json', ...profileHeaders() },
         body: JSON.stringify({
           rows: rowsToImport,
           mapping,
