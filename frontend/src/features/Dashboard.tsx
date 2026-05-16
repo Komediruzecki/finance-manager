@@ -37,11 +37,11 @@ import BudgetAlertsCard from '../components/Dashboard/BudgetAlertsCard'
 import { PeriodNavigator } from '../components/Dashboard/PeriodNavigator'
 import RecurringInsightsCard from '../components/Dashboard/RecurringInsightsCard'
 import SavingsRateCard from '../components/Dashboard/SavingsRateCard'
-import styles from '../components/DashboardPage.module.css'
 import { DashboardSettings } from '../components/DashboardSettings'
 import { PeriodPills } from '../components/PeriodPills'
 import { api, formatCurrency, formatDate, toast } from '../core/api'
 import { useAppState } from '../core/appStore'
+import styles from './DashboardPage.module.css'
 import type * as Models from '../types/models'
 
 export default function Dashboard() {

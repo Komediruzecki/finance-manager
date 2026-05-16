@@ -35,11 +35,11 @@ import Badge from '../components/Badge'
 import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
 import LoanAmortizationTable from '../components/LoanAmortizationTable'
-import styles from '../components/LoansPage.module.css'
 import { api as _api, formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import styles from './LoansPage.module.css'
 import type { Loan, LoanDetail, LoanPrepayment } from '../types/models'
 
 interface Loan {

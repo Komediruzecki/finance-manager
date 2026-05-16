@@ -32,7 +32,6 @@
  */
 import { createEffect, createSignal, For, onMount } from 'solid-js'
 import Badge from '../components/Badge'
-import styles from '../components/BudgetsPage.module.css'
 import Button from '../components/Button'
 import CategoryIcon, { getCategorySvg } from '../components/CategoryIcon'
 import Chart from '../components/Chart'
@@ -41,6 +40,7 @@ import { api, getLocalCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import styles from './BudgetsPage.module.css'
 import type { BudgetImprovement, BudgetSummaryResponse, ZeroBasedAllocation, ZeroBasedResponse } from '../types/models'
 
 type AllocationStatus = 'ok' | 'warning' | 'over'

@@ -33,11 +33,11 @@
 import { createEffect, createSignal, For, onMount } from 'solid-js'
 import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
-import styles from '../components/GoalsPage.module.css'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import styles from './GoalsPage.module.css'
 
 interface Goal {
   id: number

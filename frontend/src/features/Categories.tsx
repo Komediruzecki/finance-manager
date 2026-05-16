@@ -31,12 +31,12 @@
  * Manages expense and income categories with CRUD operations
  */
 import { createEffect, createSignal, For, onMount } from 'solid-js'
-import styles from '../components/CategoriesPage.module.css'
 import CategoryIcon from '../components/CategoryIcon'
 import ConfirmButton from '../components/ConfirmButton'
 import { formatCurrency } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../utils/api'
+import styles from './CategoriesPage.module.css'
 
 interface Category {
   id: number
