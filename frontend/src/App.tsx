@@ -87,6 +87,8 @@ export function App() {
     } catch {
       setProfiles([])
     }
+    // Refresh selected IDs after profile list changes (e.g., after data reset)
+    setSelectedProfileIds(getSelectedProfileIds())
   }
 
   const selectProfile = (profileId: number) => {
@@ -115,8 +117,11 @@ export function App() {
         }
       } catch { /* ignore */ }
     }
+    // If no profiles exist at all, return empty — don't invent a nonexistent ID
+    if (profiles().length === 0) return []
     const currentId = parseInt(localStorage.getItem('currentProfileId') || '1', 10)
-    return [currentId]
+    const exists = profiles().some((p) => p.id === currentId)
+    return exists ? [currentId] : [profiles()[0].id]
   }
 
   const [selectedProfileIds, setSelectedProfileIds] = createSignal<number[]>(getSelectedProfileIds())
@@ -502,7 +507,7 @@ export function App() {
               class={`${profileStyles.profileDropdownMenu} ${showDropdown() ? profileStyles.visible : ''}`}
             >
               <div class={profileStyles.profileDropdownHeader}>
-                Profiles ({selectedProfileIds().length} of {profiles().length} selected)
+                {profiles().length === 0 ? 'No profiles' : `Profiles (${selectedProfileIds().length} of ${profiles().length} selected)`}
               </div>
               {profiles().length > 0 ? (
                 <For each={profiles()}>
