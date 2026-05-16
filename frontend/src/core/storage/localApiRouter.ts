@@ -37,18 +37,6 @@ function notFound(path: string): Response {
   return json({ error: `Not found: ${path}` }, 404)
 }
 
-// Stub for routes that will be wired in later phases (LS7-LS14)
-// Returns empty/mock data instead of 501 so pages don't error in serverless mode
-function stub(_path: string): Handler {
-  return dispatch({
-    GET: () => Promise.resolve(json([])),
-    POST: () => Promise.resolve(json({ id: 1 }, 201)),
-    PUT: () => Promise.resolve(json({ ok: true })),
-    DELETE: () => Promise.resolve(json({ ok: true })),
-    PATCH: () => Promise.resolve(json({ ok: true })),
-  })
-}
-
 function exchangeRatesStub(): Handler {
   return dispatch({
     GET: () => Promise.resolve(json({ rates: { EUR: 1, USD: 1.08, GBP: 0.85, JPY: 156.0 } })),
@@ -529,19 +517,26 @@ const routes: RouteDef[] = [
     handler: dispatch({ POST: () => h.seedCategories() }),
   },
 
-  // ── Stubs for not-yet-implemented routes (LS11-LS14) ──
   // Transactions (extra): tags, by-tag, bulk
   {
     pattern: /^\/transactions\/(\d+)\/tags$/,
     methods: ['GET', 'POST', 'PUT'],
-    handler: stub('/api/transactions/:id/tags'),
+    handler: dispatch({
+      GET: (ctx) => h.transactionTagsGet(ctx.params),
+      POST: (ctx) => h.transactionTagsSet(ctx.params, ctx.body),
+      PUT: (ctx) => h.transactionTagsSet(ctx.params, ctx.body),
+    }),
   },
   {
     pattern: /^\/transactions\/by-tag\/(\d+)$/,
     methods: ['GET'],
-    handler: stub('/api/transactions/by-tag'),
+    handler: dispatch({ GET: (ctx) => h.transactionsByTag(ctx.params) }),
   },
-  { pattern: /^\/transactions\/bulk$/, methods: ['PUT'], handler: stub('/api/transactions/bulk') },
+  {
+    pattern: /^\/transactions\/bulk$/,
+    methods: ['PUT'],
+    handler: dispatch({ PUT: (ctx) => h.transactionsBulk(ctx.body) }),
+  },
 
   // Categories: mappings, auto-map
   {
@@ -562,24 +557,24 @@ const routes: RouteDef[] = [
   {
     pattern: /^\/categories\/auto-map$/,
     methods: ['POST'],
-    handler: stub('/api/categories/auto-map'),
+    handler: dispatch({ POST: (ctx) => h.categoriesAutoMap(ctx.body) }),
   },
   {
     pattern: /^\/categories\/apply-mappings$/,
     methods: ['POST'],
-    handler: stub('/api/categories/apply-mappings'),
+    handler: dispatch({ POST: (ctx) => h.categoriesApplyMappings(ctx.body) }),
   },
 
   // Accounts: timeline, reconciliation-summary
   {
     pattern: /^\/accounts\/history\/timeline$/,
     methods: ['GET'],
-    handler: stub('/api/accounts/history/timeline'),
+    handler: dispatch({ GET: () => h.accountsTimeline() }),
   },
   {
     pattern: /^\/accounts\/(\d+)\/reconciliation-summary$/,
     methods: ['GET'],
-    handler: stub('/api/accounts/:id/reconciliation-summary'),
+    handler: dispatch({ GET: (ctx) => h.accountsReconciliationSummary(ctx.params) }),
   },
 
   // Loans: calculate (ported from backend loanCalculator)
@@ -732,7 +727,11 @@ const routes: RouteDef[] = [
   },
 
   // Calculators (LS10)
-  { pattern: /^\/retirement$/, methods: ['POST'], handler: stub('/api/retirement') },
+  {
+    pattern: /^\/retirement$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: (ctx) => h.retirementCalculate(ctx.body) }),
+  },
   {
     pattern: /^\/retirement\/projection$/,
     methods: ['GET'],
