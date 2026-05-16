@@ -283,13 +283,6 @@ export interface ImportError {
 }
 
 // ============ RESPONSE TYPES ============
-export interface ApiResponse<T = unknown> {
-  error?: string
-  message?: string
-  ok?: boolean
-  data?: T
-}
-
 export interface PaginatedResponse<T> {
   items: T[]
   total: number
