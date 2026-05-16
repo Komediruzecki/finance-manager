@@ -1038,26 +1038,6 @@ export const formatDate = (dateStr: string): string => {
   })
 }
 
-export const formatMonth = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-}
-
-export const escapeHtml = (str: string): string => {
-  const div = document.createElement('div')
-  div.textContent = str
-  return div.innerHTML
-}
-
-export const hexToRgba = (hex: string, alpha = 1): string => {
-  if (!hex || !hex.startsWith('#')) return `rgba(255,255,255,${alpha})`
-  const h = hex.replace('#', '')
-  const r = parseInt(h.substring(0, 2), 16)
-  const g = parseInt(h.substring(2, 4), 16)
-  const b = parseInt(h.substring(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
 import { addToast } from './toastStore'
 
 export const toast = (
