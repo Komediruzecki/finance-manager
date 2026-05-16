@@ -126,44 +126,6 @@ export async function apiDelete<T = unknown>(url: string): Promise<T> {
   return parseJsonResponse<T>(response)
 }
 
-/**
- * Generic API request with error handling
- * Returns result object with success flag for easier error handling
- */
-export async function apiRequest<T>(
-  url: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  try {
-    const response = await apiFetch(url, {
-      ...DEFAULT_FETCH_OPTIONS,
-      headers: getHeaders(),
-      ...options,
-    })
-
-    const contentType = response.headers.get('content-type')
-    let data: T | undefined
-
-    if (contentType !== null && contentType.includes('application/json')) {
-      data = (await response.json()) as T
-    }
-
-    if (!response.ok) {
-      const errorMsg =
-        data !== undefined && 'error' in (data as object)
-          ? (data as ApiError).error
-          : `Request failed (${response.status})`
-      return { success: false, error: errorMsg }
-    }
-
-    return { success: true, data }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Network error occurred'
-    console.error('API request failed:', message)
-    return { success: false, error: message }
-  }
-}
-
 import { addToast } from '../core/toastStore'
 
 export function showToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
