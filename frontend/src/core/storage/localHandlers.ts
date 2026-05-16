@@ -2824,6 +2824,16 @@ export async function importGoogleSheet(body: unknown): Promise<Response> {
     throw new Error('Parse returned empty')
   }
 
+  // Strategy 0: CORS proxy (required for browser — Google doesn't set CORS headers)
+  const rawUrl = gid
+    ? `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
+    : `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`
+  const strategy0 = tryStrategy(proxyUrl, (text) => {
+    const { headers, rows } = parseCSV(text)
+    return json({ headers, rows, sheetNames: [sheetName || 'Sheet1'], selectedSheet: sheetName || 'Sheet1' })
+  })
+
   // Strategy 1: Published CSV
   const pubUrl = gid
     ? `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&gid=${gid}`
@@ -2869,7 +2879,7 @@ export async function importGoogleSheet(body: unknown): Promise<Response> {
     setTimeout(() => { reject(new Error('TIMEOUT')) }, GOOGLE_SHEETS_TIMEOUT + 500)
   })
 
-  const strategies: Promise<ReturnType<typeof json>>[] = [strategy1, strategy2, strategy3]
+  const strategies: Promise<ReturnType<typeof json>>[] = [strategy0, strategy1, strategy2, strategy3]
   const errors: string[] = []
 
   // Try strategies sequentially with fast failure — first success wins,
