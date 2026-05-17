@@ -519,6 +519,7 @@ export class IndexedDBAdapter implements StorageAdapter {
       primary_currency: 'EUR',
     }
     for (const s of all) {
+      if (typeof s.key === 'string' && s.key.startsWith('__cache__')) continue
       result[s.key] = s.value
     }
     return result as unknown as Settings

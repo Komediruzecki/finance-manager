@@ -132,7 +132,45 @@ export async function profilesUpdate(
 }
 
 export async function profilesDelete(params: Record<string, string>): Promise<Response> {
-  await adapter.deleteProfile(idParam(params))
+  const profileId = idParam(params)
+  // Verify the profile exists and is owned by the current user
+  const db = await getDB()
+  const profile = await db.get('profiles', profileId)
+  if (!profile) return notFound('Profile')
+  const pids = adapter.getCurrentProfileIds()
+  if (!pids.includes(profileId)) return json({ error: 'Cannot delete a profile you do not own' }, 403)
+
+  // Cascade delete all data belonging to this profile
+  const stores = ['transactions', 'categories', 'accounts', 'budgets', 'goals', 'loans', 'balanceHistory', 'bills', 'housings', 'recurring', 'tags', 'portfolioHoldings', 'receipts']
+  for (const store of stores) {
+    if (!db.objectStoreNames.contains(store)) continue
+    const all = await db.getAll(store)
+    for (const item of all) {
+      if (item.profile_id === profileId) {
+        await db.delete(store, item.id as number)
+      }
+    }
+  }
+  await adapter.deleteProfile(profileId)
+
+  // If the deleted profile was the current one, clear the selection
+  const stored = localStorage.getItem('currentProfileId')
+  if (stored && parseInt(stored, 10) === profileId) {
+    localStorage.removeItem('currentProfileId')
+  }
+  const selected = localStorage.getItem('selectedProfileIds')
+  if (selected) {
+    try {
+      const ids = JSON.parse(selected) as number[]
+      const filtered = ids.filter((id) => id !== profileId)
+      if (filtered.length > 0) {
+        localStorage.setItem('selectedProfileIds', JSON.stringify(filtered))
+      } else {
+        localStorage.removeItem('selectedProfileIds')
+      }
+    } catch { /* ignore */ }
+  }
+
   return ok()
 }
 
@@ -2650,7 +2688,7 @@ export async function reportsCustom(body: unknown): Promise<Response> {
 
 // ── Exchange Rates ──────────────────────────────────────────────────────────
 
-const EXCHANGE_RATES_CACHE_KEY = 'exchange_rates_cache'
+const EXCHANGE_RATES_CACHE_KEY = '__cache__exchange_rates'
 const EXCHANGE_RATES_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 async function fetchExchangeRates(base: string): Promise<{ rates: Record<string, number>; cached: boolean }> {
