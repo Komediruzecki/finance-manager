@@ -138,15 +138,17 @@ export async function profilesDelete(params: Record<string, string>): Promise<Re
 
 export async function profileResetData(): Promise<Response> {
   const db = await getDB()
-  await Promise.all([
-    db.clear('transactions'),
-    db.clear('categories'),
-    db.clear('accounts'),
-    db.clear('budgets'),
-    db.clear('goals'),
-    db.clear('loans'),
-    db.clear('balanceHistory'),
-  ])
+  const pids = adapter.getCurrentProfileIds()
+  const stores = ['transactions', 'categories', 'accounts', 'budgets', 'goals', 'loans', 'balanceHistory']
+  for (const store of stores) {
+    if (!db.objectStoreNames.contains(store)) continue
+    const all = await db.getAll(store)
+    for (const item of all) {
+      if (pids.includes(item.profile_id as number)) {
+        await db.delete(store, item.id as number)
+      }
+    }
+  }
   return ok({ message: 'Profile data reset successfully' })
 }
 
@@ -2495,9 +2497,13 @@ export async function reportHandler(ctx: {
   try {
     if (path === '/api/reports/tax-summary') {
       const db = await getDB()
-      const profileId = getProfileIdFromStorage()
-      const cats = await db.getAllFromIndex('categories', 'by_profile', profileId)
-      const txns = await db.getAllFromIndex('transactions', 'by_profile', profileId)
+      const pids = getProfileIdsFromStorage()
+      const cats: Record<string, unknown>[] = []
+      const txns: Record<string, unknown>[] = []
+      for (const pid of pids) {
+        cats.push(...(await db.getAllFromIndex('categories', 'by_profile', pid)))
+        txns.push(...(await db.getAllFromIndex('transactions', 'by_profile', pid)))
+      }
 
       const startStr = `${year}-01-01`
       const endStr = `${year}-12-31`
@@ -2539,9 +2545,13 @@ export async function reportHandler(ctx: {
 
     if (path === '/api/reports/pl-summary') {
       const db = await getDB()
-      const profileId = getProfileIdFromStorage()
-      const cats = await db.getAllFromIndex('categories', 'by_profile', profileId)
-      const txns = await db.getAllFromIndex('transactions', 'by_profile', profileId)
+      const pids = getProfileIdsFromStorage()
+      const cats: Record<string, unknown>[] = []
+      const txns: Record<string, unknown>[] = []
+      for (const pid of pids) {
+        cats.push(...(await db.getAllFromIndex('categories', 'by_profile', pid)))
+        txns.push(...(await db.getAllFromIndex('transactions', 'by_profile', pid)))
+      }
 
       const startStr = `${year}-01-01`
       const endStr = `${year}-12-31`
@@ -2799,7 +2809,12 @@ export async function receiptsGetByTransaction(params: Record<string, string>): 
 export async function receiptsGetFileByName(params: Record<string, string>): Promise<Response> {
   const db = await getDB()
   const filename = params.p1
-  const all = await db.getAll('receipts')
+  const pids = adapter.getCurrentProfileIds()
+  const all: Record<string, unknown>[] = []
+  for (const pid of pids) {
+    const rows = await db.getAllFromIndex('receipts', 'by_profile', pid)
+    all.push(...rows)
+  }
   const receipt = all.find((r) => r.filename === filename)
   if (!receipt || !receipt.file_data) return notFound('Receipt file')
 
@@ -2837,6 +2852,8 @@ function toStr(v: unknown): string {
  *  Handles: Google Viz Date(Y,M,D), dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, yyyy/mm/dd, Excel serial numbers */
 function normalizeDate(v: unknown): string {
   if (v === null || v === undefined) return ''
+  // Zero / empty numeric value — not a date
+  if (v === 0 || v === '0') return ''
   // Google Visualization API date: Date(2026,3,9) — month is 0-indexed
   const gvizMatch = toStr(v).match(/^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/)
   if (gvizMatch) {
@@ -2877,7 +2894,8 @@ function normalizeDate(v: unknown): string {
   // Try native Date parse as fallback
   const dt = new Date(s)
   if (!isNaN(dt.getTime())) {
-    return dt.toISOString().slice(0, 10)
+    const y = dt.getFullYear()
+    if (y >= 1971 && y <= 2100) return dt.toISOString().slice(0, 10)
   }
   return ''
 }
@@ -3285,6 +3303,7 @@ export async function importExecute(body: unknown): Promise<Response> {
             type,
             color: defaultColor,
             icon: 'tag',
+            tax_deductible: false,
             profile_id: profileId,
           })
           cat = { id: id as number, name: catName, type, color: defaultColor, icon: 'tag' } as any
@@ -3543,7 +3562,12 @@ export async function portfolioHoldingsDelete(params: Record<string, string>): P
 export async function portfolioSummary(): Promise<Response> {
   try {
     const db = await getDB()
-    const holdings = await db.getAll('portfolioHoldings')
+    const pids = adapter.getCurrentProfileIds()
+    const holdings: Record<string, unknown>[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('portfolioHoldings', 'by_profile', pid)
+      holdings.push(...rows)
+    }
     let totalValue = 0
     let totalCostBasis = 0
     const enriched = holdings.map((h: any) => {
