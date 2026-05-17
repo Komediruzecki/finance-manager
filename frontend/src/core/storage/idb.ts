@@ -292,8 +292,11 @@ export class IndexedDBAdapter implements StorageAdapter {
         a.balance = a.starting_balance ?? 0
         await db.put('accounts', a)
       }
+      const txns = await db.getAllFromIndex('transactions', 'by_profile', pid)
+      for (const t of txns) {
+        await db.delete('transactions', t.id)
+      }
     }
-    await db.clear('transactions')
   }
 
   private async _adjustAccountBalance(accountId: number, delta: number): Promise<void> {
@@ -342,7 +345,13 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   async deleteAllCategories(): Promise<void> {
     const db = await getDB()
-    await db.clear('categories')
+    const pids = this.getCurrentProfileIds()
+    for (const pid of pids) {
+      const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
+      for (const c of cats) {
+        await db.delete('categories', c.id)
+      }
+    }
   }
 
   // ---- Accounts ----
