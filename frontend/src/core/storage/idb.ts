@@ -670,7 +670,7 @@ export class IndexedDBAdapter implements StorageAdapter {
     // Clear profile-related localStorage so the app doesn't reference stale IDs
     localStorage.removeItem('currentProfileId')
     localStorage.removeItem('selectedProfileIds')
-    localStorage.removeItem('finance_had_profiles')
+    // NOTE: keep finance_had_profiles — it's a one-time init flag, not data state
   }
 
   // ---- Logs ----
