@@ -55,13 +55,6 @@ function reportsCustomStub(): Handler {
   })
 }
 
-function logsStub(): Handler {
-  return dispatch({
-    GET: () => Promise.resolve(json([])),
-    POST: () => Promise.resolve(json({ ok: true })),
-  })
-}
-
 // ── Dispatcher helper ────────────────────────────────────────────────────────
 
 /** Create a handler that dispatches based on HTTP method to named handlers */
@@ -805,13 +798,20 @@ const routes: RouteDef[] = [
   // Stats
   { pattern: /^\/stats\/monthly$/, methods: ['GET'], handler: dispatch({ GET: (ctx) => h.statsMonthly(ctx.query) }) },
 
-  // Logs (client-only: returns empty lists)
+  // Logs
   {
     pattern: /^\/logs$/,
     methods: ['GET', 'POST'],
-    handler: logsStub(),
+    handler: dispatch({
+      GET: (ctx) => h.logsList(ctx.query),
+      POST: (ctx) => h.logsCreate(ctx.body),
+    }),
   },
-  { pattern: /^\/logs\/clear$/, methods: ['POST'], handler: logsStub() },
+  {
+    pattern: /^\/logs\/clear$/,
+    methods: ['POST'],
+    handler: dispatch({ POST: () => h.logsClear() }),
+  },
 
   // ── Counterparties ──
   {

@@ -47,6 +47,8 @@ export {
   budgetsZeroBasedSummary,
 } from './handlers/budgets'
 
+export { logsClear, logsCreate, logsList } from './handlers/logs'
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function authLogin(body: unknown): Promise<Response> {
@@ -1169,12 +1171,7 @@ export async function clearAll(): Promise<Response> {
 }
 
 export async function deleteAllTransactions(): Promise<Response> {
-  const db = await getDB()
-  const pid = await adapter.getCurrentProfileId()
-  const txns = await db.getAllFromIndex('transactions', 'by_profile', pid)
-  for (const t of txns) {
-    await db.delete('transactions', t.id)
-  }
+  await adapter.deleteAllTransactions()
   return ok({ message: 'All transactions deleted' })
 }
 
@@ -3420,7 +3417,7 @@ export async function transactionsBulk(body: unknown): Promise<Response> {
       for (const id of ids) {
         const tx = await db.get('transactions', id)
         if (tx && pids.includes(tx.profile_id)) {
-          await db.delete('transactions', id)
+          await adapter.deleteTransaction(id)
           deleted++
         }
       }

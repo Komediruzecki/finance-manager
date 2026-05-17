@@ -12,6 +12,7 @@ import type {
   ExportData,
   Goal,
   Loan,
+  LogEntry,
   Settings,
   StorageAdapter,
   Transaction,
@@ -19,7 +20,7 @@ import type {
 } from '../../types/storage'
 
 const DB_NAME = 'finance-manager'
-const DB_VERSION = 5
+const DB_VERSION = 6
 
 function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
   db.createObjectStore('profiles', { keyPath: 'id', autoIncrement: true })
@@ -81,6 +82,13 @@ function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
     const tags = db.createObjectStore('tags', { keyPath: 'id', autoIncrement: true })
     tags.createIndex('by_profile', 'profile_id')
   }
+
+  // v6: logs store
+  if (oldVersion < 6) {
+    const logs = db.createObjectStore('logs', { keyPath: 'id', autoIncrement: true })
+    logs.createIndex('by_level', 'level')
+    logs.createIndex('by_timestamp', 'timestamp')
+  }
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null
@@ -110,6 +118,37 @@ const DEFAULT_CATEGORIES = [
   { type: 'expense', name: 'Education', color: '#14B8A6', tax_deductible: true },
   { type: 'expense', name: 'Subscriptions', color: '#F43F5E', tax_deductible: false },
 ]
+
+interface BalanceAdjustment {
+  accountId: number
+  delta: number
+}
+
+/** Compute how a transaction affects account balances.
+ *  Returns an array of {accountId, delta} pairs.
+ *  Positive delta = add to balance, negative = subtract. */
+function computeBalanceDeltas(tx: {
+  account_id?: number | null
+  transfer_account_id?: number | null
+  type: string
+  amount: number
+}): BalanceAdjustment[] {
+  const adj: BalanceAdjustment[] = []
+  if (tx.account_id) {
+    if (tx.type === 'transfer' && tx.transfer_account_id) {
+      adj.push({ accountId: tx.account_id, delta: -tx.amount })
+      adj.push({ accountId: tx.transfer_account_id, delta: tx.amount })
+    } else if (tx.type === 'transfer') {
+      adj.push({ accountId: tx.account_id, delta: -tx.amount })
+    } else if (tx.type === 'income' || tx.type === 'expense') {
+      adj.push({ accountId: tx.account_id, delta: tx.type === 'income' ? tx.amount : -tx.amount })
+    }
+  }
+  if (!tx.account_id && tx.transfer_account_id && (tx.type === 'income' || tx.type === 'transfer')) {
+    adj.push({ accountId: tx.transfer_account_id, delta: tx.amount })
+  }
+  return adj
+}
 
 export class IndexedDBAdapter implements StorageAdapter {
   private getProfileId(): number {
@@ -212,26 +251,58 @@ export class IndexedDBAdapter implements StorageAdapter {
     const db = await getDB()
     const data = { ...tx }
     if (!data.profile_id) data.profile_id = await this.getCurrentProfileId()
-    return (await db.add('transactions', data)) as number
+    const id = (await db.add('transactions', data)) as number
+    for (const adj of computeBalanceDeltas(data)) {
+      await this._adjustAccountBalance(adj.accountId, adj.delta)
+    }
+    return id
   }
 
   async updateTransaction(id: number, tx: Partial<Transaction>): Promise<void> {
     const db = await getDB()
     const existing = await db.get('transactions', id)
-    if (existing) {
-      Object.assign(existing, tx)
-      await db.put('transactions', existing)
+    if (!existing) return
+    for (const adj of computeBalanceDeltas(existing)) {
+      await this._adjustAccountBalance(adj.accountId, -adj.delta)
+    }
+    Object.assign(existing, tx)
+    await db.put('transactions', existing)
+    for (const adj of computeBalanceDeltas(existing)) {
+      await this._adjustAccountBalance(adj.accountId, adj.delta)
     }
   }
 
   async deleteTransaction(id: number): Promise<void> {
     const db = await getDB()
+    const old = await db.get('transactions', id)
+    if (old) {
+      for (const adj of computeBalanceDeltas(old)) {
+        await this._adjustAccountBalance(adj.accountId, -adj.delta)
+      }
+    }
     await db.delete('transactions', id)
   }
 
   async deleteAllTransactions(): Promise<void> {
     const db = await getDB()
+    const pids = this.getCurrentProfileIds()
+    for (const pid of pids) {
+      const accts = await db.getAllFromIndex('accounts', 'by_profile', pid)
+      for (const a of accts) {
+        a.balance = a.starting_balance ?? 0
+        await db.put('accounts', a)
+      }
+    }
     await db.clear('transactions')
+  }
+
+  private async _adjustAccountBalance(accountId: number, delta: number): Promise<void> {
+    const db = await getDB()
+    const acct = await db.get('accounts', accountId)
+    if (acct) {
+      acct.balance = (acct.balance ?? 0) + delta
+      await db.put('accounts', acct)
+    }
   }
 
   // ---- Categories ----
@@ -585,6 +656,7 @@ export class IndexedDBAdapter implements StorageAdapter {
       'housings',
       'recurring',
       'tags',
+      'logs',
     ]
     for (const store of stores) {
       try {
@@ -599,6 +671,45 @@ export class IndexedDBAdapter implements StorageAdapter {
     localStorage.removeItem('currentProfileId')
     localStorage.removeItem('selectedProfileIds')
     localStorage.removeItem('finance_had_profiles')
+  }
+
+  // ---- Logs ----
+
+  async addLog(entry: {
+    timestamp: string
+    level: string
+    source: string
+    error: string
+    stack?: string | null
+    request?: Record<string, unknown> | null
+  }): Promise<number> {
+    const db = await getDB()
+    const id = (await db.add('logs', entry)) as number
+    const all = await db.getAll('logs')
+    if (all.length > 500) {
+      const sorted = all.sort((a, b) => (a.id as number) - (b.id as number))
+      for (const e of sorted.slice(0, all.length - 500)) {
+        await db.delete('logs', e.id)
+      }
+    }
+    return id
+  }
+
+  async getLogs(query: { level?: string; limit?: number; offset?: number }): Promise<LogEntry[]> {
+    const db = await getDB()
+    let logs = await db.getAll('logs')
+    if (query.level) {
+      logs = logs.filter((l) => l.level === query.level)
+    }
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    const offset = query.offset ?? 0
+    const limit = query.limit ?? 50
+    return logs.slice(offset, offset + limit)
+  }
+
+  async clearLogs(): Promise<void> {
+    const db = await getDB()
+    await db.clear('logs')
   }
 }
 
