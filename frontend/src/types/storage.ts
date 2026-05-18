@@ -95,6 +95,7 @@ export interface Transaction {
   means: string
   notes: string
   tags: string[]
+  tag_ids?: number[]
   reconciled?: number
   reconciled_at?: string
 }

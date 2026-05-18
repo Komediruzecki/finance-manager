@@ -45,7 +45,7 @@ export async function budgetsDelete(params: Record<string, string>): Promise<Res
 export async function budgetsAlerts(query: URLSearchParams): Promise<Response> {
   try {
     const db = await getDB()
-    const pid = await adapter.getCurrentProfileId()
+    const pids = adapter.getCurrentProfileIds()
     const threshold = parseFloat(query.get('threshold')!) || 80
 
     let startDate: string
@@ -65,11 +65,23 @@ export async function budgetsAlerts(query: URLSearchParams): Promise<Response> {
       endDate = monthStart(nm.year, nm.month)
     }
 
-    const budgets = (await db.getAllFromIndex('budgets', 'by_profile', pid)).filter(
+    const allBudgets: Record<string, unknown>[] = []
+    const allTxns: Record<string, unknown>[] = []
+    const allCats: Record<string, unknown>[] = []
+    for (const pid of pids) {
+      const rows = await db.getAllFromIndex('budgets', 'by_profile', pid)
+      allBudgets.push(...rows)
+      const t = await db.getAllFromIndex('transactions', 'by_profile', pid)
+      allTxns.push(...t)
+      const c = await db.getAllFromIndex('categories', 'by_profile', pid)
+      allCats.push(...c)
+    }
+
+    const budgets = allBudgets.filter(
       (b: Record<string, unknown>) => !b.end_date || (b.end_date as string) >= startDate
     )
 
-    const txns = (await db.getAllFromIndex('transactions', 'by_profile', pid)).filter(
+    const txns = allTxns.filter(
       (t: Record<string, unknown>) =>
         t.type === 'expense' &&
         t.category_id !== null &&
@@ -83,9 +95,8 @@ export async function budgetsAlerts(query: URLSearchParams): Promise<Response> {
       spentMap[cid] = (spentMap[cid] || 0) + Math.abs(getAmount(t))
     }
 
-    const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
     const catMap: Record<number, Record<string, unknown>> = {}
-    for (const c of cats) catMap[c.id as number] = c
+    for (const c of allCats) catMap[c.id as number] = c
 
     const alerts = budgets
       .map((b: Record<string, unknown>) => {

@@ -743,6 +743,9 @@ export async function housingList(): Promise<Response> {
     const all: Record<string, unknown>[] = []
     for (const pid of pids) {
       const rows = await db.getAllFromIndex('housings', 'by_profile', pid)
+      for (const h of rows) {
+        h.autopay = h.autopay === 1 || h.autopay === true
+      }
       all.push(...rows)
     }
     const total = all.reduce((s, h) => s + Math.abs(parseFloat(String((h.monthly_amount as number) || 0))), 0)
@@ -783,6 +786,7 @@ export async function housingCreate(body: unknown): Promise<Response> {
 export async function housingGet(params: Record<string, string>): Promise<Response> {
   const db = await getDB()
   const h = await db.get('housings', idParam(params))
+  if (h) h.autopay = h.autopay === 1 || h.autopay === true
   return h ? json(h) : notFound('Housing expense')
 }
 
