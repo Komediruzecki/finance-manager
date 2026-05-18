@@ -106,7 +106,13 @@ export async function profilesList(): Promise<Response> {
 
 export async function profilesCreate(body: unknown): Promise<Response> {
   if (body && typeof body === 'object' && 'name' in body) {
-    const name = (body as Record<string, unknown>).name as string
+    const name = ((body as Record<string, unknown>).name as string || '').trim()
+    if (!name) return json({ error: 'Profile name is required' }, 400)
+    const db = await getDB()
+    const existing = await db.getAll('profiles')
+    if (existing.some((p: Record<string, unknown>) => (p.name as string) === name)) {
+      return json({ error: 'A profile with this name already exists' }, 400)
+    }
     const id = await adapter.createProfile(name)
     return json({ id, name, created_at: new Date().toISOString() }, 201)
   }
