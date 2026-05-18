@@ -930,6 +930,7 @@ export async function billsCreate(body: unknown): Promise<Response> {
       day_of_month: (b.day_of_month as number) || 1,
       category_id: b.category_id !== null && b.category_id !== undefined ? Number(b.category_id) : null,
       recurring: b.recurring !== false ? 1 : 0,
+      autopay: b.autopay ? 1 : 0,
       is_active: 1,
       notes: (b.notes as string) || '',
       created_at: new Date().toISOString(),
