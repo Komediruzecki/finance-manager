@@ -3306,6 +3306,8 @@ export async function importExecute(body: unknown): Promise<Response> {
 
     // Create accounts for categories marked as 'account' type
     const accountIdMap = new Map<string, number>()
+    // Also track accounts from means_of_payment column values
+    const mopAccountMap = new Map<string, number>()
     if (!dryRun) {
       // Check for existing accounts by name to avoid duplicates on re-import
       const existingAccounts = await db.getAllFromIndex('accounts', 'by_profile', profileId)
@@ -3334,6 +3336,35 @@ export async function importExecute(body: unknown): Promise<Response> {
         }
         const id = await db.add('accounts', account)
         accountIdMap.set(catName, id as number)
+      }
+
+      // Also build account map from means_of_payment column values.
+      // When means_of_payment references an account (e.g. "Erste Current"),
+      // we link the transaction to that account so balances are updated.
+      const existingAccounts2 = await db.getAllFromIndex('accounts', 'by_profile', profileId)
+      for (const row of clean) {
+        const mop = toStr(row.means_of_payment).trim()
+        if (!mop) continue
+        const mopLower = mop.toLowerCase()
+        if (mopAccountMap.has(mopLower) || accountIdMap.has(mopLower)) continue
+        const existing = existingAccounts2.find(
+          (a: Record<string, unknown>) => (a.name as string || '').toLowerCase() === mopLower
+        )
+        if (existing) {
+          mopAccountMap.set(mopLower, existing.id as number)
+          continue
+        }
+        const account = {
+          name: mop,
+          type: 'giro',
+          balance: 0,
+          starting_balance: 0,
+          balance_date: new Date().toISOString().split('T')[0],
+          profile_id: profileId,
+          created_at: new Date().toISOString(),
+        }
+        const id = await db.add('accounts', account)
+        mopAccountMap.set(mopLower, id as number)
       }
     }
 
@@ -3375,7 +3406,9 @@ export async function importExecute(body: unknown): Promise<Response> {
 
       let categoryId: number | null = null
       let accountId: number | null = null
+      let transferAccountId: number | null = null
       const rawCat = toStr(row.category)
+      const mopValue = toStr(row.means_of_payment).trim().toLowerCase()
       if (rawCat) {
         const catName = rawCat.toLowerCase().trim()
         let cat = categories.find((c) => c.name.toLowerCase().trim() === catName)
@@ -3400,9 +3433,31 @@ export async function importExecute(body: unknown): Promise<Response> {
           categories.push(cat)
         }
         if (cat) categoryId = cat.id
-        // Check if this category maps to a created account
+        // Map category to account: for transfers on account-type categories,
+        // the account is the DESTINATION (money arriving from external source,
+        // e.g. selling stock → proceeds arrive at brokerage account).
+        // For income/expense, the account is the primary account.
         if (accountIdMap.has(catName)) {
-          accountId = accountIdMap.get(catName)!
+          if (type === 'transfer') {
+            transferAccountId = accountIdMap.get(catName)!
+          } else {
+            accountId = accountIdMap.get(catName)!
+          }
+        }
+      }
+
+      // Map means_of_payment to account (e.g. "Erste Current" as the account
+      // where salary arrives or where transfer proceeds land).
+      if (mopValue && mopAccountMap.has(mopValue)) {
+        const mopId = mopAccountMap.get(mopValue)!
+        if (type === 'income' && !accountId) {
+          accountId = mopId
+        } else if (type === 'transfer' && !transferAccountId) {
+          transferAccountId = mopId
+        }
+        // For expense: money leaves the means_of_payment account
+        if (type === 'expense' && !accountId) {
+          accountId = mopId
         }
       }
 
@@ -3417,6 +3472,7 @@ export async function importExecute(body: unknown): Promise<Response> {
         beneficiary: toStr(row.beneficiary),
         payor: toStr(row.payor),
         account_id: accountId !== null ? accountId : (data.account_id ? Number(data.account_id) : null),
+        transfer_account_id: transferAccountId || undefined,
         created_at: new Date().toISOString(),
       }
 
@@ -3464,6 +3520,7 @@ export async function importBulk(body: unknown): Promise<Response> {
         beneficiary: toStr(item.beneficiary),
         payor: toStr(item.payor),
         account_id: item.account_id ? Number(item.account_id) : null,
+        transfer_account_id: item.transfer_account_id ? Number(item.transfer_account_id) : undefined,
         created_at: new Date().toISOString(),
       }
       const id = await adapter.createTransaction(transaction as any)
