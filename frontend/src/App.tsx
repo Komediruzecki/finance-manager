@@ -70,7 +70,14 @@ export function App() {
   const loadProfiles = async (autoSelect = false) => {
     try {
       const data = await api.getProfiles()
-      setProfiles(data)
+      // Deduplicate profiles by ID (can happen after clear + reseed with stale state)
+      const seen = new Set<number>()
+      const unique = data.filter((p) => {
+        if (seen.has(p.id)) return false
+        seen.add(p.id)
+        return true
+      })
+      setProfiles(unique)
 
       if (autoSelect && data.length > 0) {
         const savedId = localStorage.getItem('currentProfileId')
@@ -93,12 +100,9 @@ export function App() {
 
   const selectProfile = (profileId: number) => {
     localStorage.setItem('currentProfileId', profileId.toString())
-    // Also update selectedProfileIds to include this profile
-    const current = getSelectedProfileIds()
-    if (!current.includes(profileId)) {
-      const updated = [...current, profileId]
-      localStorage.setItem('selectedProfileIds', JSON.stringify(updated))
-    }
+    // Set only this profile as selected (clears multi-select)
+    localStorage.setItem('selectedProfileIds', JSON.stringify([profileId]))
+    setSelectedProfileIds([profileId])
     setCurrentProfile(profiles().find((p) => p.id === profileId) ?? null)
     setShowDropdown(false)
     bumpProfileVersion()

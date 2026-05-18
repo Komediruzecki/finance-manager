@@ -680,7 +680,8 @@ export class IndexedDBAdapter implements StorageAdapter {
     // Clear profile-related localStorage so the app doesn't reference stale IDs
     localStorage.removeItem('currentProfileId')
     localStorage.removeItem('selectedProfileIds')
-    // NOTE: keep finance_had_profiles — it's a one-time init flag, not data state
+    // Also clear init flag so demo profiles re-seed on next init
+    localStorage.removeItem('finance_had_profiles')
   }
 
   // ---- Logs ----
@@ -762,7 +763,9 @@ const MONTHLY_EXPENSES = [
 export async function seedDemoProfiles(): Promise<void> {
   const db = await getDB()
   const existingProfiles = await db.getAll('profiles')
-  if (existingProfiles.length > 0) return
+  // Check if any demo profile name already exists (not just count)
+  const existingNames = new Set(existingProfiles.map((p: { name: string }) => p.name))
+  if (DEMO_PROFILES.some((dp) => existingNames.has(dp.name))) return
 
   // Inline seed helper so we don't need to import
   async function seedCats(profileId: number) {
