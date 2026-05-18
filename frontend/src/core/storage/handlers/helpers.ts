@@ -3,6 +3,8 @@
  */
 import { IndexedDBAdapter } from '../idb'
 
+// Singleton: do NOT create additional IndexedDBAdapter instances.
+// Multiple instances cause in-memory state divergence (caches, locks).
 export const adapter = new IndexedDBAdapter()
 
 export const json = (data: unknown, status = 200): Response =>
@@ -41,6 +43,12 @@ export function prevMonth(y: number, m: number): { year: number; month: number }
 
 export function endOfNextMonth(startDate: string): string {
   const d = new Date(startDate)
-  d.setMonth(d.getMonth() + 1)
+  const origDay = d.getDate()
+  const targetMonth = d.getMonth() + 1
+  d.setMonth(targetMonth, 1)
+  // If adding one month overflowed the day (e.g. Jan 31 -> Mar 3), clamp to last
+  // valid day of the target month. Otherwise use the original day.
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  d.setDate(Math.min(origDay, lastDay))
   return d.toISOString().slice(0, 10)
 }
