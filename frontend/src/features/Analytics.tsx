@@ -96,6 +96,13 @@ export default function Analytics() {
     undefined
   )
   const [availableYears, setAvailableYears] = createSignal<number[]>([new Date().getFullYear()])
+  const [monthlyMonth, setMonthlyMonth] = createSignal(new Date().getMonth() + 1)
+  const [monthlyYear, setMonthlyYear] = createSignal(new Date().getFullYear())
+  const [monthlyStats, setMonthlyStats] = createSignal<{
+    income: number
+    expense: number
+    savingsRate: number
+  } | null>(null)
 
   // Load available years from data
   const loadYears = async () => {
@@ -199,6 +206,31 @@ export default function Analytics() {
       showToast('Failed to load analytics data', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Load monthly stats for the monthly savings card
+  const loadMonthlyStats = async () => {
+    const year = monthlyYear()
+    const month = monthlyMonth()
+    try {
+      const mKey = `${year}-${String(month).padStart(2, '0')}`
+      const monthlyRes = await apiGet<Record<string, unknown>>('/api/stats/monthly?months=24')
+      const months = Array.isArray(monthlyRes) ? monthlyRes : []
+      const found = months.find((m: Record<string, unknown>) => m.month === mKey)
+      if (found) {
+        const income = (found.income as number) || 0
+        const expense = (found.expense as number) || 0
+        setMonthlyStats({
+          income,
+          expense,
+          savingsRate: income > 0 ? ((income - expense) / income) * 100 : 0,
+        })
+      } else {
+        setMonthlyStats({ income: 0, expense: 0, savingsRate: 0 })
+      }
+    } catch {
+      setMonthlyStats(null)
     }
   }
 
@@ -336,6 +368,14 @@ export default function Analytics() {
     loadData()
     loadStackedData()
     loadHeatmapData()
+    loadMonthlyStats()
+  })
+
+  // Reload monthly stats when month or year selector changes
+  createEffect(() => {
+    monthlyMonth()
+    monthlyYear()
+    loadMonthlyStats()
   })
 
   // Reload when profile selection changes
@@ -347,10 +387,59 @@ export default function Analytics() {
     loadHeatmapData()
   })
 
-  // Reload data when relevant signals change
+  // Reload summary stats silently when year or type changes (no loading flash)
   createEffect(() => {
-    loadData()
+    const year = stackedYear()
+    const type = categoryType()
+    // Only refresh if data already exists — otherwise onMount handles it
+    if (data()) refreshData(year, type)
   })
+
+  // Silent refresh: update summary stats without showing loading spinner
+  const refreshData = async (year: number, type: string) => {
+    try {
+      const [categoryRes, transactionsRes, monthlyRes] = await Promise.all([
+        apiGet<Record<string, unknown>>(`/api/analytics/category-trends?type=${type}&year=${year}`),
+        apiGet<Record<string, unknown>>('/api/transactions/summary'),
+        apiGet<Record<string, unknown>>('/api/stats/monthly?months=24'),
+      ])
+
+      const byCategory = (categoryRes.datasets || []).slice(0, 10).map((d: Record<string, unknown>, i: number) => {
+        const dataArr = (d.data as number[]) || []
+        const total = dataArr.reduce((a: number, b: number) => a + b, 0)
+        return {
+          category_id: i,
+          category_name: (d.category as string) || (d.category_name as string) || 'Unknown',
+          amount: total,
+        }
+      })
+
+      const yearPrefix = String(year)
+      const byMonth = Array.isArray(monthlyRes)
+        ? monthlyRes
+            .filter((m: Record<string, unknown>) => (m.month as string).startsWith(yearPrefix))
+            .map((m: Record<string, unknown>) => ({
+              month: m.month as string,
+              income: (m.income as number) || 0,
+              expense: (m.expense as number) || 0,
+            }))
+        : []
+
+      setData({
+        byCategory,
+        byMonth,
+        recentTransactions: data()?.recentTransactions || [],
+        savingsRate:
+          transactionsRes?.totalIncome > 0
+            ? ((transactionsRes.totalIncome - transactionsRes.totalExpenses) /
+                transactionsRes.totalIncome) *
+              100
+            : 0,
+      })
+    } catch (err) {
+      console.error('Failed to refresh analytics', err)
+    }
+  }
 
   return (
     <div class={`page page-analytics page-enter ${styles.analyticsPage}`}>
@@ -359,7 +448,7 @@ export default function Analytics() {
         <p class={styles.pageSubtitle}>Visualize your financial data and track trends</p>
       </div>
 
-      {loading() ? (
+      {loading() && !data() ? (
         <div class={styles.emptyState}>Loading analytics...</div>
       ) : !data() ? (
         <div class={styles.emptyState}>
@@ -400,6 +489,68 @@ export default function Analytics() {
               </div>
               <div class={styles.statDesc}>Income - Expenses</div>
             </div>
+          </div>
+
+          {/* Monthly Savings Card */}
+          <div class={styles.analyticsStats} style="margin-bottom:24px">
+            <div class={styles.statCard} style="border-left:3px solid var(--primary)">
+              <div class={styles.statLabel}>
+                Monthly Savings ({new Date(monthlyYear(), monthlyMonth() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+              </div>
+              <div class={styles.heatmapControls} style="justify-content:flex-start;margin-top:8px">
+                <select
+                  class={styles.heatmapYearSelect}
+                  value={monthlyYear()}
+                  onchange={(e) => setMonthlyYear(Number(e.currentTarget.value))}
+                >
+                  {availableYears().map((year) => (
+                    <option value={year}>{year}</option>
+                  ))}
+                </select>
+                <select
+                  class={styles.heatmapTypeSelect}
+                  value={monthlyMonth()}
+                  onchange={(e) => setMonthlyMonth(Number(e.currentTarget.value))}
+                >
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option value={i + 1}>
+                      {new Date(2024, i, 1).toLocaleDateString('en-US', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {monthlyStats() && (
+              <>
+                <div class={styles.statCard}>
+                  <div class={styles.statLabel}>Monthly Income</div>
+                  <div class={`${styles.statValue} ${styles.positive}`}>
+                    {formatAmount(monthlyStats()!.income)}
+                  </div>
+                </div>
+                <div class={styles.statCard}>
+                  <div class={styles.statLabel}>Monthly Expense</div>
+                  <div class={`${styles.statValue} ${styles.negative}`}>
+                    {formatAmount(monthlyStats()!.expense)}
+                  </div>
+                </div>
+                <div class={styles.statCard}>
+                  <div class={styles.statLabel}>Monthly Net</div>
+                  <div class={`${styles.statValue} ${monthlyStats()!.income - monthlyStats()!.expense >= 0 ? styles.positive : styles.negative}`}>
+                    {formatAmount(monthlyStats()!.income - monthlyStats()!.expense)}
+                  </div>
+                </div>
+                <div class={styles.statCard}>
+                  <div class={styles.statLabel}>Monthly Savings Rate</div>
+                  <div
+                    class={`${styles.statValue} ${monthlyStats()!.savingsRate >= 20 ? styles.positive : monthlyStats()!.savingsRate >= 10 ? styles.warning : styles.negative}`}
+                  >
+                    {formatPercent(monthlyStats()!.savingsRate)}
+                  </div>
+                  <div class={styles.statDesc}>Target: 20%+</div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Stacked Trends - Full Width */}
