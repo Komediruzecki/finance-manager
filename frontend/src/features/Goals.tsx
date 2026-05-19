@@ -459,6 +459,7 @@ export default function Goals() {
               type="line"
               data={{
                 labels: (() => {
+                  const now = new Date()
                   const maxMonths = Math.max(
                     ...goals()
                       .filter((g) => g.monthly_contribution > 0)
@@ -469,7 +470,10 @@ export default function Goals() {
                       }),
                     1
                   )
-                  return Array.from({ length: maxMonths + 1 }, (_, i) => `Month ${i}`)
+                  return Array.from({ length: maxMonths + 1 }, (_, i) => {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+                    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  })
                 })(),
                 datasets: goals()
                   .filter((g) => g.monthly_contribution > 0)
@@ -490,21 +494,39 @@ export default function Goals() {
                     for (let m = 1; m <= monthsNeeded; m++) {
                       data.push(Math.min(g.current_amount + monthly * m, g.target_amount))
                     }
+                    // Compute achievement date label
+                    const now = new Date()
+                    const achieveDate = new Date(now.getFullYear(), now.getMonth() + monthsNeeded, 1)
+                    const achieveLabel = achieveDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      year: 'numeric',
+                    })
                     return {
-                      label: g.name,
+                      label: `${g.name} — target ${achieveLabel}`,
                       data,
                       borderColor: color,
                       backgroundColor: `${color}20`,
                       fill: true,
                       tension: 0.3,
                       borderWidth: 2,
-                      pointRadius: 0,
+                      pointRadius: data.map((_, i) => (i === monthsNeeded ? 4 : 0)),
+                      pointBackgroundColor: data.map((_, i) =>
+                        i === monthsNeeded ? color : 'transparent'
+                      ),
+                      pointBorderColor: data.map((_, i) =>
+                        i === monthsNeeded ? '#fff' : 'transparent'
+                      ),
+                      pointBorderWidth: 2,
                     }
                   }),
               }}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                  intersect: false,
+                  mode: 'index',
+                },
                 scales: {
                   y: {
                     ticks: {
@@ -524,7 +546,7 @@ export default function Goals() {
                     grid: { color: chartColors().border },
                     title: {
                       display: true,
-                      text: 'Months from now',
+                      text: 'Projected timeline',
                       color: chartColors().text,
                     },
                   },
@@ -533,6 +555,23 @@ export default function Goals() {
                   legend: {
                     position: 'top',
                     labels: { color: chartColors().text, usePointStyle: true },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx: any) => {
+                        const dataset = ctx.dataset
+                        const val = dataset.data[ctx.dataIndex]
+                        const isLast = ctx.dataIndex === dataset.data.length - 1
+                        const isPlateau =
+                          !isLast &&
+                          val === dataset.data[ctx.dataIndex + 1] &&
+                          val === dataset.data[Math.min(ctx.dataIndex + 2, dataset.data.length - 1)]
+                        let label = `${dataset.label?.split(' — ')[0] || dataset.label}: ${formatCurrency(val)}`
+                        if (isLast) label += ' (goal reached)'
+                        else if (isPlateau) label += ' (goal reached)'
+                        return label
+                      },
+                    },
                   },
                 },
               }}
