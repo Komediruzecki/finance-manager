@@ -36,15 +36,15 @@ const MONTHS = [
 export function PeriodNavigator(props: PeriodNavigatorProps) {
   const [showMonthPicker, setShowMonthPicker] = createSignal(false)
   const [showYearPicker, setShowYearPicker] = createSignal(false)
-  const currentYear = new Date().getFullYear()
+  const currentYear = createMemo(() => new Date().getFullYear())
 
   // Reactive: recomputes when parent signals (minYear, maxYear, years) change.
   // Plain const would be computed once on mount and never update — that's why
   // the year range appeared "hardcoded" even after profile switches.
   const years = createMemo(() => {
     if (props.years && props.years.length > 0) return props.years
-    const startYear = props.minYear ?? currentYear - 10
-    const endYear = props.maxYear ?? currentYear + 10
+    const startYear = props.minYear ?? currentYear() - 10
+    const endYear = props.maxYear ?? currentYear() + 10
     return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
   })
 
