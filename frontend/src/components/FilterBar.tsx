@@ -100,7 +100,6 @@ export default function FilterBar(props: FilterBarProps) {
     if (props.onSearchChange) props.onSearchChange('')
     if (props.onFilterTypeChange) props.onFilterTypeChange('all')
     props.onChange({
-      ...props,
       selectedCategories: [],
       selectedTags: [],
       dateRange: { from: '', to: '' },
@@ -151,21 +150,29 @@ export default function FilterBar(props: FilterBarProps) {
     const lastDay = new Date(year, month + 1, 0)
     const fmt = (d: Date) => d.toISOString().slice(0, 10)
     props.onChange({
-      ...props,
+      selectedCategories: props.selectedCategories,
+      selectedTags: props.selectedTags,
       dateRange: { from: fmt(firstDay), to: fmt(lastDay) },
       selectedPreset: 'custom',
     })
   }
 
   const handlePresetClick = (preset: string) => {
-    props.onChange({ ...props, selectedPreset: preset })
+    props.onChange({
+      selectedCategories: props.selectedCategories,
+      selectedTags: props.selectedTags,
+      dateRange: props.dateRange,
+      selectedPreset: preset,
+    })
   }
 
   const handleDateChange = (field: 'from' | 'to') => (e: Event) => {
     const target = e.target as HTMLInputElement
     props.onChange({
-      ...props,
+      selectedCategories: props.selectedCategories,
+      selectedTags: props.selectedTags,
       dateRange: { ...props.dateRange, [field]: target.value },
+      selectedPreset: 'custom',
     })
   }
 
