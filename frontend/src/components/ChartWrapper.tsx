@@ -2,7 +2,7 @@
  * Chart Wrapper Component
  * Wrapper for Chart.js with reactive updates and export functionality
  */
-import { createEffect, createSignal, ErrorBoundary, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createSignal, ErrorBoundary, onCleanup } from 'solid-js'
 import ChartContainer from './ChartContainer.module.css'
 import ExportChartButton from './ExportChartButton'
 import type * as ChartJS from 'chart.js/auto'
@@ -158,26 +158,29 @@ export default function ChartWrapper(props: ChartWrapperProps) {
     }
   })
 
-  const heightClass =
+  const heightClass = createMemo(() =>
     props.variant === 'tall'
       ? ChartContainer.chartTall
       : props.variant === 'medium'
         ? ChartContainer.chartMedium
         : props.variant === 'short'
           ? ChartContainer.chartShort
-          : ''
+          : '',
+  )
 
-  const heightStyle = props.height ? `height: ${props.height}px` : undefined
+  const heightStyle = createMemo(() =>
+    props.height ? `height: ${props.height}px` : undefined,
+  )
 
   return (
     <ErrorBoundary
       fallback={(_err) => (
         <div
           class={ChartContainer.chartContainer}
-          classList={{ [heightClass]: !!heightClass }}
+          classList={{ [heightClass()]: !!heightClass() }}
           style={{
-            ...(heightStyle
-              ? { height: `${heightStyle.replace('height: ', '').replace('px', '')}px` }
+            ...(heightStyle()
+              ? { height: `${heightStyle().replace('height: ', '').replace('px', '')}px` }
               : {}),
             display: 'flex',
             'align-items': 'center',
@@ -192,8 +195,8 @@ export default function ChartWrapper(props: ChartWrapperProps) {
     >
       <div
         class={ChartContainer.chartContainer}
-        classList={{ [heightClass]: !!heightClass }}
-        style={heightStyle}
+        classList={{ [heightClass()]: !!heightClass() }}
+        style={heightStyle()}
       >
         {props.showExport && props.filename && (
           <ExportChartButton filename={props.filename} chart={chartInstance()} />
