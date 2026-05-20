@@ -1,7 +1,7 @@
 /**
  * Shared helpers for local API handlers.
  */
-import { IndexedDBAdapter } from '../idb'
+import { getDB, IndexedDBAdapter } from '../idb'
 
 // Singleton: do NOT create additional IndexedDBAdapter instances.
 // Multiple instances cause in-memory state divergence (caches, locks).
@@ -31,6 +31,11 @@ export function monthStart(y: number, m: number): string {
   return `${y}-${String(m).padStart(2, '0')}-01`
 }
 
+export function monthEnd(y: number, m: number): string {
+  const lastDay = new Date(y, m, 0).getDate()
+  return `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+}
+
 export function nextMonth(y: number, m: number): { year: number; month: number } {
   if (m === 12) return { year: y + 1, month: 1 }
   return { year: y, month: m + 1 }
@@ -51,4 +56,43 @@ export function endOfNextMonth(startDate: string): string {
   const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
   d.setDate(Math.min(origDay, lastDay))
   return d.toISOString().slice(0, 10)
+}
+
+// ── Shared data helpers ───────────────────────────────────────────────────────
+
+/** Fetch all records from a store across current profile IDs */
+export async function getAllForProfiles(
+  storeName: string,
+): Promise<Record<string, unknown>[]> {
+  const db = await getDB()
+  const pids = adapter.getCurrentProfileIds()
+  const all: Record<string, unknown>[] = []
+  for (const pid of pids) {
+    const rows = await db.getAllFromIndex(storeName, 'by_profile', pid)
+    all.push(...rows)
+  }
+  return all
+}
+
+/** Build a category ID → category lookup map for the current profile */
+export async function buildCategoryMap(): Promise<Map<number, Record<string, unknown>>> {
+  const db = await getDB()
+  const pid = await adapter.getCurrentProfileId()
+  const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
+  return new Map((cats as Record<string, unknown>[]).map((c) => [c.id as number, c]))
+}
+
+/** Best-effort MIME type from a filename extension */
+export function getMimeType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  const mimeMap: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    pdf: 'application/pdf',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+  }
+  return (ext && mimeMap[ext]) ? mimeMap[ext] : 'application/octet-stream'
 }
