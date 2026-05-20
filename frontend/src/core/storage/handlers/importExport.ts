@@ -2,7 +2,7 @@
  * ExportImport handlers — IndexedDB-backed implementations
  */
 import { getDB, seedDefaultCategories, seedDemoProfiles } from "../idb"
-import { adapter, getAmount, json, monthStart, nextMonth, ok, prevMonth } from "./helpers"
+import { adapter, getAmount, json, monthEnd, monthStart, nextMonth, ok, prevMonth } from "./helpers"
 
 
 export async function exportAll(): Promise<Response> {
@@ -89,15 +89,13 @@ export async function dashboardMain(query: URLSearchParams): Promise<Response> {
       endDate = dateTo
     } else {
       startDate = monthStart(year, month)
-      const lastDay = new Date(year, month, 0).getDate()
-      endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      endDate = monthEnd(year, month)
     }
 
     // Previous period (for MoM delta)
     const pm = prevMonth(year, month)
     const prevStart = monthStart(pm.year, pm.month)
-    const prevLastDay = new Date(pm.year, pm.month, 0).getDate()
-    const prevEnd = `${pm.year}-${String(pm.month).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`
+    const prevEnd = monthEnd(pm.year, pm.month)
 
     const profileTxns = await adapter.listTransactions()
 
