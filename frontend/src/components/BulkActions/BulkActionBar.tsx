@@ -2,6 +2,7 @@
  * Bulk Action Bar Component
  * Floating bar that appears when transactions are selected
  */
+import { createMemo, Show } from 'solid-js'
 import bulkActionBarStyles from './BulkActionBar.module.css'
 
 export interface BulkActionBarProps {
@@ -15,17 +16,14 @@ export interface BulkActionBarProps {
 }
 
 export function BulkActionBar(props: BulkActionBarProps) {
-  const count = props.selectedCount()
-
-  if (count === 0) {
-    return null
-  }
+  const count = createMemo(() => props.selectedCount())
 
   return (
-    <div class={bulkActionBarStyles.bulkActionBar}>
-      <div class={bulkActionBarStyles.content}>
-        <div class={bulkActionBarStyles.selectedInfo}>
-          <span class={bulkActionBarStyles.count}>{count}</span>
+    <Show when={count() > 0}>
+      <div class={bulkActionBarStyles.bulkActionBar}>
+        <div class={bulkActionBarStyles.content}>
+          <div class={bulkActionBarStyles.selectedInfo}>
+            <span class={bulkActionBarStyles.count}>{count()}</span>
           <span class={bulkActionBarStyles.label}>transactions selected</span>
         </div>
 
@@ -106,6 +104,7 @@ export function BulkActionBar(props: BulkActionBarProps) {
         </button>
       </div>
     </div>
+    </Show>
   )
 }
 

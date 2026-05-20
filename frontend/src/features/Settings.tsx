@@ -26,7 +26,7 @@
  * Settings Component
  * Application configuration and preferences with storage switching
  */
-import { createEffect, createSignal, For, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import ChangelogModal from '../components/ChangelogModal'
 import DangerZone from '../components/DangerZone'
 import { LogViewer } from '../components/LogViewer'
@@ -433,9 +433,9 @@ export default function Settings() {
     const checkHash = () => setShowLogs(window.location.hash.includes('#logs'))
     checkHash()
     window.addEventListener('hashchange', checkHash)
-    return () => {
+    onCleanup(() => {
       window.removeEventListener('hashchange', checkHash)
-    }
+    })
   })
 
   // Household View state
