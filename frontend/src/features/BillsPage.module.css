@@ -481,11 +481,42 @@
   color: var(--text);
 }
 
-/* Subscription card */
-.subscriptionCard {
-  border-left: 3px solid var(--primary);
+/* Subscription view wrapper */
+.subscriptionView {
+  /* container for the entire subscription tab content */
 }
-.paused {
-  opacity: 0.6;
-  border-left: 3px solid var(--text-secondary);
+
+/* Category groups */
+.categoryGroup {
+  margin-bottom: 28px;
+}
+.categoryGroupTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.categoryGroupCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary, #f1f5f9);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+/* Gallery grid — responsive auto-fill */
+.subscriptionGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .subscriptionGallery {
+    grid-template-columns: 1fr;
+  }
 }
