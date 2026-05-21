@@ -5713,13 +5713,19 @@ app.get('/api/bills', apiRateLimiter, (req, res) => {
     });
 
     // Filter by paid status if requested
+    let result = billsWithStatus;
     if (req.query.paid === 'true') {
-      res.json(billsWithStatus.filter((b) => b.paid));
+      result = result.filter((b) => b.paid);
     } else if (req.query.paid === 'false') {
-      res.json(billsWithStatus.filter((b) => !b.paid));
-    } else {
-      res.json(billsWithStatus);
+      result = result.filter((b) => !b.paid);
     }
+
+    // Filter by type if requested (bill, subscription)
+    if (req.query.type) {
+      result = result.filter((b) => (b.type || 'bill') === req.query.type);
+    }
+
+    res.json(result);
   } catch (err) {
     console.error(err.message);
     logError('error', err);
@@ -5828,15 +5834,15 @@ app.get('/api/bills/upcoming', apiRateLimiter, (req, res) => {
 app.post('/api/bills', apiRateLimiter, (req, res) => {
   try {
     const pid = getProfileId(req);
-    const { name, amount, frequency, day_of_month, category_id, notes } = req.body;
+    const { name, amount, frequency, day_of_month, category_id, notes, type } = req.body;
     if (!name || amount === undefined) {
       return res.status(400).json({ error: 'Name and amount are required' });
     }
     const info = db
       .prepare(
         `
-      INSERT INTO bills (profile_id, name, amount, frequency, day_of_month, category_id, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bills (profile_id, name, amount, frequency, day_of_month, category_id, notes, type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -5846,7 +5852,8 @@ app.post('/api/bills', apiRateLimiter, (req, res) => {
         frequency || 'monthly',
         day_of_month || null,
         category_id || null,
-        notes || ''
+        notes || '',
+        type || 'bill'
       );
     res.json({ id: info.lastInsertRowid });
   } catch (err) {
@@ -5863,10 +5870,10 @@ app.put('/api/bills/:id', apiRateLimiter, (req, res) => {
       .prepare('SELECT id FROM bills WHERE id = ? AND profile_id = ?')
       .get(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Not found' });
-    const { name, amount, frequency, day_of_month, category_id, is_active, notes } = req.body;
+    const { name, amount, frequency, day_of_month, category_id, is_active, notes, type } = req.body;
     db.prepare(
       `
-      UPDATE bills SET name = ?, amount = ?, frequency = ?, day_of_month = ?, category_id = ?, is_active = ?, notes = ?
+      UPDATE bills SET name = ?, amount = ?, frequency = ?, day_of_month = ?, category_id = ?, is_active = ?, notes = ?, type = ?
       WHERE id = ? AND profile_id = ?
     `
     ).run(
@@ -5877,6 +5884,7 @@ app.put('/api/bills/:id', apiRateLimiter, (req, res) => {
       category_id ?? null,
       is_active ?? 1,
       notes ?? '',
+      type ?? 'bill',
       req.params.id,
       pid
     );

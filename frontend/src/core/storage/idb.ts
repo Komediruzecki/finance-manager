@@ -20,7 +20,7 @@ import type {
 } from '../../types/storage'
 
 const DB_NAME = 'finance-manager'
-const DB_VERSION = 7
+const DB_VERSION = 8
 
 function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
   // v1: base stores
@@ -98,6 +98,9 @@ function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
     const cm = db.createObjectStore('categoryMappings', { keyPath: 'id', autoIncrement: true })
     cm.createIndex('by_profile', 'profile_id')
   }
+
+  // v8: no schema change — bills get `type` field via seed data and handler defaults.
+  // IndexedDB is schemaless so existing records default to type='bill' in application code.
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null
@@ -1072,6 +1075,7 @@ export async function seedDemoProfiles(): Promise<void> {
             frequency: 'monthly',
             notes: 'Fiber internet',
             category: 'Subscriptions',
+            type: 'subscription',
           },
           {
             name: 'Health Insurance',
@@ -1090,6 +1094,36 @@ export async function seedDemoProfiles(): Promise<void> {
             frequency: 'monthly',
             notes: 'Auto coverage',
             category: 'Insurance',
+          },
+          {
+            name: 'Netflix',
+            amount: 15.99,
+            dueDay: 12,
+            recurring: 1,
+            frequency: 'monthly',
+            notes: 'Premium plan',
+            category: 'Subscriptions',
+            type: 'subscription',
+          },
+          {
+            name: 'Spotify',
+            amount: 11.99,
+            dueDay: 18,
+            recurring: 1,
+            frequency: 'monthly',
+            notes: 'Family plan',
+            category: 'Subscriptions',
+            type: 'subscription',
+          },
+          {
+            name: 'Cloud Storage',
+            amount: 9.99,
+            dueDay: 25,
+            recurring: 1,
+            frequency: 'monthly',
+            notes: '2TB plan',
+            category: 'Subscriptions',
+            type: 'subscription',
           },
         ]
       : profile.name.includes('Mid')
@@ -1120,6 +1154,7 @@ export async function seedDemoProfiles(): Promise<void> {
               frequency: 'monthly',
               notes: 'Home internet',
               category: 'Subscriptions',
+              type: 'subscription',
             },
             {
               name: 'Car Insurance',
@@ -1129,6 +1164,26 @@ export async function seedDemoProfiles(): Promise<void> {
               frequency: 'monthly',
               notes: 'Auto coverage',
               category: 'Insurance',
+            },
+            {
+              name: 'Netflix',
+              amount: 15.99,
+              dueDay: 14,
+              recurring: 1,
+              frequency: 'monthly',
+              notes: 'Standard plan',
+              category: 'Subscriptions',
+              type: 'subscription',
+            },
+            {
+              name: 'Spotify',
+              amount: 11.99,
+              dueDay: 20,
+              recurring: 1,
+              frequency: 'monthly',
+              notes: 'Individual plan',
+              category: 'Subscriptions',
+              type: 'subscription',
             },
           ]
         : [
@@ -1158,6 +1213,7 @@ export async function seedDemoProfiles(): Promise<void> {
               frequency: 'monthly',
               notes: 'Mobile phone',
               category: 'Subscriptions',
+              type: 'subscription',
             },
           ]
 
@@ -1172,6 +1228,7 @@ export async function seedDemoProfiles(): Promise<void> {
         notes: bill.notes,
         is_active: 1,
         profile_id: profileId,
+        type: (bill as any).type || 'bill',
       })
     }
 
