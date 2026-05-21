@@ -48,11 +48,16 @@ export async function billsList(query?: URLSearchParams): Promise<Response> {
     }))
 
     // Filter by paid status if requested
+    let result = billsWithStatus
     const paidParam = query?.get('paid')
-    if (paidParam === 'true') return json(billsWithStatus.filter((b) => b.paid))
-    if (paidParam === 'false') return json(billsWithStatus.filter((b) => !b.paid))
+    if (paidParam === 'true') result = result.filter((b) => b.paid)
+    if (paidParam === 'false') result = result.filter((b) => !b.paid)
 
-    return json(billsWithStatus)
+    // Filter by type if requested
+    const typeParam = query?.get('type')
+    if (typeParam) result = result.filter((b) => (b.type || 'bill') === typeParam)
+
+    return json(result)
   } catch {
     return json([])
   }
@@ -82,6 +87,7 @@ export async function billsCreate(body: unknown): Promise<Response> {
       autopay: b.autopay ? 1 : 0,
       is_active: 1,
       notes: (b.notes as string) || '',
+      type: (b.type as string) || 'bill',
       created_at: new Date().toISOString(),
     }
     const id = await db.add('bills', record)
@@ -116,6 +122,7 @@ export async function billsUpdate(
     if (b.recurring !== undefined) bill.recurring = b.recurring ? 1 : 0
     if (b.is_active !== undefined) bill.is_active = b.is_active ? 1 : 0
     if (b.notes !== undefined) bill.notes = b.notes
+    if (b.type !== undefined) bill.type = b.type
   }
   await db.put('bills', bill)
   return ok()

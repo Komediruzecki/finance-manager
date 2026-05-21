@@ -59,7 +59,7 @@
 import { createEffect, createMemo, createSignal, For, onMount } from 'solid-js'
 import ConfirmButton from '../components/ConfirmButton'
 import { formatCurrency } from '../core/api'
-import { apiDelete, apiGet, apiPost, showToast } from '../core/api'
+import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import styles from './BillsPage.module.css'
 
@@ -75,6 +75,7 @@ interface Bill {
   autopay: boolean
   profile_id: number
   created_at: string
+  type?: 'bill' | 'subscription'
 }
 
 interface Category {
@@ -99,6 +100,7 @@ export default function Bills() {
     category: '',
     frequency: 'monthly' as Bill['frequency'],
     autopay: false,
+    type: 'bill' as 'bill' | 'subscription',
   })
   const [categoryForm, setCategoryForm] = createSignal({
     name: '',
@@ -130,9 +132,15 @@ export default function Bills() {
     }
   }
 
+  // Tab state: 'all' | 'subscriptions'
+  const [billTab, setBillTab] = createSignal<'all' | 'subscriptions'>('all')
+
   // Memoized filtered lists
-  const unpaidBills = createMemo(() => bills().filter((b: any) => !b.paid))
-  const paidBills = createMemo(() => bills().filter((b: any) => b.paid))
+  const subscriptions = createMemo(() => bills().filter((b: any) => (b.type || 'bill') === 'subscription'))
+  const activeSubscriptions = createMemo(() => subscriptions().filter((b: any) => b.is_active !== 0))
+  const totalMonthlySubs = createMemo(() => activeSubscriptions().reduce((sum, b) => sum + b.amount, 0))
+  const unpaidBills = createMemo(() => bills().filter((b: any) => !b.paid && (b.type || 'bill') !== 'subscription'))
+  const paidBills = createMemo(() => bills().filter((b: any) => b.paid && (b.type || 'bill') !== 'subscription'))
 
   // Add category
   const addCategory = async (e: Event) => {
@@ -164,6 +172,7 @@ export default function Bills() {
       category: formData().category || undefined,
       frequency: formData().frequency,
       autopay: formData().autopay,
+      type: formData().type,
     }
 
     try {
@@ -177,6 +186,7 @@ export default function Bills() {
         category: '',
         frequency: 'monthly',
         autopay: false,
+        type: 'bill',
       })
       loadBills()
     } catch (err) {
@@ -289,9 +299,161 @@ export default function Bills() {
         </p>
       </div>
 
+      {/* Tab navigation */}
+      <div class={styles.tabs}>
+        <button
+          class={`${styles.tabBtn} ${billTab() === 'all' ? styles.tabActive : ''}`}
+          onClick={() => setBillTab('all')}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Regular Bills
+        </button>
+        <button
+          class={`${styles.tabBtn} ${billTab() === 'subscriptions' ? styles.tabActive : ''}`}
+          onClick={() => setBillTab('subscriptions')}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          Subscriptions
+          {activeSubscriptions().length > 0 && (
+            <span class={styles.tabBadge}>{activeSubscriptions().length}</span>
+          )}
+        </button>
+      </div>
+
       {loading() ? (
         <div data-test-id="loading-state" class={styles.emptyState}>
           Loading bills...
+        </div>
+      ) : billTab() === 'subscriptions' ? (
+        <div class={styles.billsGrid}>
+          {/* Subscription Summary Card */}
+          <div class={styles.subscriptionSummary}>
+            <div class={styles.subSummaryRow}>
+              <div class={styles.subSummaryCard}>
+                <span class={styles.subSummaryLabel}>Active Subs</span>
+                <span class={styles.subSummaryValue}>{activeSubscriptions().length}</span>
+              </div>
+              <div class={styles.subSummaryCard}>
+                <span class={styles.subSummaryLabel}>Monthly Total</span>
+                <span class={styles.subSummaryValue}>{formatCurrency(totalMonthlySubs())}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Subscriptions */}
+          {activeSubscriptions().length > 0 && (
+            <div data-test-id="active-subscriptions-section" class={styles.billsSection}>
+              <h2 class={styles.sectionTitle}>Active Subscriptions <span class={styles.sectionSubtitle}>{activeSubscriptions().length} active</span></h2>
+              <div class={styles.billsList}>
+                <For each={activeSubscriptions()}>
+                  {(sub) => (
+                    <div class={`${styles.billCard} ${styles.subscriptionCard} ${sub.paid ? styles.paid : ''}`}>
+                      <div class={styles.billMain}>
+                        <div class={styles.billIcon}>
+                          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                        </div>
+                        <div class={styles.billInfo}>
+                          <h3 class={styles.billName}>{sub.name}</h3>
+                          <p class={styles.billDetails}>
+                            {formatDate(sub.due_date)} • {sub.frequency === 'monthly' ? 'Monthly' : sub.frequency === 'weekly' ? 'Weekly' : 'Biweekly'}
+                            {sub.category && ` • ${sub.category}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div class={styles.billAmount}>
+                        <div class={styles.amountValue}>{formatCurrency(sub.amount)}</div>
+                        <div class={styles.billActions}>
+                          <button
+                            class={`${styles.btnPrimary} ${styles.btnSm}`}
+                            onClick={() => markPaid(sub.id)}
+                            disabled={markingPaid().has(sub.id)}
+                          >
+                            {markingPaid().has(sub.id) ? 'Paying...' : 'Mark Paid'}
+                          </button>
+                          <button
+                            class={`${styles.btnGhost} ${styles.btnSm}`}
+                            title="Pause subscription"
+                            onClick={async () => {
+                              await apiPut(`/api/bills/${sub.id}`, { ...sub, is_active: 0, type: sub.type })
+                              await loadBills()
+                            }}
+                          >
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                          <ConfirmButton
+                            class={`${styles.btnSm} ${styles.btnGhost}`}
+                            onConfirm={() => deleteBill(sub.id)}
+                            label={
+                              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </div>
+          )}
+
+          {/* Paused Subscriptions */}
+          {subscriptions().filter((s: any) => s.is_active === 0).length > 0 && (
+            <div class={styles.billsSection}>
+              <h2 class={styles.sectionTitle}>Paused <span class={styles.sectionSubtitle}>{subscriptions().filter((s: any) => s.is_active === 0).length} paused</span></h2>
+              <div class={styles.billsList}>
+                <For each={subscriptions().filter((s: any) => s.is_active === 0)}>
+                  {(sub) => (
+                    <div class={`${styles.billCard} ${styles.paused}`}>
+                      <div class={styles.billMain}>
+                        <div class={styles.billIcon}>
+                          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div class={styles.billInfo}>
+                          <h3 class={styles.billName}>{sub.name}</h3>
+                          <p class={styles.billDetails}>
+                            {formatDate(sub.due_date)} • {formatCurrency(sub.amount)}/{sub.frequency === 'monthly' ? 'mo' : sub.frequency === 'weekly' ? 'wk' : 'biwk'}
+                          </p>
+                        </div>
+                      </div>
+                      <div class={styles.billAmount}>
+                        <button
+                          class={`${styles.btnPrimary} ${styles.btnSm}`}
+                          onClick={async () => {
+                            await apiPut(`/api/bills/${sub.id}`, { ...sub, is_active: 1, type: sub.type })
+                            await loadBills()
+                          }}
+                        >
+                          Resume
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </div>
+          )}
+
+          {subscriptions().length === 0 && (
+            <div class={styles.emptyState}>
+              <p>No subscriptions yet</p>
+              <p>Add streaming services, software subscriptions, and other recurring services.</p>
+              <button class={styles.btnPrimary} onClick={() => { setFormData({ ...formData(), type: 'subscription' }); setShowAddModal(true) }}>
+                Add Subscription
+              </button>
+            </div>
+          )}
         </div>
       ) : bills().length === 0 ? (
         <div data-test-id="bills-empty" class={styles.emptyState}>
@@ -300,7 +462,7 @@ export default function Bills() {
           <button
             data-test-id="bills-add-btn-empty"
             class={styles.btnPrimary}
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setFormData({ ...formData(), type: 'bill' }); setShowAddModal(true) }}
           >
             Add Bill
           </button>
@@ -593,6 +755,19 @@ export default function Bills() {
                   <option value="monthly">Monthly</option>
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Biweekly</option>
+                </select>
+              </div>
+              <div class={styles.formGroup}>
+                <label class={styles.formLabel}>Type</label>
+                <select
+                  class={styles.formControl}
+                  value={formData().type}
+                  oninput={(e) =>
+                    setFormData({ ...formData(), type: e.target.value as 'bill' | 'subscription' })
+                  }
+                >
+                  <option value="bill">Regular Bill</option>
+                  <option value="subscription">Subscription</option>
                 </select>
               </div>
               <div class={styles.formGroup}>
