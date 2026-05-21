@@ -145,7 +145,15 @@ export default function SubscriptionCard(props: SubscriptionCardProps) {
         >
           {isPaying() ? 'Paying...' : 'Mark Paid'}
         </button>
-        <Show when={isActive()}>
+        <Show when={isActive()} fallback={
+          <button
+            class={`${styles.actionBtn} ${styles.actionPrimary}`}
+            onClick={() => { props.onPause(sub().id); }}
+            title="Resume subscription"
+          >
+            Resume
+          </button>
+        }>
           <button
             class={`${styles.actionBtn} ${styles.actionGhost}`}
             onClick={() => { props.onPause(sub().id); }}
