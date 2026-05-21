@@ -58,10 +58,13 @@
 
 import { createEffect, createMemo, createSignal, For, onMount } from 'solid-js'
 import ConfirmButton from '../components/ConfirmButton'
+import SubscriptionCard from '../components/SubscriptionCard'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import styles from './BillsPage.module.css'
+import { matchBrand } from './subscriptionBrands'
+import type { SubscriptionCardBill } from '../components/SubscriptionCard'
 
 interface Bill {
   id: number
@@ -69,6 +72,9 @@ interface Bill {
   amount: number
   due_date: string
   category?: string
+  category_id?: number | null
+  category_name?: string
+  category_color?: string
   account_id?: number
   frequency: 'monthly' | 'weekly' | 'biweekly'
   paid: boolean
@@ -76,6 +82,7 @@ interface Bill {
   profile_id: number
   created_at: string
   type?: 'bill' | 'subscription'
+  is_active?: number
 }
 
 interface Category {
@@ -137,19 +144,47 @@ export default function Bills() {
 
   // Memoized filtered lists
   const subscriptions = createMemo(() =>
-    bills().filter((b: any) => (b.type || 'bill') === 'subscription')
+    bills().filter((b) => (b.type || 'bill') === 'subscription')
   )
   const activeSubscriptions = createMemo(() =>
-    subscriptions().filter((b: any) => b.is_active !== 0)
+    subscriptions().filter((b) => b.is_active !== 0)
   )
   const totalMonthlySubs = createMemo(() =>
     activeSubscriptions().reduce((sum, b) => sum + b.amount, 0)
   )
+
+  // Group active subscriptions by category
+  const subscriptionGroups = createMemo(() => {
+    const groups = new Map<string, Bill[]>()
+    for (const sub of activeSubscriptions()) {
+      const brand = matchBrand(sub.name, sub.category_color)
+      const cat = brand.defaultCategory
+      if (!groups.has(cat)) groups.set(cat, [])
+      groups.get(cat)!.push(sub)
+    }
+    return [...groups.entries()]
+  })
+
+  const pausedSubscriptions = createMemo(() =>
+    subscriptions().filter((b) => b.is_active === 0)
+  )
+
+  // Pause a subscription
+  const pauseSubscription = async (id: number) => {
+    const sub = bills().find((b) => b.id === id)
+    if (!sub) return
+    try {
+      await apiPut(`/api/bills/${id}`, { ...sub, is_active: 0, type: sub.type })
+      await loadBills()
+    } catch {
+      showToast('Failed to pause subscription', 'error')
+    }
+  }
   const unpaidBills = createMemo(() =>
-    bills().filter((b: any) => !b.paid && (b.type || 'bill') !== 'subscription')
+    bills().filter((b) => !b.paid && (b.type || 'bill') !== 'subscription')
   )
   const paidBills = createMemo(() =>
-    bills().filter((b: any) => b.paid && (b.type || 'bill') !== 'subscription')
+    bills().filter((b) => b.paid && (b.type || 'bill') !== 'subscription')
   )
 
   // Add category
@@ -359,7 +394,7 @@ export default function Bills() {
           Loading bills...
         </div>
       ) : billTab() === 'subscriptions' ? (
-        <div class={styles.billsGrid}>
+        <div class={styles.subscriptionView}>
           {/* Subscription Summary Card */}
           <div class={styles.subscriptionSummary}>
             <div class={styles.subSummaryRow}>
@@ -371,158 +406,66 @@ export default function Bills() {
                 <span class={styles.subSummaryLabel}>Monthly Total</span>
                 <span class={styles.subSummaryValue}>{formatCurrency(totalMonthlySubs())}</span>
               </div>
+              <div class={styles.subSummaryCard}>
+                <span class={styles.subSummaryLabel}>Categories</span>
+                <span class={styles.subSummaryValue}>{subscriptionGroups().length}</span>
+              </div>
             </div>
           </div>
 
-          {/* Active Subscriptions */}
+          {/* Category Groups — Gallery Grid */}
           {activeSubscriptions().length > 0 && (
-            <div data-test-id="active-subscriptions-section" class={styles.billsSection}>
-              <h2 class={styles.sectionTitle}>
-                Active Subscriptions{' '}
-                <span class={styles.sectionSubtitle}>{activeSubscriptions().length} active</span>
-              </h2>
-              <div class={styles.billsList}>
-                <For each={activeSubscriptions()}>
-                  {(sub) => (
-                    <div
-                      class={`${styles.billCard} ${styles.subscriptionCard} ${sub.paid ? styles.paid : ''}`}
-                    >
-                      <div class={styles.billMain}>
-                        <div class={styles.billIcon}>
-                          <svg
-                            width="18"
-                            height="18"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                          </svg>
-                        </div>
-                        <div class={styles.billInfo}>
-                          <h3 class={styles.billName}>{sub.name}</h3>
-                          <p class={styles.billDetails}>
-                            {formatDate(sub.due_date)} •{' '}
-                            {sub.frequency === 'monthly'
-                              ? 'Monthly'
-                              : sub.frequency === 'weekly'
-                                ? 'Weekly'
-                                : 'Biweekly'}
-                            {sub.category && ` • ${sub.category}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div class={styles.billAmount}>
-                        <div class={styles.amountValue}>{formatCurrency(sub.amount)}</div>
-                        <div class={styles.billActions}>
-                          <button
-                            class={`${styles.btnPrimary} ${styles.btnSm}`}
-                            onClick={() => markPaid(sub.id)}
-                            disabled={markingPaid().has(sub.id)}
-                          >
-                            {markingPaid().has(sub.id) ? 'Paying...' : 'Mark Paid'}
-                          </button>
-                          <button
-                            class={`${styles.btnGhost} ${styles.btnSm}`}
-                            title="Pause subscription"
-                            onClick={async () => {
-                              await apiPut(`/api/bills/${sub.id}`, {
-                                ...sub,
-                                is_active: 0,
-                                type: sub.type,
-                              })
-                              await loadBills()
-                            }}
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </button>
-                          <ConfirmButton
-                            class={`${styles.btnSm} ${styles.btnGhost}`}
-                            onConfirm={() => deleteBill(sub.id)}
-                            label={
-                              <svg
-                                width="16"
-                                height="16"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
+            <For each={subscriptionGroups()}>
+              {([category, subs]) => (
+                <div class={styles.categoryGroup}>
+                  <h3 class={styles.categoryGroupTitle}>
+                    {category}
+                    <span class={styles.categoryGroupCount}>{subs.length}</span>
+                  </h3>
+                  <div class={styles.subscriptionGallery}>
+                    <For each={subs}>
+                      {(sub) => (
+                        <SubscriptionCard
+                          subscription={sub as SubscriptionCardBill}
+                          onMarkPaid={markPaid}
+                          onPause={pauseSubscription}
+                          onDelete={deleteBill}
+                          markingPaid={markingPaid}
+                        />
+                      )}
+                    </For>
+                  </div>
+                </div>
+              )}
+            </For>
           )}
 
           {/* Paused Subscriptions */}
-          {subscriptions().filter((s: any) => s.is_active === 0).length > 0 && (
-            <div class={styles.billsSection}>
-              <h2 class={styles.sectionTitle}>
-                Paused{' '}
-                <span class={styles.sectionSubtitle}>
-                  {subscriptions().filter((s: any) => s.is_active === 0).length} paused
-                </span>
-              </h2>
-              <div class={styles.billsList}>
-                <For each={subscriptions().filter((s: any) => s.is_active === 0)}>
+          {pausedSubscriptions().length > 0 && (
+            <div class={styles.categoryGroup}>
+              <h3 class={styles.categoryGroupTitle}>
+                Paused
+                <span class={styles.categoryGroupCount}>{pausedSubscriptions().length}</span>
+              </h3>
+              <div class={styles.subscriptionGallery}>
+                <For each={pausedSubscriptions()}>
                   {(sub) => (
-                    <div class={`${styles.billCard} ${styles.paused}`}>
-                      <div class={styles.billMain}>
-                        <div class={styles.billIcon}>
-                          <svg
-                            width="18"
-                            height="18"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div class={styles.billInfo}>
-                          <h3 class={styles.billName}>{sub.name}</h3>
-                          <p class={styles.billDetails}>
-                            {formatDate(sub.due_date)} • {formatCurrency(sub.amount)}/
-                            {sub.frequency === 'monthly'
-                              ? 'mo'
-                              : sub.frequency === 'weekly'
-                                ? 'wk'
-                                : 'biwk'}
-                          </p>
-                        </div>
-                      </div>
-                      <div class={styles.billAmount}>
-                        <button
-                          class={`${styles.btnPrimary} ${styles.btnSm}`}
-                          onClick={async () => {
-                            await apiPut(`/api/bills/${sub.id}`, {
-                              ...sub,
-                              is_active: 1,
-                              type: sub.type,
-                            })
-                            await loadBills()
-                          }}
-                        >
-                          Resume
-                        </button>
-                      </div>
-                    </div>
+                    <SubscriptionCard
+                      subscription={sub as SubscriptionCardBill}
+                      onMarkPaid={markPaid}
+                      onPause={async (id) => {
+                        const s = bills().find((b) => b.id === id)
+                        if (!s) return
+                        await apiPut(`/api/bills/${id}`, {
+                          ...s,
+                          is_active: 1,
+                          type: s.type,
+                        })
+                        await loadBills()
+                      }}
+                      onDelete={deleteBill}
+                      markingPaid={markingPaid}
+                    />
                   )}
                 </For>
               </div>
