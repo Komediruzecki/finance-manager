@@ -402,7 +402,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
       doc,
       'Category Breakdown',
       ['Category', 'Income', 'Expenses', 'Net'],
-      [140, 100, 100, 95],
+      [135, 90, 90, 90],
       categories.map(([name, v]) => {
         const net = v.income - v.expense
         return [
@@ -483,6 +483,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'px', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
 
   // Render charts — use 2x resolution for retina sharpness.
   // Display sizes are calculated first, then charts are rendered at 2x.
@@ -619,7 +620,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
 
   // Cash flow line chart (full-width)
   if (lineUrl && cashFlow.length > 0) {
-    if (posY + lineDisplayH + 22 > doc.internal.pageSize.getHeight() - 25) {
+    if (posY + lineDisplayH + 22 > pageH - 25) {
       doc.addPage()
       posY = 25
     }
@@ -648,7 +649,7 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
     doc,
     'Monthly Breakdown',
     ['Month', 'Income', 'Expenses', 'Net', 'Running Balance'],
-    [70, 118, 118, 118, 120],
+    [65, 90, 90, 90, 100],
     monthly.map((m, i) => {
       const n = m.income - m.expense
       const running = monthly.slice(0, i + 1).reduce((s, x) => s + x.income - x.expense, 0)
@@ -752,7 +753,7 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
       doc,
       'Tax-Deductible Expenses',
       ['Category', 'Transactions', 'Amount'],
-      [240, 100, 120],
+      [160, 70, 90],
       taxDeductible.map((r) => [r.catName, String(r.count), `€${fmt(r.total)}`]),
       posY,
       dark,
@@ -770,7 +771,7 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
       doc,
       'Non-Deductible Expenses',
       ['Category', 'Transactions', 'Amount'],
-      [240, 100, 120],
+      [160, 70, 90],
       nonDeductible.map((r) => [r.catName, String(r.count), `€${fmt(r.total)}`]),
       posY + 6,
       dark,
@@ -892,7 +893,7 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
       doc,
       'Income',
       ['Category', 'Txns', 'Amount', '% of Total'],
-      [180, 60, 110, 90],
+      [150, 55, 95, 65],
       [
         ...incomeRows.map((r) => [
           r.name,
@@ -923,7 +924,7 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
       doc,
       'Expenses',
       ['Category', 'Txns', 'Amount', '% of Total'],
-      [180, 60, 110, 90],
+      [150, 55, 95, 65],
       [
         ...expenseRows.map((r) => [
           r.name,
