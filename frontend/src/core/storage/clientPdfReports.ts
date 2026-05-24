@@ -353,7 +353,7 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
         color: net >= 0 ? [5, 150, 105] : [220, 38, 38],
       },
     ],
-    42,
+    55,
     dark,
     'Monthly Summary'
   )
@@ -742,7 +742,7 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
         color: (dark ? [226, 232, 240] : [30, 41, 59]) as [number, number, number],
       },
     ],
-    42,
+    55,
     dark,
     'Tax Summary'
   )
@@ -877,7 +877,7 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
         color: net >= 0 ? [5, 150, 105] : [220, 38, 38],
       },
     ],
-    42,
+    55,
     dark,
     'P&L Summary'
   )
