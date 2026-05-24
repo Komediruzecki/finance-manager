@@ -129,12 +129,15 @@ function addSummaryBox(
   doc: jsPDF,
   items: { label: string; value: string; color: [number, number, number] }[],
   y: number,
-  dark: boolean
+  dark: boolean,
+  title?: string
 ): number {
   const pageW = doc.internal.pageSize.getWidth()
   const boxW = pageW - 30
   const colW = boxW / items.length
-  const boxH = 32
+  const hasTitle = !!title
+  const titleH = hasTitle ? 16 : 0
+  const boxH = 32 + titleH
   const x = 15
 
   // Background
@@ -142,21 +145,29 @@ function addSummaryBox(
   doc.setDrawColor(dark ? 51 : 203, dark ? 65 : 213, dark ? 85 : 225)
   doc.roundedRect(x, y, boxW, boxH, 4, 4, 'FD')
 
+  // Title
+  if (hasTitle) {
+    doc.setFontSize(12)
+    doc.setTextColor(dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59)
+    doc.text(title.toUpperCase(), x + boxW / 2, y + 14, { align: 'center' })
+  }
+
   items.forEach((item, i) => {
     const cx = x + i * colW
+    const oy = titleH
     // Divider
     if (i > 0) {
       doc.setDrawColor(dark ? 51 : 203, dark ? 65 : 213, dark ? 85 : 225)
-      doc.line(cx, y + 4, cx, y + boxH - 4)
+      doc.line(cx, y + oy + 4, cx, y + boxH - 4)
     }
     // Label
     doc.setFontSize(9)
     doc.setTextColor(dark ? 148 : 100, dark ? 163 : 116, dark ? 184 : 139)
-    doc.text(item.label.toUpperCase(), cx + colW / 2, y + 12, { align: 'center' })
+    doc.text(item.label.toUpperCase(), cx + colW / 2, y + oy + 12, { align: 'center' })
     // Value
     doc.setFontSize(16)
     doc.setTextColor(item.color[0], item.color[1], item.color[2])
-    doc.text(item.value, cx + colW / 2, y + 26, { align: 'center' })
+    doc.text(item.value, cx + colW / 2, y + oy + 26, { align: 'center' })
   })
 
   return y + boxH + 16
@@ -175,65 +186,71 @@ function addSectionTable(
   const pageW = doc.internal.pageSize.getWidth()
   const x = 15
   const boxW = pageW - 30
+  const rowH = 10
+  const headerH = 10
+
+  // Card background
+  const totalH = (title ? 14 : 0) + headerH + rows.length * rowH + 6
+  doc.setFillColor(dark ? 30 : 255, dark ? 41 : 255, dark ? 59 : 255)
+  doc.setDrawColor(dark ? 51 : 203, dark ? 65 : 213, dark ? 85 : 225)
+  doc.roundedRect(x, y, boxW, totalH, 3, 3, 'FD')
 
   // Section title
   if (title) {
-    doc.setFontSize(14)
+    doc.setFontSize(13)
     doc.setTextColor(
-      color?.[0] ?? (dark ? 227 : 30),
+      color?.[0] ?? (dark ? 226 : 30),
       color?.[1] ?? (dark ? 232 : 41),
       color?.[2] ?? (dark ? 240 : 59)
     )
-    doc.text(title, x, y + 8)
+    doc.text(title, x + 10, y + 10)
     y += 14
   }
 
   // Table header
   doc.setFillColor(dark ? 51 : 241, dark ? 65 : 245, dark ? 85 : 249)
-  doc.rect(x, y, boxW, 9, 'F')
+  doc.rect(x + 1, y, boxW - 2, headerH, 'F')
   doc.setFontSize(9)
   doc.setTextColor(dark ? 148 : 71, dark ? 163 : 85, dark ? 184 : 95)
   let cx = x
   columns.forEach((col, i) => {
     const align: 'left' | 'right' = i === 0 ? 'left' : 'right'
-    const padding = align === 'left' ? 6 : -6
+    const padding = align === 'left' ? 8 : -8
     doc.text(
       col.toUpperCase(),
       cx + (align === 'left' ? padding : colWidths[i] + padding),
-      y + 6.5,
+      y + 7.2,
       { align }
     )
     cx += colWidths[i]
   })
-  y += 9
+  y += headerH
 
   // Rows
   rows.forEach((row, ri) => {
     if (ri % 2 === 0) {
       doc.setFillColor(dark ? 26 : 248, dark ? 34 : 250, dark ? 50 : 252)
-      doc.rect(x, y, boxW, 8, 'F')
+      doc.rect(x + 1, y, boxW - 2, rowH, 'F')
     }
     doc.setFontSize(9)
-    doc.setTextColor(dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59)
     let rx = x
     row.forEach((cell, ci) => {
       const align: 'left' | 'right' = ci === 0 ? 'left' : 'right'
-      const padding = align === 'left' ? 6 : -6
-      // Apply color to numeric cells if they start with €
+      const padding = align === 'left' ? 8 : -8
       let tc: [number, number, number] = [dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59]
       if (cell.startsWith('€') && ci > 0 && !cell.includes('-')) {
-        tc = dark ? [16, 185, 129] : [5, 150, 105] // green
+        tc = dark ? [16, 185, 129] : [5, 150, 105]
       } else if (cell.startsWith('-€')) {
-        tc = dark ? [248, 113, 113] : [220, 38, 38] // red
+        tc = dark ? [248, 113, 113] : [220, 38, 38]
       }
       doc.setTextColor(tc[0], tc[1], tc[2])
-      doc.text(cell, rx + (align === 'left' ? padding : colWidths[ci] + padding), y + 6, { align })
+      doc.text(cell, rx + (align === 'left' ? padding : colWidths[ci] + padding), y + 7, { align })
       rx += colWidths[ci]
     })
-    y += 8
+    y += rowH
   })
 
-  return y + 4
+  return y + 6
 }
 
 // ── Monthly PDF ─────────────────────────────────────────────────────────────
@@ -336,7 +353,8 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
       },
     ],
     42,
-    dark
+    dark,
+    'Monthly Summary'
   )
 
   // Charts row
@@ -575,7 +593,8 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
       },
     ],
     52,
-    dark
+    dark,
+    'Annual Summary'
   )
 
   // Charts: 2-column grid (doughnut + bar side by side), then line full-width
@@ -627,13 +646,13 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
   addSectionTable(
     doc,
     'Monthly Breakdown',
-    ['Month', 'Income', 'Expenses', 'Net', 'Running Bal.'],
-    [90, 118, 118, 118, 121],
+    ['Month', 'Income', 'Expenses', 'Net', 'Running Balance'],
+    [95, 117, 117, 117, 119],
     monthly.map((m, i) => {
       const n = m.income - m.expense
       const running = monthly.slice(0, i + 1).reduce((s, x) => s + x.income - x.expense, 0)
       return [
-        m.month,
+        MONTHS[i],
         `€${fmt(m.income)}`,
         `€${fmt(m.expense)}`,
         n >= 0 ? `€${fmt(n)}` : `-€${fmt(Math.abs(n))}`,
@@ -722,7 +741,8 @@ export async function generateTaxSummaryPdf(year: number, dark: boolean): Promis
       },
     ],
     42,
-    dark
+    dark,
+    'Tax Summary'
   )
 
   // Tax-deductible section
@@ -856,7 +876,8 @@ export async function generatePlSummaryPdf(year: number, dark: boolean): Promise
       },
     ],
     42,
-    dark
+    dark,
+    'P&L Summary'
   )
 
   doc.setFontSize(10)
