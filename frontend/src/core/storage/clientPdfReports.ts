@@ -273,7 +273,8 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
   const incomeSorted = Object.values(incomeByCat).sort((a, b) => b.total - a.total)
   const expenseSorted = Object.values(expenseByCat).sort((a, b) => b.total - a.total)
 
-  // Render charts offscreen
+  // Render charts offscreen — 2x for retina sharpness
+  const monthlyChartScale = 2
   const incomeChartUrl =
     incomeSorted.length > 0
       ? await renderChartViaWorker(
@@ -288,8 +289,8 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
               },
             ],
           },
-          340,
-          200,
+          275 * monthlyChartScale,
+          165 * monthlyChartScale,
           dark
         )
       : ''
@@ -308,8 +309,8 @@ export async function generateMonthlyPdf(month: string, dark: boolean): Promise<
               },
             ],
           },
-          340,
-          200,
+          275 * monthlyChartScale,
+          165 * monthlyChartScale,
           dark
         )
       : ''
@@ -456,7 +457,17 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
     return cumulative
   })
 
-  // Render charts
+  // Build PDF
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'px', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+
+  // Render charts — use 2x resolution for retina sharpness.
+  // Display sizes are calculated first, then charts are rendered at 2x.
+  const chartScale = 2
+
+  const doughnutDisplayW = 170
+  const doughnutDisplayH = 120
   const doughnutUrl =
     topCategories.length > 0
       ? await renderChartViaWorker(
@@ -471,12 +482,14 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
               },
             ],
           },
-          340,
-          200,
+          doughnutDisplayW * chartScale,
+          doughnutDisplayH * chartScale,
           dark
         )
       : ''
 
+  const barDisplayW = Math.min(pageW - 30, 450)
+  const barDisplayH = barDisplayW * 0.45
   const barUrl =
     monthly.length > 0
       ? await renderChartViaWorker(
@@ -500,12 +513,14 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
               },
             ],
           },
-          450,
-          200,
+          barDisplayW * chartScale,
+          barDisplayH * chartScale,
           dark
         )
       : ''
 
+  const lineDisplayW = pageW - 30
+  const lineDisplayH = 130
   const lineUrl =
     cashFlow.length > 0
       ? await renderChartViaWorker(
@@ -524,16 +539,11 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
               },
             ],
           },
-          720,
-          180,
+          lineDisplayW * chartScale,
+          lineDisplayH * chartScale,
           dark
         )
       : ''
-
-  // Build PDF
-  const { jsPDF } = await import('jspdf')
-  const doc = new jsPDF({ unit: 'px', format: 'a4' })
-  const pageW = doc.internal.pageSize.getWidth()
 
   addTitle(
     doc,
@@ -565,39 +575,37 @@ export async function generateAnnualPdf(year: number, dark: boolean): Promise<Bl
 
   // Category doughnut
   if (doughnutUrl) {
-    doc.addImage(doughnutUrl, 'PNG', 15, posY, 170, 100)
+    doc.addImage(doughnutUrl, 'PNG', 15, posY, doughnutDisplayW, doughnutDisplayH)
     doc.setFontSize(10)
     doc.setTextColor(dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59)
-    doc.text('Spending by Category', 15 + 85, posY + 108, { align: 'center' })
-    posY += 120
+    doc.text('Spending by Category', 15 + doughnutDisplayW / 2, posY + doughnutDisplayH + 12, { align: 'center' })
+    posY += doughnutDisplayH + 24
   }
 
   // Monthly bar chart
   if (barUrl) {
-    if (posY > 500) {
+    if (posY + barDisplayH + 22 > doc.internal.pageSize.getHeight() - 25) {
       doc.addPage()
       posY = 25
     }
-    const barW = Math.min(pageW - 30, 450)
-    const barH = barW * 0.45
-    doc.addImage(barUrl, 'PNG', (pageW - barW) / 2, posY, barW, barH)
+    doc.addImage(barUrl, 'PNG', (pageW - barDisplayW) / 2, posY, barDisplayW, barDisplayH)
     doc.setFontSize(10)
     doc.setTextColor(dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59)
-    doc.text('Monthly Income vs Expenses', pageW / 2, posY + barH + 12, { align: 'center' })
-    posY += barH + 20
+    doc.text('Monthly Income vs Expenses', pageW / 2, posY + barDisplayH + 12, { align: 'center' })
+    posY += barDisplayH + 22
   }
 
   // Cash flow line chart
   if (lineUrl && cashFlow.length > 0) {
-    if (posY > 520) {
+    if (posY + lineDisplayH + 22 > doc.internal.pageSize.getHeight() - 25) {
       doc.addPage()
       posY = 25
     }
-    doc.addImage(lineUrl, 'PNG', 15, posY, pageW - 30, 90)
+    doc.addImage(lineUrl, 'PNG', 15, posY, lineDisplayW, lineDisplayH)
     doc.setFontSize(10)
     doc.setTextColor(dark ? 226 : 30, dark ? 232 : 41, dark ? 240 : 59)
-    doc.text('Cumulative Cash Flow', pageW / 2, posY + 100, { align: 'center' })
-    posY += 110
+    doc.text('Cumulative Cash Flow', pageW / 2, posY + lineDisplayH + 12, { align: 'center' })
+    posY += lineDisplayH + 22
   }
 
   // Monthly breakdown table
