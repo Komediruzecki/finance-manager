@@ -22,7 +22,7 @@
  * Compound Interest Projector Component
  * Calculates investment growth with scenario comparisons
  */
-import { createSignal, For } from 'solid-js'
+import { createSignal, For, onCleanup } from 'solid-js'
 import Chart from '../components/Chart'
 import ExportChartButton from '../components/ExportChartButton'
 import { formatCurrency } from '../core/api'
@@ -90,6 +90,11 @@ export default function CompoundInterestCalculator() {
 
   // Auto-calculate on mount and debounced
   let debounceTimer: number | null = null
+
+  onCleanup(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+  })
+
   onCalculate()
 
   function onCalculate() {

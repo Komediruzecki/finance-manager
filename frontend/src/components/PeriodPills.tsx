@@ -2,7 +2,7 @@
  * Period Pills Component
  * Quick-select period buttons for dashboard
  */
-import { createMemo } from 'solid-js'
+import { createMemo, For } from 'solid-js'
 import periodPillsStyles from './PeriodPills.module.css'
 
 export interface PeriodPill {
@@ -34,18 +34,20 @@ export function PeriodPills(props: PeriodPillsProps) {
 
   return (
     <div class={periodPillsStyles.pillsContainer}>
-      {periods().map((period) => (
-        <button
-          class={`${periodPillsStyles.pill} ${props.value === period.id ? periodPillsStyles.pillActive : ''}`}
-          onClick={() => {
-            props.onChange(period.id)
-          }}
-          type="button"
-        >
-          {period.icon && <span class={periodPillsStyles.pillIcon}>{period.icon}</span>}
-          <span class={periodPillsStyles.pillLabel}>{period.label}</span>
-        </button>
-      ))}
+      <For each={periods()}>
+        {(period) => (
+          <button
+            class={`${periodPillsStyles.pill} ${props.value === period.id ? periodPillsStyles.pillActive : ''}`}
+            onClick={() => {
+              props.onChange(period.id)
+            }}
+            type="button"
+          >
+            {period.icon && <span class={periodPillsStyles.pillIcon}>{period.icon}</span>}
+            <span class={periodPillsStyles.pillLabel}>{period.label}</span>
+          </button>
+        )}
+      </For>
     </div>
   )
 }

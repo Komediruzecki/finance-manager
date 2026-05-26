@@ -2,7 +2,7 @@
  * Auto Categorize Modal Component
  * Suggests categories based on description patterns and allows user to accept/reject
  */
-import { createEffect, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { createEffect, createMemo, createSignal, For,onCleanup, onMount } from 'solid-js'
 import { api } from '../core/api'
 import autoCategorizeModalStyles from './AutoCategorizeModal.module.css'
 import type { CategoryMapping } from '../types/models'
@@ -144,8 +144,9 @@ export function AutoCategorizeModal(props: AutoCategorizeModalProps) {
             </div>
           ) : (
             <div class={autoCategorizeModalStyles.transactionList}>
-              {uncategorized().map((tx) => {
-                const matching = findMatchingCategory(tx.description)
+              <For each={uncategorized()}>
+                {(tx) => {
+                  const matching = findMatchingCategory(tx.description)
                 const isSelected = tx.id in pendingUpdates()
 
                 return (
@@ -206,7 +207,8 @@ export function AutoCategorizeModal(props: AutoCategorizeModalProps) {
                     </div>
                   </>
                 )
-              })}
+              }}
+              </For>
             </div>
           )}
         </div>

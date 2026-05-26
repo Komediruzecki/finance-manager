@@ -529,6 +529,7 @@ export default function Analytics() {
               </div>
               <div class={styles.heatmapControls} style="justify-content:flex-start;margin-top:8px">
                 <select
+
                   class={styles.heatmapTypeSelect}
                   value={monthlyMonth()}
                   onchange={(e) => setMonthlyMonth(Number(e.currentTarget.value))}
@@ -630,9 +631,9 @@ export default function Analytics() {
                       loadStackedData()
                     }}
                   >
-                    {availableYears().map((year) => (
-                      <option value={year}>{year}</option>
-                    ))}
+                    <For each={availableYears()}>
+                      {(year) => <option value={year}>{year}</option>}
+                    </For>
                   </select>
                   {stackedView() === 'month' && (
                     <>
@@ -662,9 +663,9 @@ export default function Analytics() {
                           }}
                         >
                           <option value="">All Weeks</option>
-                          {weeks().map((w) => (
-                            <option value={w.week}>{w.label}</option>
-                          ))}
+                          <For each={weeks()}>
+                            {(w) => <option value={w.week}>{w.label}</option>}
+                          </For>
                         </select>
                       )}
                     </>
@@ -694,11 +695,9 @@ export default function Analytics() {
                       }}
                       title="Select year to compare against"
                     >
-                      {availableYears()
-                        .filter((y) => y !== stackedYear())
-                        .map((year) => (
-                          <option value={year}>{year}</option>
-                        ))}
+                      <For each={availableYears().filter((y) => y !== stackedYear())}>
+                        {(year) => <option value={year}>{year}</option>}
+                      </For>
                     </select>
                   )}
                   {compareEnabled() && stackedView() === 'month' && (
@@ -1049,9 +1048,9 @@ export default function Analytics() {
                       loadHeatmapData()
                     }}
                   >
-                    {availableYears().map((year) => (
-                      <option value={year}>{year}</option>
-                    ))}
+                    <For each={availableYears()}>
+                      {(year) => <option value={year}>{year}</option>}
+                    </For>
                   </select>
                   <select
                     class={styles.heatmapTypeSelect}
@@ -1180,9 +1179,9 @@ export default function Analytics() {
                       loadSankeyData()
                     }}
                   >
-                    {availableYears().map((year) => (
-                      <option value={year}>{year}</option>
-                    ))}
+                    <For each={availableYears()}>
+                      {(year) => <option value={year}>{year}</option>}
+                    </For>
                   </select>
                   <select
                     class={styles.heatmapTypeSelect}
@@ -1319,24 +1318,28 @@ export default function Analytics() {
                   <div class={styles.categoryBars}>
                     {(() => {
                       const total = data()!.byCategory.reduce((s, c) => s + c.amount, 0) || 1
-                      return data()!.byCategory.map((item) => {
-                        const pct = ((item.amount / total) * 100).toFixed(1)
-                        return (
-                          <div class={styles.categoryBarItem}>
-                            <div class={styles.barInfo}>
-                              <div class={styles.barName}>{item.category_name}</div>
-                              <div class={styles.barPercent}>{pct}%</div>
-                            </div>
-                            <div class={styles.barTrack}>
-                              <div
-                                class={styles.barFill}
-                                style={{ width: `${Math.min(Number(pct), 100)}%` }}
-                              />
-                            </div>
-                            <div class={styles.barAmount}>{formatAmount(item.amount)}</div>
-                          </div>
-                        )
-                      })
+                      return (
+                        <For each={data()!.byCategory}>
+                          {(item) => {
+                            const pct = ((item.amount / total) * 100).toFixed(1)
+                            return (
+                              <div class={styles.categoryBarItem}>
+                                <div class={styles.barInfo}>
+                                  <div class={styles.barName}>{item.category_name}</div>
+                                  <div class={styles.barPercent}>{pct}%</div>
+                                </div>
+                                <div class={styles.barTrack}>
+                                  <div
+                                    class={styles.barFill}
+                                    style={{ width: `${Math.min(Number(pct), 100)}%` }}
+                                  />
+                                </div>
+                                <div class={styles.barAmount}>{formatAmount(item.amount)}</div>
+                              </div>
+                            )
+                          }}
+                        </For>
+                      )
                     })()}
                   </div>
                   {/* Averages */}

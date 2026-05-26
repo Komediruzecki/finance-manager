@@ -385,7 +385,7 @@ export default function Categories() {
                   <div class={styles.categoryColors}>
                     <span class={styles.colorLabel}>Color:</span>
                     <div class={styles.colorPicker}>
-                      {[
+                      <For each={[
                         '#ef4444',
                         '#f97316',
                         '#eab308',
@@ -394,27 +394,29 @@ export default function Categories() {
                         '#8b5cf6',
                         '#ec4899',
                         '#6b7280',
-                      ].map((color) => (
-                        <button
-                          class={`${styles.colorBtn} ${category.color === color ? styles.active : ''}`}
-                          style={{ background: color }}
-                          onClick={() => updateColor(category.id, color)}
-                          title={color}
-                        >
-                          {category.color === color && (
-                            <svg
-                              width="12"
-                              height="12"
-                              fill="none"
-                              stroke="white"
-                              stroke-width="3"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
+                      ]}>
+                        {(color) => (
+                          <button
+                            class={`${styles.colorBtn} ${category.color === color ? styles.active : ''}`}
+                            style={{ background: color }}
+                            onClick={() => updateColor(category.id, color)}
+                            title={color}
+                          >
+                            {category.color === color && (
+                              <svg
+                                width="12"
+                                height="12"
+                                fill="none"
+                                stroke="white"
+                                stroke-width="3"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                      </For>
                     </div>
                   </div>
                 </div>
@@ -497,7 +499,7 @@ export default function Categories() {
               <div class={styles.formGroup}>
                 <label class={styles.formLabel}>Color</label>
                 <div class={styles.colorPicker}>
-                  {[
+                  <For each={[
                     '#ef4444',
                     '#f97316',
                     '#eab308',
@@ -506,27 +508,29 @@ export default function Categories() {
                     '#8b5cf6',
                     '#ec4899',
                     '#6b7280',
-                  ].map((color) => (
-                    <button
-                      class={`${styles.colorPickerBtn} ${formData().color === color ? styles.active : ''}`}
-                      style={{ background: color }}
-                      onClick={() => setFormData({ ...formData(), color })}
-                      title={color}
-                    >
-                      {formData().color === color && (
-                        <svg
-                          width="14"
-                          height="14"
-                          fill="none"
-                          stroke="white"
-                          stroke-width="3"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+                  ]}>
+                    {(color) => (
+                      <button
+                        class={`${styles.colorPickerBtn} ${formData().color === color ? styles.active : ''}`}
+                        style={{ background: color }}
+                        onClick={() => setFormData({ ...formData(), color })}
+                        title={color}
+                      >
+                        {formData().color === color && (
+                          <svg
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="white"
+                            stroke-width="3"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </For>
                 </div>
               </div>
               <div class={styles.modalFooter}>
