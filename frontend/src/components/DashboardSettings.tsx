@@ -2,7 +2,7 @@
  * Dashboard Settings Component - Configure widget visibility and order
  */
 
-import { createSignal, onMount } from 'solid-js'
+import { createSignal, For,onMount } from 'solid-js'
 import styles from './DashboardSettings.module.css'
 import type { Component } from 'solid-js'
 
@@ -181,23 +181,25 @@ export const DashboardSettings: Component<DashboardSettingsProps> = (props) => {
         </button>
       </div>
       <div class={styles.settingsList}>
-        {widgets.map((widget) => (
-          <div class={styles.settingItem}>
-            <button
-              class={styles.widgetToggle}
-              classList={{
-                [styles.active]: isVisible(widget.id),
-              }}
-              onClick={() => {
-                toggleWidget(widget.id)
-              }}
-            >
-              <span class={styles.widgetIcon}>{widget.icon}</span>
-              <span class={styles.widgetName}>{widget.name}</span>
-              <span class={styles.widgetStatus}>{isVisible(widget.id) ? 'Visible' : 'Hidden'}</span>
-            </button>
-          </div>
-        ))}
+        <For each={widgets}>
+          {(widget) => (
+            <div class={styles.settingItem}>
+              <button
+                class={styles.widgetToggle}
+                classList={{
+                  [styles.active]: isVisible(widget.id),
+                }}
+                onClick={() => {
+                  toggleWidget(widget.id)
+                }}
+              >
+                <span class={styles.widgetIcon}>{widget.icon}</span>
+                <span class={styles.widgetName}>{widget.name}</span>
+                <span class={styles.widgetStatus}>{isVisible(widget.id) ? 'Visible' : 'Hidden'}</span>
+              </button>
+            </div>
+          )}
+        </For>
       </div>
       <div class={styles.settingsFooter}>
         <button class={`${styles.btnSm} ${styles.btnPrimary}`} onClick={saveSettings}>
