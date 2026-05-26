@@ -56,7 +56,7 @@
  * THEN: The bill is removed from all lists with confirmation
  */
 
-import { createEffect, createMemo, createSignal, For, onMount } from 'solid-js'
+import { createMemo, createResource, createSignal, For } from 'solid-js'
 import ConfirmButton from '../components/ConfirmButton'
 import SubscriptionCard from '../components/SubscriptionCard'
 import { formatCurrency } from '../core/api'
@@ -95,9 +95,24 @@ interface Category {
 
 export default function Bills() {
   const state = useAppState()
-  const [bills, setBills] = createSignal<Bill[]>([])
-  const [categories, setCategories] = createSignal<Category[]>([])
-  const [loading, setLoading] = createSignal(true)
+
+  // Bills resource — fetches bills + expense categories
+  const [billsResource, { refetch: refetchBills, mutate: mutateBills }] = createResource(
+    () => state.profileVersion,
+    async () => {
+      const [allRes, categoryRes] = await Promise.all([
+        apiGet<Bill[]>('/api/bills'),
+        apiGet<Category[]>('/api/categories'),
+      ])
+      return {
+        bills: allRes,
+        categories: categoryRes.filter((c) => c.type === 'expense'),
+      }
+    }
+  )
+  const loading = () => billsResource.loading && !billsResource()
+  const bills = () => billsResource()?.bills ?? []
+  const categories = () => billsResource()?.categories ?? []
   const [showAddModal, setShowAddModal] = createSignal(false)
   const [showCategoryModal, setShowCategoryModal] = createSignal(false)
   const [editingId, setEditingId] = createSignal<number | null>(null)
@@ -115,30 +130,6 @@ export default function Bills() {
     type: 'expense' as 'expense' | 'income',
     color: '#6b7280',
   })
-
-  // Load bills
-  const loadBills = async () => {
-    setLoading(true)
-    try {
-      const allRes = await apiGet<Bill[]>('/api/bills')
-      setBills(allRes)
-    } catch (err) {
-      console.error('Failed to load bills:', err)
-      showToast('Failed to load bills', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Load categories
-  const loadCategories = async () => {
-    try {
-      const data = await apiGet<Category[]>('/api/categories')
-      setCategories(data.filter((c) => c.type === 'expense'))
-    } catch (err) {
-      console.error('Failed to load categories', err)
-    }
-  }
 
   // Tab state: 'all' | 'subscriptions'
   const [billTab, setBillTab] = createSignal<'all' | 'subscriptions'>('all')
@@ -176,7 +167,7 @@ export default function Bills() {
     if (!sub) return
     try {
       await apiPut(`/api/bills/${id}`, { ...sub, is_active: 0, type: sub.type })
-      await loadBills()
+      await refetchBills()
     } catch {
       showToast('Failed to pause subscription', 'error')
     }
@@ -196,7 +187,7 @@ export default function Bills() {
       showToast('Category added', 'success')
       setCategoryForm({ name: '', type: 'expense', color: '#6b7280' })
       setShowCategoryModal(false)
-      loadCategories()
+      refetchBills()
     } catch (err) {
       console.error('Failed to add category', err)
       showToast('Failed to add category', 'error')
@@ -241,7 +232,7 @@ export default function Bills() {
         autopay: false,
         type: 'bill',
       })
-      loadBills()
+      refetchBills()
     } catch (err) {
       console.error('Failed to save bill:', err)
       showToast('Failed to save bill', 'error')
@@ -270,19 +261,19 @@ export default function Bills() {
   // Mark bill as paid
   const markPaid = async (id: number) => {
     // Optimistic update: mark as paid locally immediately
-    setBills(bills().map((b) => (b.id === id ? { ...b, paid: true } : b)))
+    mutateBills((prev) => prev ? { ...prev, bills: prev.bills.map((b) => (b.id === id ? { ...b, paid: true } : b)) } : prev)
     setMarkingPaid(new Set([...markingPaid(), id]))
 
     try {
       await apiPost(`/api/bills/${id}/mark-paid`, {})
       showToast('Bill marked as paid', 'success')
       // Reload to get fresh data from server
-      await loadBills()
+      await refetchBills()
     } catch (err) {
       console.error('Failed to mark bill as paid:', err)
       showToast('Failed to mark bill as paid', 'error')
       // Revert optimistic update on failure
-      await loadBills()
+      await refetchBills()
     } finally {
       const next = new Set(markingPaid())
       next.delete(id)
@@ -295,7 +286,7 @@ export default function Bills() {
     try {
       await apiDelete(`/api/bills/${id}`)
       showToast('Bill deleted successfully', 'success')
-      loadBills()
+      refetchBills()
     } catch (err) {
       console.error('Failed to delete bill:', err)
       showToast('Failed to delete bill', 'error')
@@ -336,17 +327,6 @@ export default function Bills() {
       day: 'numeric',
     })
   }
-
-  onMount(() => {
-    loadBills()
-    loadCategories()
-  })
-
-  createEffect(() => {
-    void state.profileVersion
-    loadBills()
-    loadCategories()
-  })
 
   return (
     <div class={`${styles.billsPage} page page-bills page-enter`}>
@@ -492,7 +472,7 @@ export default function Bills() {
                           is_active: 1,
                           type: s.type,
                         })
-                        await loadBills()
+                        await refetchBills()
                       }}
                       onDelete={deleteBill}
                       onEdit={openEditModal}
