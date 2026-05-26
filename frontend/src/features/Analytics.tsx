@@ -38,6 +38,42 @@ import { theme } from '../core/theme'
 import { downloadBlob } from '../utils/chartExport'
 import styles from './AnalyticsPage.module.css'
 import type { SankeyData, Transaction } from '../types/models'
+import type { Chart as ChartJS } from 'chart.js'
+
+interface CategoryTrendsRow {
+  category: string
+  category_name?: string
+  color?: string
+  data: number[]
+}
+
+interface MonthlyStatsRow {
+  month: string
+  income: number
+  expense: number
+}
+
+interface WeekData {
+  week: number
+  label: string
+  income: number
+  expense: number
+}
+
+interface SankeyResponse {
+  nodes: SankeyData['nodes']
+  links: SankeyData['links']
+}
+
+interface CategoryTrendsResponse {
+  labels: string[]
+  datasets: CategoryTrendsRow[]
+  numDays?: number
+}
+
+interface HeatmapResponse {
+  dates: Record<string, number>
+}
 
 export default function Analytics() {
   const state = useAppState()
@@ -54,15 +90,15 @@ export default function Analytics() {
       const monthsNeeded = (now.getFullYear() - year) * 12 + now.getMonth() + 1
       const months = Math.max(24, monthsNeeded)
       const [categoryRes, , monthlyRes] = await Promise.all([
-        apiGet<any>(`/api/analytics/category-trends?type=${type}&year=${year}`),
-        apiGet<any>('/api/transactions/summary'),
-        apiGet<any>(`/api/stats/monthly?months=${months}`),
+        apiGet<{ datasets: CategoryTrendsRow[] }>(`/api/analytics/category-trends?type=${type}&year=${year}`),
+        apiGet<Record<string, unknown>>('/api/transactions/summary'),
+        apiGet<MonthlyStatsRow[]>(`/api/stats/monthly?months=${months}`),
       ])
 
       const byCategory = (categoryRes.datasets || [])
         .slice(0, 10)
-        .map((d: Record<string, unknown>, i: number) => {
-          const dataArr = (d.data as number[]) || []
+        .map((d, i) => {
+          const dataArr = d.data || []
           const total = dataArr.reduce((a: number, b: number) => a + b, 0)
           return {
             category_id: i,
@@ -73,11 +109,11 @@ export default function Analytics() {
 
       const byMonth = Array.isArray(monthlyRes)
         ? monthlyRes
-            .filter((m: Record<string, unknown>) => (m.month as string).startsWith(String(year)))
-            .map((m: Record<string, unknown>) => ({
-              month: m.month as string,
-              income: (m.income as number) || 0,
-              expense: (m.expense as number) || 0,
+            .filter((m) => m.month.startsWith(String(year)))
+            .map((m) => ({
+              month: m.month,
+              income: m.income || 0,
+              expense: m.expense || 0,
             }))
         : []
 
@@ -141,9 +177,9 @@ export default function Analytics() {
     transactions: Transaction[]
     loading: boolean
   } | null>(null)
-  const [categoryChart, setCategoryChart] = createSignal<any>(undefined)
-  const [stackedChart, setStackedChart] = createSignal<any>(undefined)
-  const [monthlyChart, setMonthlyChart] = createSignal<any>(undefined)
+  const [categoryChart, setCategoryChart] = createSignal<ChartJS | undefined>(undefined)
+  const [stackedChart, setStackedChart] = createSignal<ChartJS | undefined>(undefined)
+  const [monthlyChart, setMonthlyChart] = createSignal<ChartJS | undefined>(undefined)
   const [sankeyContainer, setSankeyContainer] = createSignal<HTMLDivElement | undefined>(undefined)
   const [heatmapContainer, setHeatmapContainer] = createSignal<HTMLDivElement | undefined>(
     undefined
@@ -158,12 +194,12 @@ export default function Analytics() {
       const mKey = `${year}-${String(month).padStart(2, '0')}`
       const now = new Date()
       const monthsNeeded = (now.getFullYear() - year) * 12 + now.getMonth() + 1
-      const monthlyRes = await apiGet<any>(`/api/stats/monthly?months=${Math.max(24, monthsNeeded)}`)
+      const monthlyRes = await apiGet<MonthlyStatsRow[]>(`/api/stats/monthly?months=${Math.max(24, monthsNeeded)}`)
       const months = Array.isArray(monthlyRes) ? monthlyRes : []
-      const found = months.find((m: Record<string, unknown>) => m.month === mKey)
+      const found = months.find((m) => m.month === mKey)
       if (found) {
-        const income = (found.income as number) || 0
-        const expense = (found.expense as number) || 0
+        const income = found.income || 0
+        const expense = found.expense || 0
         return { income, expense, savingsRate: income > 0 ? ((income - expense) / income) * 100 : 0 }
       }
       return { income: 0, expense: 0, savingsRate: 0 }
@@ -200,7 +236,7 @@ export default function Analytics() {
       return
     }
     try {
-      const res = await apiGet<any>(`/api/analytics/weeks?year=${year}&month=${month}`)
+      const res = await apiGet<{ weeks: WeekData[] }>(`/api/analytics/weeks?year=${year}&month=${month}`)
       setWeeks(res.weeks || [])
     } catch (_e) {
       console.error('Failed to load weeks')
@@ -213,7 +249,7 @@ export default function Analytics() {
     setHeatmapModal({ dateStr, amount, transactions: [], loading: true })
     try {
       const type = heatmapType()
-      const res = await apiGet<any>(
+      const res = await apiGet<{ transactions?: Transaction[]; rows?: Transaction[] }>(
         `/api/transactions?startDate=${dateStr}&endDate=${dateStr}&type=${type}&limit=20`
       )
       const list = Array.isArray(res?.transactions)
@@ -233,7 +269,7 @@ export default function Analytics() {
   // Load heatmap data
   const loadHeatmapData = async () => {
     try {
-      const res = await apiGet<any>(
+      const res = await apiGet<HeatmapResponse>(
         `/api/analytics/daily-heatmap?year=${heatmapYear()}&type=${heatmapType()}`
       )
       const dataMap = new Map<string, number>()
@@ -254,7 +290,7 @@ export default function Analytics() {
   // Load sankey data
   const loadSankeyData = async () => {
     try {
-      const res = await apiGet<any>(
+      const res = await apiGet<SankeyResponse>(
         `/api/analytics/sankey?year=${sankeyYear()}&month=${sankeyMonth()}`
       )
       setSankeyData({ nodes: res.nodes || [], links: res.links || [] })
@@ -277,10 +313,10 @@ export default function Analytics() {
       }
       const week = selectedWeek()
       if (week) params.set('week', week)
-      const res = await apiGet<any>(`/api/analytics/category-trends?${params.toString()}`)
+      const res = await apiGet<CategoryTrendsResponse>(`/api/analytics/category-trends?${params.toString()}`)
       setStackedData({
         labels: res.labels || [],
-        datasets: res.datasets || [],
+        datasets: (res.datasets || []).map((d) => ({ ...d, color: d.color || '#6366f1' })),
         numDays: res.numDays || 0,
       })
 
@@ -295,10 +331,10 @@ export default function Analytics() {
         const cmpWeek = selectedWeek()
         if (cmpWeek) cmpParams.set('week', cmpWeek)
         try {
-          const cmpRes = await apiGet<any>(`/api/analytics/category-trends?${cmpParams.toString()}`)
+          const cmpRes = await apiGet<CategoryTrendsResponse>(`/api/analytics/category-trends?${cmpParams.toString()}`)
           setCompareData({
             labels: cmpRes.labels || [],
-            datasets: cmpRes.datasets || [],
+            datasets: (cmpRes.datasets || []).map((d) => ({ ...d, color: d.color || '#6366f1' })),
           })
         } catch (_e) {
           console.error('Failed to load comparison data')
@@ -681,7 +717,7 @@ export default function Analytics() {
                           stacked: true,
                           beginAtZero: true,
                           ticks: {
-                            callback: (value: any) => formatCurrency(value),
+                            callback: (value: string | number) => formatCurrency(value as number),
                             color: chartColors().text,
                           },
                           grid: { color: chartColors().border },
@@ -700,7 +736,7 @@ export default function Analytics() {
                         },
                         tooltip: {
                           callbacks: {
-                            label: (ctx: any) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+                            label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw as number)}`,
                           },
                         },
                       },
@@ -884,7 +920,7 @@ export default function Analytics() {
                         y: {
                           beginAtZero: true,
                           ticks: {
-                            callback: (value: any) => formatCurrency(value),
+                            callback: (value: string | number) => formatCurrency(value as number),
                             color: chartColors().text,
                           },
                           grid: { color: chartColors().border },
