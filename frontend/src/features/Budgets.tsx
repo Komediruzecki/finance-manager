@@ -543,18 +543,20 @@ export default function Budgets() {
               </button>
               {showMonthPicker() && (
                 <div class={styles.dropdown}>
-                  {MONTHS.map((name, i) => (
-                    <button
-                      class={styles.dropdownItem}
-                      classList={{ [styles.selected]: i + 1 === currentMonthNum() }}
-                      onClick={() => {
-                        setMonthNum(i + 1)
-                        setShowMonthPicker(false)
-                      }}
-                    >
-                      {name}
-                    </button>
-                  ))}
+                  <For each={MONTHS}>
+                    {(name, i) => (
+                      <button
+                        class={styles.dropdownItem}
+                        classList={{ [styles.selected]: i() + 1 === currentMonthNum() }}
+                        onClick={() => {
+                          setMonthNum(i() + 1)
+                          setShowMonthPicker(false)
+                        }}
+                      >
+                        {name}
+                      </button>
+                    )}
+                  </For>
                 </div>
               )}
             </div>
@@ -573,18 +575,20 @@ export default function Budgets() {
               </button>
               {showYearPicker() && (
                 <div class={styles.dropdown}>
-                  {availableYears().map((y) => (
-                    <button
-                      class={styles.dropdownItem}
-                      classList={{ [styles.selected]: y === currentYearNum() }}
-                      onClick={() => {
-                        setYearNum(y)
-                        setShowYearPicker(false)
-                      }}
-                    >
-                      {y}
-                    </button>
-                  ))}
+                  <For each={availableYears()}>
+                    {(y) => (
+                      <button
+                        class={styles.dropdownItem}
+                        classList={{ [styles.selected]: y === currentYearNum() }}
+                        onClick={() => {
+                          setYearNum(y)
+                          setShowYearPicker(false)
+                        }}
+                      >
+                        {y}
+                      </button>
+                    )}
+                  </For>
                 </div>
               )}
             </div>
@@ -1213,7 +1217,7 @@ export default function Budgets() {
                       <div class={styles.catColorPicker}>
                         <span class={styles.catColorLabel}>Color:</span>
                         <div class={styles.catColorDots}>
-                          {[
+                          <For each={[
                             '#ef4444',
                             '#f97316',
                             '#eab308',
@@ -1222,27 +1226,29 @@ export default function Budgets() {
                             '#8b5cf6',
                             '#ec4899',
                             '#6b7280',
-                          ].map((color) => (
-                            <button
-                              class={`${styles.catColorDot} ${category.color === color ? styles.catColorDotActive : ''}`}
-                              style={{ background: color }}
-                              onClick={() => updateCategoryColor(category.id, color)}
-                              title={color}
-                            >
-                              {category.color === color && (
-                                <svg
-                                  width="12"
-                                  height="12"
-                                  fill="none"
-                                  stroke="white"
-                                  stroke-width="3"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M20 6L9 17l-5-5" />
-                                </svg>
-                              )}
-                            </button>
-                          ))}
+                          ]}>
+                            {(color) => (
+                              <button
+                                class={`${styles.catColorDot} ${category.color === color ? styles.catColorDotActive : ''}`}
+                                style={{ background: color }}
+                                onClick={() => updateCategoryColor(category.id, color)}
+                                title={color}
+                              >
+                                {category.color === color && (
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    fill="none"
+                                    stroke="white"
+                                    stroke-width="3"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M20 6L9 17l-5-5" />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
+                          </For>
                         </div>
                       </div>
                     </div>
@@ -1390,7 +1396,7 @@ export default function Budgets() {
               <div class={styles.catFormGroup}>
                 <label class={styles.formLabel}>Color</label>
                 <div class={styles.catColorDots}>
-                  {[
+                  <For each={[
                     '#ef4444',
                     '#f97316',
                     '#eab308',
@@ -1399,27 +1405,29 @@ export default function Budgets() {
                     '#8b5cf6',
                     '#ec4899',
                     '#6b7280',
-                  ].map((color) => (
-                    <button
-                      class={`${styles.catColorDot} ${styles.catColorDotLarge} ${catFormData().color === color ? styles.catColorDotActive : ''}`}
-                      style={{ background: color }}
-                      onClick={() => setCatFormData({ ...catFormData(), color })}
-                      title={color}
-                    >
-                      {catFormData().color === color && (
-                        <svg
-                          width="14"
-                          height="14"
-                          fill="none"
-                          stroke="white"
-                          stroke-width="3"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+                  ]}>
+                    {(color) => (
+                      <button
+                        class={`${styles.catColorDot} ${styles.catColorDotLarge} ${catFormData().color === color ? styles.catColorDotActive : ''}`}
+                        style={{ background: color }}
+                        onClick={() => setCatFormData({ ...catFormData(), color })}
+                        title={color}
+                      >
+                        {catFormData().color === color && (
+                          <svg
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="white"
+                            stroke-width="3"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </For>
                 </div>
               </div>
               <div class={styles.modalFooter}>

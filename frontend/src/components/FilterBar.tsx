@@ -287,14 +287,16 @@ export default function FilterBar(props: FilterBarProps) {
         {/* Type filter */}
         {props.onFilterTypeChange && (
           <div class={styles.typeBtns}>
-            {['all', 'income', 'expense', 'transfer'].map((t) => (
-              <button
-                class={`${styles.typeBtn} ${(props.filterType || 'all') === t ? styles.typeBtnActive : ''}`}
-                onClick={() => props.onFilterTypeChange?.(t)}
-              >
-                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
+            <For each={['all', 'income', 'expense', 'transfer']}>
+              {(t) => (
+                <button
+                  class={`${styles.typeBtn} ${(props.filterType || 'all') === t ? styles.typeBtnActive : ''}`}
+                  onClick={() => props.onFilterTypeChange?.(t)}
+                >
+                  {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              )}
+            </For>
           </div>
         )}
 
@@ -311,22 +313,24 @@ export default function FilterBar(props: FilterBarProps) {
 
         {/* Date presets */}
         <div class={styles.dateFilters}>
-          {['all', 'month', 'lastMonth', 'year'].map((p) => (
-            <button
-              class={`${styles.presetBtn} ${props.selectedPreset === p ? styles.presetBtnActive : ''}`}
-              onClick={() => {
-                handlePresetClick(p)
-              }}
-            >
-              {p === 'all'
-                ? 'All Time'
-                : p === 'month'
-                  ? 'This Month'
-                  : p === 'lastMonth'
-                    ? 'Last Month'
-                    : 'This Year'}
-            </button>
-          ))}
+          <For each={['all', 'month', 'lastMonth', 'year']}>
+            {(p) => (
+              <button
+                class={`${styles.presetBtn} ${props.selectedPreset === p ? styles.presetBtnActive : ''}`}
+                onClick={() => {
+                  handlePresetClick(p)
+                }}
+              >
+                {p === 'all'
+                  ? 'All Time'
+                  : p === 'month'
+                    ? 'This Month'
+                    : p === 'lastMonth'
+                      ? 'Last Month'
+                      : 'This Year'}
+              </button>
+            )}
+          </For>
         </div>
 
         {/* Month/Year nav */}

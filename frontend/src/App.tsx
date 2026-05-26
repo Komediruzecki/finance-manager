@@ -142,10 +142,7 @@ export function App() {
     setCurrentProfile(found ? { ...found } : null)
     setShowDropdown(false)
     bumpProfileVersion()
-    // Reload to ensure all pages refresh data for the new profile
-    setTimeout(() => {
-      window.location.reload()
-    }, 50)
+    // State is updated via bumpProfileVersion()
   }
 
   const getSelectedProfileIds = (): number[] => {
@@ -209,10 +206,7 @@ export function App() {
       }
       setShowDropdown(false)
       bumpProfileVersion()
-      // Reload to ensure all pages refresh with new profile selection
-      setTimeout(() => {
-        window.location.reload()
-      }, 50)
+      // State is updated via bumpProfileVersion()
     } else {
       setShowDropdown(true)
     }
@@ -251,9 +245,6 @@ export function App() {
     setCurrentProfile(null)
     await loadProfiles(true)
     setShowDropdown(false)
-    setTimeout(() => {
-      window.location.reload()
-    }, 150)
   }
 
   onMount(async () => {
@@ -281,10 +272,7 @@ export function App() {
           }
           setShowDropdown(false)
           bumpProfileVersion()
-          // Reload to ensure all pages refresh with new profile selection
-          setTimeout(() => {
-            window.location.reload()
-          }, 50)
+          // State is updated via bumpProfileVersion()
         }
       }
     }
