@@ -1006,7 +1006,7 @@ export class ApiClient {
   }
 
   createRecurring(
-    data: Omit<Models.RecurringTransaction, 'id' | 'profile_id'>
+    data: Partial<Models.RecurringTransaction> & Pick<Models.RecurringTransaction, 'description' | 'amount' | 'type' | 'frequency'>
   ): Promise<Models.RecurringTransaction> {
     return this.request<Models.RecurringTransaction>('/recurring', { method: 'POST', body: data })
   }
