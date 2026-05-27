@@ -516,15 +516,6 @@ app.use(require('./routes/calculators')({ db, apiRateLimiter, logError }));
 app.use(require('./routes/analytics')({ db, apiRateLimiter, logError }));
 // ── Remaining inline routes ──────────────────────────────────────────────────────
 
-
-
-
-
-// ==================== APP INFO ====================
-const APP_VERSION = '1.0.0';
-const APP_REPO = 'https://github.com/Komediruzecki/finance-manager';
-
-
 // Test endpoint: reset rate limit store
 app.post('/api/test/reset-rate-limit', (req, res) => {
   if (global.__rateLimitStore) global.__rateLimitStore.clear();
@@ -560,9 +551,6 @@ function updateProfileHandler(req, res) {
   }
 }
 
-
-
-// Reseed demo data — mirrors serverless route /api/profiles/reseed-demo
 
 
 // ========================
