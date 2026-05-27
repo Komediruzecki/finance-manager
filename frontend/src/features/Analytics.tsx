@@ -37,8 +37,8 @@ import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import { downloadBlob } from '../utils/chartExport'
 import styles from './AnalyticsPage.module.css'
-import type { SankeyData, Transaction } from '../types/models'
 import type { Chart as ChartJS } from 'chart.js'
+import type { SankeyData, Transaction } from '../types/models'
 
 interface CategoryTrendsRow {
   category: string
