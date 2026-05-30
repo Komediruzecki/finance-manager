@@ -355,12 +355,19 @@ module.exports = function ({ db, apiRateLimiter, requireAuth, logError }) {
       if (!sanitizedDescription || sanitizedDescription.trim().length < 1) {
         return res.status(400).json({ error: 'Invalid description' });
       }
-      if (amount === undefined || amount === null || isNaN(amount) || Number(amount) <= 0) {
-        return res.status(400).json({ error: 'Amount must be a positive number' });
+      if (amount === undefined || amount === null || isNaN(amount) || Number(amount) === 0) {
+        return res.status(400).json({ error: 'Amount is required' });
       }
-      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return res.status(400).json({ error: 'A valid date is required' });
+      if (Number(amount) < 0 && type === 'income') {
+        return res.status(400).json({ error: 'Income amount must be positive' });
       }
+      // Reject amounts with more than 2 decimal places
+      const amountStr = String(amount);
+      const decimalMatch = amountStr.match(/\.(\d+)$/);
+      if (decimalMatch && decimalMatch[1].length > 2) {
+        return res.status(400).json({ error: 'Amount must have at most 2 decimal places' });
+      }
+      const resolvedDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().split('T')[0];
 
       // Resolve account_id from means_of_payment (FROM) if not explicitly provided
       let resolvedAccountId = account_id || null;
@@ -395,7 +402,7 @@ module.exports = function ({ db, apiRateLimiter, requireAuth, logError }) {
         .run(
           sanitizedDescription,
           amount,
-          date,
+          resolvedDate,
           beneficiary || '',
           payor || '',
           category_id || null,
