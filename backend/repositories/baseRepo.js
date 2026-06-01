@@ -31,13 +31,12 @@ class BaseRepository {
     return row ? row.c : 0;
   }
 
-  /** INSERT a row and return the lastInsertRowid */
+  /** INSERT a row and return the run result { changes, lastInsertRowid } */
   insert(table, data) {
     const keys = Object.keys(data);
     const placeholders = keys.map(() => '?').join(', ');
     const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
-    const result = this.run(sql, ...Object.values(data));
-    return result.lastInsertRowid;
+    return this.run(sql, ...Object.values(data));
   }
 
   /** UPDATE rows matching where clause — where is required */
