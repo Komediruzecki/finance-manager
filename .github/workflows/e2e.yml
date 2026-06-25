@@ -35,8 +35,7 @@ jobs:
           mkdir -p db assets
           NODE_ENV=test node backend/index.js &
           sleep 5
-          # Seed the test database with demo data
-          curl -X POST http://localhost:3847/api/profiles/reseed-demo -H "X-Skip-RateLimit: true" -H "X-Profile-ID: 1" || true
+          curl -X POST http://127.0.0.1:3847/api/profiles/reseed-demo -H "X-Skip-RateLimit: true" -H "X-Profile-ID: 1" || true
 
       - name: Build frontend
         working-directory: ./frontend
@@ -52,7 +51,11 @@ jobs:
           CI: true
           PLAYWRIGHT_HEADLESS: true
         run: |
-          pnpm exec playwright test
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm run test:e2e:smoke
+          else
+            pnpm run test:e2e
+          fi
         continue-on-error: false
 
       - name: Upload test results

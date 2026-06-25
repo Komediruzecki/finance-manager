@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { login, navigateToRoute } from './test-helpers'
 
-test.describe('Dashboard', () => {
+test.describe('Dashboard @smoke', () => {
   test.beforeEach(async ({ page }) => {
     // Login first
     await login(page)
