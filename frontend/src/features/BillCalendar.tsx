@@ -18,8 +18,7 @@
  * THEN: The bill dot shows in red (--danger color) with an overdue indicator
  */
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
-import ConfirmButton from '../components/ConfirmButton'
-import { formatCurrency, apiGet, apiPost, apiPut, apiDelete, showToast } from '../core/api'
+import { apiGet, apiPost, formatCurrency, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import styles from './BillCalendar.module.css'
 import type { Component } from 'solid-js'
@@ -38,9 +37,6 @@ interface CalendarBill {
   is_overdue: boolean
 }
 
-interface CalendarDay {
-  bills: CalendarBill[]
-}
 
 interface CalendarData {
   year: number
@@ -55,12 +51,6 @@ interface CalendarData {
   }
 }
 
-interface Category {
-  id: number
-  name: string
-  type: 'expense' | 'income'
-  color: string
-}
 
 interface BillCalendarProps {
   onRefresh?: () => void
@@ -78,7 +68,7 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
   const [markingPaid, setMarkingPaid] = createSignal(new Set<number>())
   const [popoverStyle, setPopoverStyle] = createSignal<Record<string, string>>({})
 
-  const [calendarData, { refetch: refetchCalendar, mutate: mutateCalendar }] =
+  const [calendarData, { refetch: refetchCalendar }] =
     createResource(
       () => ({ year: currentYear(), month: currentMonth(), v: state.profileVersion }),
       async ({ year, month }) => {
@@ -122,7 +112,7 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
     const data = calendarData()
     if (!data) return []
     const lastDay = new Date(data.year, data.month, 0).getDate()
-    return Array.from({ length: lastDay }, (_, i) => i + 1)
+    return Array.from({ length: lastDay }, (_, _i) => _i + 1)
   })
 
   const isToday = (day: number) => {
@@ -135,7 +125,7 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
   }
 
   const hasOverdue = (bills: CalendarBill[]) => bills.some((b) => b.is_overdue)
-  const hasUnpaid = (bills: CalendarBill[]) => bills.some((b) => !b.paid && !b.is_overdue)
+
 
   const selectDay = (day: number, bills: CalendarBill[], event?: MouseEvent) => {
     setSelectedDay(day)
@@ -265,7 +255,7 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
           </For>
 
           {/* Empty cells before first day of month */}
-          {Array.from({ length: calendarData()!.firstDow }, (_, i) => (
+          {Array.from({ length: calendarData()!.firstDow }, (_, _i) => (
             <div class={`${styles.dayCell} ${styles.dayEmpty}`} />
           ))}
 
@@ -280,7 +270,7 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
                   } ${selectedDay() === day ? styles.daySelected : ''} ${
                     bills.length > 0 ? styles.hasBills : ''
                   }`}
-                  onClick={(e) => bills.length > 0 && selectDay(day, bills, e)}
+                  onClick={(e) => { if (bills.length > 0) selectDay(day, bills, e) }}
                   role={bills.length > 0 ? 'button' : undefined}
                   tabIndex={bills.length > 0 ? 0 : undefined}
                   onKeyDown={(e) => {

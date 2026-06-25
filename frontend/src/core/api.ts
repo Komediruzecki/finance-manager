@@ -2,6 +2,8 @@
  * API Client - Type-safe HTTP client for backend API
  */
 
+import { z } from 'zod'
+import * as Schemas from '../schemas/models.js'
 import { apiFetch } from './apiFetch'
 import { logger } from './logger.js'
 import type * as ApiTypes from '../types/api.js'
@@ -71,7 +73,11 @@ export class ApiClient {
   /**
    * Make an HTTP request to the API
    */
-  private async request<T>(endpoint: string, options: ApiTypes.ApiClientOptions = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    schema?: z.ZodType<T>,
+    options: ApiTypes.ApiClientOptions = {}
+  ): Promise<T> {
     const url = API_BASE + endpoint
     const method = options.method || 'GET'
 
@@ -139,7 +145,19 @@ export class ApiClient {
         return {} as T
       }
 
-      return await response.json()
+      const rawData = await response.json()
+      
+      if (schema) {
+        try {
+          return schema.parse(rawData)
+        } catch (error) {
+          console.error(`[ApiClient] Validation failed for ${endpoint}`, error, rawData)
+          throw new Error(`API Response Validation failed for ${endpoint}`)
+        }
+      }
+
+       
+      return rawData
     } catch (error) {
       // Don't re-log errors from auth endpoints — already handled above or expected
       const isAuthEndpoint = endpoint === '/auth/check' || endpoint === '/auth/me'
@@ -156,8 +174,8 @@ export class ApiClient {
   /**
    * Login with username and password
    */
-  login(username: string, password: string): Promise<void> {
-    return this.request<void>('/auth/login', {
+  async login(username: string, password: string): Promise<void> {
+    await this.request<unknown>('/auth/login', undefined, {
       method: 'POST',
       body: { username, password },
     })
@@ -168,7 +186,7 @@ export class ApiClient {
    */
   async checkLogin(): Promise<boolean> {
     try {
-      await this.request('/auth/check')
+      await this.request('/auth/check', undefined)
       return true
     } catch {
       return false
@@ -179,7 +197,7 @@ export class ApiClient {
    * Logout
    */
   async logout(): Promise<void> {
-    await this.request('/auth/logout', { method: 'POST' })
+    await this.request('/auth/logout', undefined, { method: 'POST' })
   }
 
   // ============ PROFILES ============
@@ -188,21 +206,21 @@ export class ApiClient {
    * Get all profiles
    */
   async getProfiles(): Promise<Models.Profile[]> {
-    return this.request<Models.Profile[]>('/profiles')
+    return this.request<Models.Profile[]>('/profiles', z.array(Schemas.ProfileSchema))
   }
 
   /**
    * Get a single profile
    */
   async getProfile(id: number): Promise<Models.Profile> {
-    return this.request<Models.Profile>(`/profiles/${id}`)
+    return this.request<Models.Profile>(`/profiles/${id}`, Schemas.ProfileSchema)
   }
 
   /**
    * Create a new profile
    */
   async createProfile(name: string): Promise<Models.Profile> {
-    return this.request<Models.Profile>('/profiles', {
+    return this.request<Models.Profile>('/profiles', Schemas.ProfileSchema, {
       method: 'POST',
       body: { name },
     })
@@ -212,7 +230,7 @@ export class ApiClient {
    * Update a profile
    */
   async updateProfile(id: number, name: string): Promise<void> {
-    await this.request(`/profiles/${id}`, {
+    await this.request(`/profiles/${id}`, undefined, {
       method: 'PUT',
       body: { name },
     })
@@ -222,14 +240,14 @@ export class ApiClient {
    * Delete a profile
    */
   async deleteProfile(id: number): Promise<void> {
-    await this.request(`/profiles/${id}`, { method: 'DELETE' })
+    await this.request(`/profiles/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Reset all data for the current profile
    */
   async resetProfileData(): Promise<{ ok: boolean; message?: string }> {
-    return this.request('/profile/data', { method: 'DELETE' })
+    return this.request('/profile/data', undefined, { method: 'DELETE' })
   }
 
   // ============ TRANSACTIONS ============
@@ -248,21 +266,21 @@ export class ApiClient {
       queryParams.append('type', params.type)
     }
 
-    return this.request<Models.Transaction[]>(`/transactions?${queryParams.toString()}`)
+    return this.request<Models.Transaction[]>(`/transactions?${queryParams.toString()}`, z.array(Schemas.TransactionSchema))
   }
 
   /**
    * Get a single transaction
    */
   async getTransaction(id: number): Promise<Models.Transaction> {
-    return this.request<Models.Transaction>(`/transactions/${id}`)
+    return this.request<Models.Transaction>(`/transactions/${id}`, Schemas.TransactionSchema)
   }
 
   /**
    * Create a new transaction
    */
   async createTransaction(data: ApiTypes.TransactionCreateParams): Promise<Models.Transaction> {
-    return this.request<Models.Transaction>('/transactions', {
+    return this.request<Models.Transaction>('/transactions', Schemas.TransactionSchema, {
       method: 'POST',
       body: data,
     })
@@ -275,7 +293,7 @@ export class ApiClient {
     id: number,
     data: Partial<ApiTypes.TransactionCreateParams>
   ): Promise<void> {
-    await this.request(`/transactions/${id}`, {
+    await this.request(`/transactions/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -285,7 +303,7 @@ export class ApiClient {
    * Delete a transaction
    */
   async deleteTransaction(id: number): Promise<void> {
-    await this.request(`/transactions/${id}`, { method: 'DELETE' })
+    await this.request(`/transactions/${id}`, undefined, { method: 'DELETE' })
   }
 
   // ============ CATEGORIES ============
@@ -294,21 +312,21 @@ export class ApiClient {
    * Get all categories
    */
   async getCategories(): Promise<Models.Category[]> {
-    return this.request<Models.Category[]>('/categories')
+    return this.request<Models.Category[]>('/categories', z.array(Schemas.CategorySchema))
   }
 
   /**
    * Get a single category
    */
   async getCategory(id: number): Promise<Models.Category> {
-    return this.request<Models.Category>(`/categories/${id}`)
+    return this.request<Models.Category>(`/categories/${id}`, Schemas.CategorySchema)
   }
 
   /**
    * Create a category
    */
   async createCategory(data: Omit<Models.Category, 'id' | 'created_at'>): Promise<Models.Category> {
-    return this.request<Models.Category>('/categories', {
+    return this.request<Models.Category>('/categories', Schemas.CategorySchema, {
       method: 'POST',
       body: data,
     })
@@ -321,7 +339,7 @@ export class ApiClient {
     id: number,
     data: Omit<Models.Category, 'id' | 'created_at'>
   ): Promise<void> {
-    await this.request(`/categories/${id}`, {
+    await this.request(`/categories/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -331,14 +349,14 @@ export class ApiClient {
    * Delete a category
    */
   async deleteCategory(id: number): Promise<void> {
-    await this.request(`/categories/${id}`, { method: 'DELETE' })
+    await this.request(`/categories/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Get category mappings for auto-mapping
    */
   async getCategoryMappings(): Promise<Models.CategoryMapping[]> {
-    return this.request<Models.CategoryMapping[]>('/categories/mappings')
+    return this.request<Models.CategoryMapping[]>('/categories/mappings', Schemas.GenericSchema)
   }
 
   /**
@@ -349,7 +367,7 @@ export class ApiClient {
     category_id: number,
     confidence?: number
   ): Promise<{ ok: boolean; id?: number; use_count?: number }> {
-    return this.request('/categories/mappings', {
+    return this.request('/categories/mappings', undefined, {
       method: 'POST',
       body: { pattern, category_id, confidence },
     })
@@ -359,14 +377,14 @@ export class ApiClient {
    * Delete a category mapping
    */
   async deleteCategoryMapping(id: number): Promise<void> {
-    await this.request(`/categories/mappings/${id}`, { method: 'DELETE' })
+    await this.request(`/categories/mappings/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Auto-map uncategorized transactions
    */
   async autoMapTransactions(transactionIds: number[]): Promise<{ ok: boolean; mapped: number }> {
-    return this.request<{ ok: boolean; mapped: number }>('/categories/auto-map', {
+    return this.request<{ ok: boolean; mapped: number }>('/categories/auto-map', Schemas.GenericSchema, {
       method: 'POST',
       body: { transaction_ids: transactionIds },
     })
@@ -378,21 +396,21 @@ export class ApiClient {
    * Get all accounts
    */
   async getAccounts(): Promise<Models.Account[]> {
-    return this.request<Models.Account[]>('/accounts')
+    return this.request<Models.Account[]>('/accounts', z.array(Schemas.AccountSchema))
   }
 
   /**
    * Get a single account
    */
   async getAccount(id: number): Promise<Models.Account> {
-    return this.request<Models.Account>(`/accounts/${id}`)
+    return this.request<Models.Account>(`/accounts/${id}`, Schemas.AccountSchema)
   }
 
   /**
    * Create an account
    */
   async createAccount(data: ApiTypes.AccountCreateParams): Promise<Models.Account> {
-    return this.request<Models.Account>('/accounts', {
+    return this.request<Models.Account>('/accounts', Schemas.AccountSchema, {
       method: 'POST',
       body: data,
     })
@@ -402,7 +420,7 @@ export class ApiClient {
    * Update an account
    */
   async updateAccount(id: number, data: Partial<ApiTypes.AccountCreateParams>): Promise<void> {
-    await this.request(`/accounts/${id}`, {
+    await this.request(`/accounts/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -412,21 +430,21 @@ export class ApiClient {
    * Delete an account
    */
   async deleteAccount(id: number): Promise<void> {
-    await this.request(`/accounts/${id}`, { method: 'DELETE' })
+    await this.request(`/accounts/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Get balance history for an account
    */
   async getBalanceHistory(id: number): Promise<Models.BalanceHistory[]> {
-    return this.request<Models.BalanceHistory[]>(`/accounts/${id}/history`)
+    return this.request<Models.BalanceHistory[]>(`/accounts/${id}/history`, Schemas.GenericSchema)
   }
 
   /**
    * Record a balance entry
    */
   async recordBalance(id: number, balance: number): Promise<void> {
-    await this.request(`/accounts/${id}/history`, {
+    await this.request(`/accounts/${id}/history`, undefined, {
       method: 'POST',
       body: { balance },
     })
@@ -436,7 +454,7 @@ export class ApiClient {
    * Delete a balance history entry
    */
   async deleteBalanceEntry(accountId: number, entryId: number): Promise<void> {
-    await this.request(`/accounts/${accountId}/history/${entryId}`, {
+    await this.request(`/accounts/${accountId}/history/${entryId}`, undefined, {
       method: 'DELETE',
     })
   }
@@ -447,21 +465,21 @@ export class ApiClient {
    * Get all budgets
    */
   async getBudgets(): Promise<Models.Budget[]> {
-    return this.request<Models.Budget[]>('/budgets')
+    return this.request<Models.Budget[]>('/budgets', z.array(Schemas.BudgetSchema))
   }
 
   /**
    * Get a single budget
    */
   async getBudget(id: number): Promise<Models.Budget> {
-    return this.request<Models.Budget>(`/budgets/${id}`)
+    return this.request<Models.Budget>(`/budgets/${id}`, Schemas.BudgetSchema)
   }
 
   /**
    * Create a budget
    */
   async createBudget(data: ApiTypes.BudgetCreateParams): Promise<Models.Budget> {
-    return this.request<Models.Budget>('/budgets', {
+    return this.request<Models.Budget>('/budgets', Schemas.BudgetSchema, {
       method: 'POST',
       body: data,
     })
@@ -471,7 +489,7 @@ export class ApiClient {
    * Update a budget
    */
   async updateBudget(id: number, data: Partial<ApiTypes.BudgetCreateParams>): Promise<void> {
-    await this.request(`/budgets/${id}`, {
+    await this.request(`/budgets/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -481,7 +499,7 @@ export class ApiClient {
    * Delete a budget
    */
   async deleteBudget(id: number): Promise<void> {
-    await this.request(`/budgets/${id}`, { method: 'DELETE' })
+    await this.request(`/budgets/${id}`, undefined, { method: 'DELETE' })
   }
 
   // ============ SAVINGS GOALS ============
@@ -490,21 +508,21 @@ export class ApiClient {
    * Get all savings goals
    */
   async getGoals(): Promise<Models.SavingsGoal[]> {
-    return this.request<Models.SavingsGoal[]>('/savings-goals')
+    return this.request<Models.SavingsGoal[]>('/savings-goals', z.array(Schemas.SavingsGoalSchema))
   }
 
   /**
    * Get a single savings goal
    */
   async getGoal(id: number): Promise<Models.SavingsGoal> {
-    return this.request<Models.SavingsGoal>(`/savings-goals/${id}`)
+    return this.request<Models.SavingsGoal>(`/savings-goals/${id}`, Schemas.SavingsGoalSchema)
   }
 
   /**
    * Create a savings goal
    */
   async createGoal(data: ApiTypes.GoalCreateParams): Promise<Models.SavingsGoal> {
-    return this.request<Models.SavingsGoal>('/savings-goals', {
+    return this.request<Models.SavingsGoal>('/savings-goals', Schemas.SavingsGoalSchema, {
       method: 'POST',
       body: data,
     })
@@ -514,7 +532,7 @@ export class ApiClient {
    * Update a savings goal
    */
   async updateGoal(id: number, data: Partial<Models.SavingsGoal>): Promise<void> {
-    await this.request(`/savings-goals/${id}`, {
+    await this.request(`/savings-goals/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -524,14 +542,14 @@ export class ApiClient {
    * Delete a savings goal
    */
   async deleteGoal(id: number): Promise<void> {
-    await this.request(`/savings-goals/${id}`, { method: 'DELETE' })
+    await this.request(`/savings-goals/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Add contribution to a savings goal
    */
   async addGoalContribution(id: number, amount: number): Promise<void> {
-    await this.request(`/savings-goals/${id}/contribute`, {
+    await this.request(`/savings-goals/${id}/contribute`, undefined, {
       method: 'POST',
       body: { amount },
     })
@@ -543,21 +561,21 @@ export class ApiClient {
    * Get all loans
    */
   async getLoans(): Promise<Models.Loan[]> {
-    return this.request<Models.Loan[]>('/loans')
+    return this.request<Models.Loan[]>('/loans', z.array(Schemas.LoanSchema))
   }
 
   /**
    * Get a single loan
    */
   async getLoan(id: number): Promise<Models.Loan> {
-    return this.request<Models.Loan>(`/loans/${id}`)
+    return this.request<Models.Loan>(`/loans/${id}`, Schemas.LoanSchema)
   }
 
   /**
    * Create a loan
    */
   async createLoan(data: ApiTypes.LoanCreateParams): Promise<Models.Loan> {
-    return this.request<Models.Loan>('/loans', {
+    return this.request<Models.Loan>('/loans', Schemas.LoanSchema, {
       method: 'POST',
       body: data,
     })
@@ -567,7 +585,7 @@ export class ApiClient {
    * Update a loan
    */
   async updateLoan(id: number, data: Partial<Models.Loan>): Promise<void> {
-    await this.request(`/loans/${id}`, {
+    await this.request(`/loans/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -577,14 +595,14 @@ export class ApiClient {
    * Delete a loan
    */
   async deleteLoan(id: number): Promise<void> {
-    await this.request(`/loans/${id}`, { method: 'DELETE' })
+    await this.request(`/loans/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Get rate periods for a loan
    */
   async getLoanRatePeriods(id: number): Promise<Models.LoanRatePeriod[]> {
-    return this.request<Models.LoanRatePeriod[]>(`/loans/${id}/rate-periods`)
+    return this.request<Models.LoanRatePeriod[]>(`/loans/${id}/rate-periods`, Schemas.GenericSchema)
   }
 
   /**
@@ -596,7 +614,7 @@ export class ApiClient {
     startMonth: number,
     endMonth: number | null
   ): Promise<void> {
-    await this.request(`/loans/${id}/rate`, {
+    await this.request(`/loans/${id}/rate`, undefined, {
       method: 'PUT',
       body: { rate, start_month: startMonth, end_month: endMonth },
     })
@@ -606,7 +624,7 @@ export class ApiClient {
    * Add prepayment
    */
   async addLoanPrepayment(id: number, month: number, amount: number, note?: string): Promise<void> {
-    await this.request(`/loans/${id}/prepayment`, {
+    await this.request(`/loans/${id}/prepayment`, undefined, {
       method: 'POST',
       body: { month, amount, note },
     })
@@ -618,21 +636,21 @@ export class ApiClient {
    * Get all bills
    */
   async getBills(): Promise<Models.Bill[]> {
-    return this.request<Models.Bill[]>('/bills')
+    return this.request<Models.Bill[]>('/bills', z.array(Schemas.BillSchema))
   }
 
   /**
    * Get a single bill
    */
   async getBill(id: number): Promise<Models.Bill> {
-    return this.request<Models.Bill>(`/bills/${id}`)
+    return this.request<Models.Bill>(`/bills/${id}`, Schemas.BillSchema)
   }
 
   /**
    * Create a bill
    */
   async createBill(data: Omit<Models.Bill, 'id' | 'created_at'>): Promise<Models.Bill> {
-    return this.request<Models.Bill>('/bills', {
+    return this.request<Models.Bill>('/bills', Schemas.BillSchema, {
       method: 'POST',
       body: data,
     })
@@ -642,7 +660,7 @@ export class ApiClient {
    * Update a bill
    */
   async updateBill(id: number, data: Partial<Models.Bill>): Promise<void> {
-    await this.request(`/bills/${id}`, {
+    await this.request(`/bills/${id}`, undefined, {
       method: 'PUT',
       body: data,
     })
@@ -652,14 +670,14 @@ export class ApiClient {
    * Delete a bill
    */
   async deleteBill(id: number): Promise<void> {
-    await this.request(`/bills/${id}`, { method: 'DELETE' })
+    await this.request(`/bills/${id}`, undefined, { method: 'DELETE' })
   }
 
   /**
    * Mark a bill as paid
    */
   async markBillPaid(id: number): Promise<void> {
-    await this.request(`/bills/${id}/pay`, { method: 'POST' })
+    await this.request(`/bills/${id}/pay`, undefined, { method: 'POST' })
   }
 
   // ============ SETTINGS ============
@@ -668,14 +686,14 @@ export class ApiClient {
    * Get all settings for current profile
    */
   async getSettings(): Promise<Models.Settings> {
-    return this.request<Models.Settings>('/settings')
+    return this.request<Models.Settings>('/settings', Schemas.SettingsSchema)
   }
 
   /**
    * Update settings
    */
   async updateSettings(data: ApiTypes.SettingsUpdateParams): Promise<void> {
-    await this.request('/settings', {
+    await this.request('/settings', undefined, {
       method: 'PUT',
       body: data,
     })
@@ -685,7 +703,7 @@ export class ApiClient {
    * Update single setting
    */
   async updateSetting(key: string, value: string): Promise<void> {
-    await this.request('/settings', {
+    await this.request('/settings', undefined, {
       method: 'PUT',
       body: { [key]: value },
     })
@@ -698,7 +716,7 @@ export class ApiClient {
    * Uses the analytics distinct-years endpoint.
    */
   async getTransactionYears(): Promise<{ minYear: number; maxYear: number; years: number[] }> {
-    const res = await this.request<{ years: number[] }>('/analytics/distinct-years')
+    const res = await this.request<{ years: number[] }>('/analytics/distinct-years', Schemas.GenericSchema)
     const years = res.years || []
     return {
       minYear: years.length > 0 ? Math.min(...years) : new Date().getFullYear(),
@@ -728,14 +746,14 @@ export class ApiClient {
       qs.set('year', String(year))
     }
     const params = qs.toString() ? `?${qs.toString()}` : ''
-    return this.request<Models.DashboardMetrics>(`/dashboard${params}`)
+    return this.request<Models.DashboardMetrics>(`/dashboard${params}`, Schemas.GenericSchema)
   }
 
   /**
    * Get analytics summary
    */
   async getAnalytics(): Promise<Models.AnalyticsSummary> {
-    return this.request<Models.AnalyticsSummary>('/analytics')
+    return this.request<Models.AnalyticsSummary>('/analytics', Schemas.GenericSchema)
   }
 
   /**
@@ -743,14 +761,14 @@ export class ApiClient {
    */
   async getDashboardCharts(months?: number): Promise<Models.DashboardChartsResponse> {
     const params = months ? `?months=${months}` : ''
-    return this.request<Models.DashboardChartsResponse>(`/dashboard/charts${params}`)
+    return this.request<Models.DashboardChartsResponse>(`/dashboard/charts${params}`, Schemas.GenericSchema)
   }
 
   /**
    * Get net worth timeline data
    */
   async getNetWorth(): Promise<Models.NetWorthResponse> {
-    return this.request<Models.NetWorthResponse>('/dashboard/net-worth')
+    return this.request<Models.NetWorthResponse>('/dashboard/net-worth', Schemas.GenericSchema)
   }
 
   /**
@@ -805,7 +823,7 @@ export class ApiClient {
     inflation_rate?: number
     monthly_expenses?: number
   }): Promise<Models.RetirementProjection> {
-    return this.request<Models.RetirementProjection>('/retirement', {
+    return this.request<Models.RetirementProjection>('/retirement', Schemas.GenericSchema, {
       method: 'POST',
       body: params,
     })
@@ -823,7 +841,7 @@ export class ApiClient {
     utilities_cost: number
     savings_target: number
   }): Promise<Models.HousingCalculation> {
-    return this.request<Models.HousingCalculation>('/housing/calculate', {
+    return this.request<Models.HousingCalculation>('/housing/calculate', Schemas.GenericSchema, {
       method: 'POST',
       body: params,
     })
@@ -859,7 +877,7 @@ export class ApiClient {
    * Get exchange rate for a specific currency pair
    */
   async getExchangeRate(base: string, target: string): Promise<{ rate: number }> {
-    return this.request<{ rate: number }>(`/exchange-rates/${base}/${target}`)
+    return this.request<{ rate: number }>(`/exchange-rates/${base}/${target}`, Schemas.GenericSchema)
   }
 
   // ============ HEALTH ============
@@ -868,7 +886,7 @@ export class ApiClient {
    * Health check
    */
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request<{ status: string; timestamp: string }>('/health')
+    return this.request<{ status: string; timestamp: string }>('/health', Schemas.GenericSchema)
   }
 
   // ============ RECEIPTS ============
@@ -901,14 +919,14 @@ export class ApiClient {
    * Get a single receipt by ID
    */
   async getReceipt(id: number): Promise<Models.Receipt> {
-    return this.request<Models.Receipt>(`/receipts/${id}`)
+    return this.request<Models.Receipt>(`/receipts/${id}`, Schemas.GenericSchema)
   }
 
   /**
    * Get all receipts for a transaction
    */
   async getReceiptsForTransaction(transactionId: number): Promise<Models.Receipt[]> {
-    return this.request<Models.Receipt[]>(`/receipts/transaction/${transactionId}`)
+    return this.request<Models.Receipt[]>(`/receipts/transaction/${transactionId}`, Schemas.GenericSchema)
   }
 
   /**
@@ -932,7 +950,7 @@ export class ApiClient {
    * Delete a receipt
    */
   async deleteReceipt(id: number): Promise<void> {
-    await this.request(`/receipts/${id}`, { method: 'DELETE' })
+    await this.request(`/receipts/${id}`, undefined, { method: 'DELETE' })
   }
 
   // ============ RECONCILIATION ============
@@ -941,7 +959,7 @@ export class ApiClient {
    * Toggle reconciled status for a transaction
    */
   async toggleReconcile(id: number): Promise<{ reconciled: number; reconciled_at: string | null }> {
-    return this.request(`/transactions/${id}/reconcile`, { method: 'PATCH' })
+    return this.request(`/transactions/${id}/reconcile`, undefined, { method: 'PATCH' })
   }
 
   /**
@@ -951,7 +969,7 @@ export class ApiClient {
     dateFrom: string,
     dateTo: string
   ): Promise<{ message: string; count: number }> {
-    return this.request(`/transactions/reconcile/bulk`, {
+    return this.request(`/transactions/reconcile/bulk`, undefined, {
       method: 'POST',
       body: { date_from: dateFrom, date_to: dateTo },
     })
@@ -966,21 +984,21 @@ export class ApiClient {
     reconciled_total: number
     unreconciled_total: number
   }> {
-    return this.request(`/transactions/reconcile/summary`)
+    return this.request(`/transactions/reconcile/summary`, undefined)
   }
 
   /**
    * Batch mark transactions as reconciled by ID list
    */
   async reconcileByIds(transactionIds: number[]): Promise<{ message: string; updated: number }> {
-    return this.request(`/transactions/reconcile-batch`, {
+    return this.request(`/transactions/reconcile-batch`, undefined, {
       method: 'PUT',
       body: { transaction_ids: transactionIds },
     })
   }
 
   async getTags(): Promise<{ id: number; name: string; color: string }[]> {
-    return this.request('/tags')
+    return this.request('/tags', undefined)
   }
 
   /**
@@ -990,7 +1008,7 @@ export class ApiClient {
     name: string,
     color?: string
   ): Promise<{ id: number; name: string; color: string }> {
-    return this.request('/tags', {
+    return this.request('/tags', undefined, {
       method: 'POST',
       body: { name, color },
     })
@@ -999,36 +1017,36 @@ export class ApiClient {
   // ============ RECURRING TRANSACTIONS ============
 
   getRecurring(): Promise<Models.RecurringTransaction[]> {
-    return this.request<Models.RecurringTransaction[]>('/recurring')
+    return this.request<Models.RecurringTransaction[]>('/recurring', Schemas.GenericSchema)
   }
 
   getRecurringById(id: number): Promise<Models.RecurringTransaction> {
-    return this.request<Models.RecurringTransaction>(`/recurring/${id}`)
+    return this.request<Models.RecurringTransaction>(`/recurring/${id}`, Schemas.GenericSchema)
   }
 
   createRecurring(
     data: Partial<Models.RecurringTransaction> &
       Pick<Models.RecurringTransaction, 'description' | 'amount' | 'type' | 'frequency'>
   ): Promise<Models.RecurringTransaction> {
-    return this.request<Models.RecurringTransaction>('/recurring', { method: 'POST', body: data })
+    return this.request<Models.RecurringTransaction>('/recurring', Schemas.GenericSchema, { method: 'POST', body: data })
   }
 
   updateRecurring(
     id: number,
     data: Partial<Models.RecurringTransaction>
   ): Promise<Models.RecurringTransaction> {
-    return this.request<Models.RecurringTransaction>(`/recurring/${id}`, {
+    return this.request<Models.RecurringTransaction>(`/recurring/${id}`, Schemas.GenericSchema, {
       method: 'PUT',
       body: data,
     })
   }
 
   deleteRecurring(id: number): Promise<void> {
-    return this.request(`/recurring/${id}`, { method: 'DELETE' })
+    return this.request(`/recurring/${id}`, undefined, { method: 'DELETE' })
   }
 
   populateRecurring(id: number): Promise<{ ok: boolean }> {
-    return this.request(`/recurring/${id}/populate`, { method: 'POST' })
+    return this.request(`/recurring/${id}/populate`, undefined, { method: 'POST' })
   }
 }
 

@@ -172,10 +172,11 @@ export default defineConfig({
   //   postcss: './postcss.config.cjs',
   // },
   server: {
+    host: '127.0.0.1',
     port: 3800,
     proxy: {
       '/api': {
-        target: 'http://localhost:3847',
+        target: 'http://127.0.0.1:3847',
         changeOrigin: true,
       },
     },
