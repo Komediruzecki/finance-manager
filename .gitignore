@@ -61,3 +61,5 @@ test-output.png
 # Symlinks (machine-specific)
 backend/db
 public/frontend
+
+assets/local/
