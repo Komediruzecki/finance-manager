@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
  * Tests for duplicate profiles, selection behavior, and IndexedDB integrity.
  */
 
-test('profile dropdown - no duplicates after reseed and create', async ({ page }) => {
+test('profile dropdown - no duplicates after reseed and create @smoke', async ({ page }) => {
   const consoleErrors: string[] = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text())
@@ -15,6 +15,14 @@ test('profile dropdown - no duplicates after reseed and create', async ({ page }
   await page.addInitScript(() => {
     localStorage.setItem('finance_storage_mode', 'serverless')
   })
+
+  // Prevent destructive actions from hitting the real backend during parallel E2E runs
+  await page.route('**/api/profile/data', (route) =>
+    route.fulfill({ status: 200, json: { ok: true } })
+  )
+  await page.route('**/api/profiles/reseed-demo', (route) =>
+    route.fulfill({ status: 200, json: { ok: true } })
+  )
 
   await page.goto('http://localhost:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})

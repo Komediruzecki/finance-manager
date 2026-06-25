@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test'
 import { login, navigateToRoute } from './test-helpers'
 
-test.describe('Page Loading Tests', () => {
+test.describe('Page Loading Tests @smoke', () => {
   const pages = [
     'dashboard',
     'transactions',
@@ -59,7 +59,7 @@ test.describe('Page Loading Tests', () => {
   }
 })
 
-test.describe('Navigation Tests', () => {
+test.describe('Navigation Tests @smoke', () => {
   test('navigation links work correctly', async ({ page }) => {
     await login(page)
     await navigateToRoute(page, 'dashboard')

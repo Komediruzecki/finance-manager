@@ -3,14 +3,14 @@ import { expect, test } from '@playwright/test'
 test.describe('API Endpoint Verification', () => {
   test.beforeEach(async ({ request }) => {
     // Authenticate the request context for all API tests
-    await request.post('http://localhost:3847/api/auth/login', {
+    await request.post('http://127.0.0.1:3847/api/auth/login', {
       data: { username: 'person', password: 'something-like-this' },
       headers: { 'x-skip-ratelimit': 'true' },
     })
   })
 
   test('verify accounts API endpoint', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/accounts')
+    const response = await request.get('http://127.0.0.1:3847/api/accounts')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -23,7 +23,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify accounts POST endpoint', async ({ request }) => {
-    const response = await request.post('http://localhost:3847/api/accounts', {
+    const response = await request.post('http://127.0.0.1:3847/api/accounts', {
       data: {
         name: 'Test Account',
         type: 'checking',
@@ -39,21 +39,21 @@ test.describe('API Endpoint Verification', () => {
     // Cleanup
     const data = await response.json()
     if (Array.isArray(data) && data.length > 0 && data[0].name === 'Test Account') {
-      await request.delete(`http://localhost:3847/api/accounts/${data[0].id}`)
+      await request.delete(`http://127.0.0.1:3847/api/accounts/${data[0].id}`)
     }
   })
 
   test('verify accounts DELETE endpoint', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/accounts')
+    const response = await request.get('http://127.0.0.1:3847/api/accounts')
     const data = await response.json()
 
     if (Array.isArray(data) && data.length > 0) {
       const accountId = data[0].id
-      const deleteResponse = await request.delete(`http://localhost:3847/api/accounts/${accountId}`)
+      const deleteResponse = await request.delete(`http://127.0.0.1:3847/api/accounts/${accountId}`)
       expect(deleteResponse.status()).toBe(200)
 
       // Verify deletion
-      const listResponse = await request.get('http://localhost:3847/api/accounts')
+      const listResponse = await request.get('http://127.0.0.1:3847/api/accounts')
       const listData = await listResponse.json()
       const stillExists = listData.some((a: any) => a.id === accountId)
       expect(stillExists).toBeFalsy()
@@ -61,7 +61,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify transactions summary API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/transactions/summary', {
+    const response = await request.get('http://127.0.0.1:3847/api/transactions/summary', {
       headers: { 'x-profile-id': '1' },
     })
     expect(response.status()).toBe(200)
@@ -76,7 +76,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify transactions API pagination', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/transactions?limit=20', {
+    const response = await request.get('http://127.0.0.1:3847/api/transactions?limit=20', {
       headers: { 'x-profile-id': '1' },
     })
     expect(response.status()).toBe(200)
@@ -88,7 +88,7 @@ test.describe('API Endpoint Verification', () => {
 
   test('verify transactions filter by date', async ({ request }) => {
     const response = await request.get(
-      'http://localhost:3847/api/transactions?start_date=2026-01-01',
+      'http://127.0.0.1:3847/api/transactions?start_date=2026-01-01',
       { headers: { 'x-profile-id': '1' } }
     )
     expect(response.status()).toBe(200)
@@ -98,7 +98,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify housing API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/housing')
+    const response = await request.get('http://127.0.0.1:3847/api/housing')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -107,7 +107,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify loans API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/loans')
+    const response = await request.get('http://127.0.0.1:3847/api/loans')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -120,7 +120,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify bills API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/bills')
+    const response = await request.get('http://127.0.0.1:3847/api/bills')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -134,7 +134,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify goals API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/savings-goals')
+    const response = await request.get('http://127.0.0.1:3847/api/savings-goals')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -147,7 +147,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify categories API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/categories', {
+    const response = await request.get('http://127.0.0.1:3847/api/categories', {
       headers: { 'x-profile-id': '1' },
     })
     expect(response.status()).toBe(200)
@@ -163,7 +163,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify categories filter by type', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/categories?type=expense', {
+    const response = await request.get('http://127.0.0.1:3847/api/categories?type=expense', {
       headers: { 'x-profile-id': '1' },
     })
     expect(response.status()).toBe(200)
@@ -176,7 +176,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify budgets API', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/budgets')
+    const response = await request.get('http://127.0.0.1:3847/api/budgets')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -184,13 +184,13 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify backend is responding', async ({ page }) => {
-    const response = await page.goto('http://localhost:3847/api/profiles')
+    const response = await page.goto('http://127.0.0.1:3847/api/health')
     expect(response?.status()).toBe(200)
   })
 
   test('verify API has proper error handling', async ({ request }) => {
     // Test non-existent endpoint
-    const response = await request.get('http://localhost:3847/api/non-existent')
+    const response = await request.get('http://127.0.0.1:3847/api/non-existent')
     expect(response.status()).toBe(404)
 
     const data = await response.json()
@@ -198,7 +198,7 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify accounts search functionality', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/accounts?search=Checking')
+    const response = await request.get('http://127.0.0.1:3847/api/accounts?search=Checking')
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -206,12 +206,14 @@ test.describe('API Endpoint Verification', () => {
   })
 
   test('verify API rate limiting headers', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/accounts')
+    const response = await request.get('http://127.0.0.1:3847/api/accounts', {
+      headers: { 'x-test-rate-limit': 'true' },
+    })
     expect(response.headers()['x-ratelimit-limit']).toBeDefined()
   })
 
   test('verify API CORS headers', async ({ request }) => {
-    const response = await request.get('http://localhost:3847/api/accounts')
+    const response = await request.get('http://127.0.0.1:3847/api/accounts')
     // In development, CORS is enabled via the cors() middleware which sets allow-credentials
     expect(response.headers()['access-control-allow-credentials']).toBe('true')
   })
