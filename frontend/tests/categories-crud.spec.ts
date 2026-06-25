@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { login, navigateToRoute, getByTestId } from './test-helpers'
 
-test.describe('Categories CRUD Operations', () => {
+test.describe('Categories CRUD Operations @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
     await navigateToRoute(page, 'categories')
