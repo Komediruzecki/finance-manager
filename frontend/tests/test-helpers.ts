@@ -15,14 +15,15 @@ export async function login(page: any) {
   try {
     // Skip re-login if this context already has authentication + localStorage set up
     if (contextAuthSetup.has(ctx) && contextAuthSetup.get(ctx)) {
-      await page.goto('http://localhost:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.goto('http://127.0.0.1:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
       return
     }
 
     // Authenticate with backend, skipping rate limiter (header is recognized by test/dev backend)
-    const loginRes = await ctx.request.post('http://localhost:3800/api/auth/login', {
-      data: { username: 'maff', password: 'add2' },
+    const loginRes = await ctx.request.post('http://127.0.0.1:3800/api/auth/login', {
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+      data: { username: 'person', password: 'something-like-this' },
       headers: { 'x-skip-ratelimit': 'true' },
     })
     if (!loginRes.ok()) {
@@ -36,7 +37,7 @@ export async function login(page: any) {
       localStorage.setItem('finance_storage_mode', 'self-hosted')
     })
     contextAuthSetup.set(ctx, true)
-    await page.goto('http://localhost:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.goto('http://127.0.0.1:3800/', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
   } catch (error) {
     console.error('Login failed:', error)
@@ -48,7 +49,7 @@ export async function login(page: any) {
  * Navigate to a hash route and wait for content to load
  */
 export async function navigateToRoute(page: any, route: string) {
-  await page.goto(`http://localhost:3800/#${route}`, {
+  await page.goto(`http://127.0.0.1:3800/#${route}`, {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   })

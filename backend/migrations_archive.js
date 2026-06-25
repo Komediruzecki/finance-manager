@@ -1,3 +1,4 @@
+/* global db, seedThreeTierProfiles */
 function migrate() {
   // Create profiles table
   db.exec(`

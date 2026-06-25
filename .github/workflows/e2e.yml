@@ -30,7 +30,7 @@ jobs:
       - name: Start backend server
         run: |
           mkdir -p db assets
-          node backend/index.js &
+          NODE_ENV=test node backend/index.js &
           sleep 5
 
       - name: Build frontend

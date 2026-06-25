@@ -365,8 +365,8 @@ export default function Transactions() {
           valB = b.amount
           break
         case 'category':
-          valA = a.category_name
-          valB = b.category_name
+          valA = a.category_name ?? undefined
+          valB = b.category_name ?? undefined
           break
         default:
           return 0

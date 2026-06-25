@@ -6,19 +6,8 @@ const fs = require('fs');
 
 // Helper function to convert snake_case keys to camelCase
 function toCamelCase(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map((item) => toCamelCase(item));
-  }
-  if (obj !== null && typeof obj === 'object') {
-    const result = {};
-    Object.keys(obj).forEach((key) => {
-      const camelKey = key.replace(/_([a-z])/g, function (_, letter) {
-        return letter.toUpperCase();
-      });
-      result[camelKey] = toCamelCase(obj[key]);
-    });
-    return result;
-  }
+  // Frontend and localHandlers use snake_case directly
+  // Returning the object directly so that we don't break frontend types and validation schemas
   return obj;
 }
 

@@ -57,12 +57,12 @@
  */
 
 import { createMemo, createResource, createSignal, For } from 'solid-js'
-import BillCalendar from './BillCalendar'
 import ConfirmButton from '../components/ConfirmButton'
 import SubscriptionCard from '../components/SubscriptionCard'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
+import BillCalendar from './BillCalendar'
 import styles from './BillsPage.module.css'
 import { matchBrand } from './subscriptionBrands'
 import type { SubscriptionCardBill } from '../components/SubscriptionCard'

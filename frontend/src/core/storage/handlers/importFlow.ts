@@ -155,6 +155,7 @@ export async function importUpload(body: unknown): Promise<Response> {
       workbook = XLSX.read(buffer, { type: 'array' })
     }
 
+    // eslint-disable-next-line sonarjs/pseudo-random
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     importSessions.set(sessionId, { workbook, uploadedAt: Date.now() })
 
@@ -194,7 +195,7 @@ export async function importGoogleSheet(body: unknown): Promise<Response> {
   const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/)
   if (!idMatch) return json({ error: 'Invalid Google Sheets URL or ID' }, 400)
   const sheetId = idMatch[1]
-  const gidMatch = url.match(/[?&#]gid=([0-9]+)/)
+  const gidMatch = url.match(/[?&#]gid=(\d+)/)
   const gid = gidMatch ? gidMatch[1] : null
 
   // CSV parse helper (handles quoted fields, commas in values)

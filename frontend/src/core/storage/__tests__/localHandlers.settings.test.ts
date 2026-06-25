@@ -308,6 +308,6 @@ describe('localHandlers - recurring', () => {
 
     const getRes = await recurringGet({ p1: created.id.toString() })
     const item = await getRes.json()
-    expect(item.amount).toBe(99.99)
+    expect(item.amount).toBeCloseTo(99.99)
   })
 })

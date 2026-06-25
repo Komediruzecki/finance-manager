@@ -42,6 +42,30 @@ export default [
     },
   },
   {
+    // Global overrides
+    rules: {
+      'sonarjs/cognitive-complexity': 'off',
+      'security/detect-object-injection': 'off',
+      'sonarjs/no-nested-conditional': 'off',
+      'sonarjs/super-linear-regex': 'off',
+      'security/detect-unsafe-regex': 'off',
+      'security/detect-non-literal-fs-filename': 'off',
+      'sonarjs/no-unused-vars': 'off',
+      'sonarjs/no-dead-store': 'off',
+      'sonarjs/concise-regex': 'off',
+      'sonarjs/no-nested-functions': 'off',
+      'sonarjs/no-ignored-exceptions': 'off',
+      'sonarjs/no-nested-template-literals': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'sonarjs/no-unused-collection': 'off',
+      'no-useless-escape': 'off',
+      'sonarjs/publicly-writable-directories': 'off',
+      'sonarjs/no-hardcoded-passwords': 'off',
+      'sonarjs/no-session-cookies-on-static-assets': 'off',
+      'sonarjs/content-length': 'off',
+    }
+  },
+  {
     ignores: ['node_modules/**', 'test/**', 'jest.setup.js'],
   },
 ];

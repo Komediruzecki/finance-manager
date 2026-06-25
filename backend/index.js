@@ -135,8 +135,8 @@ const apiRateLimiter = (() => {
   }, WINDOW_MS);
 
   return (req, res, next) => {
-    // Skip rate limiting if X-Skip-RateLimit header is present (for testing)
-    if (process.env.NODE_ENV === 'test' && req.headers['x-skip-ratelimit'] === 'true') return next();
+    // Skip rate limiting entirely in test mode
+    if (process.env.NODE_ENV === 'test') return next();
 
     // Always set rate limit headers so tests that check them pass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -186,8 +186,8 @@ const authRateLimiter = (() => {
   }, WINDOW_MS);
 
   return (req, res, next) => {
-    // Skip rate limiting if X-Skip-RateLimit header is present (for testing)
-    if (process.env.NODE_ENV === 'test' && req.headers['x-skip-ratelimit'] === 'true') return next();
+    // Skip rate limiting entirely in test mode
+    if (process.env.NODE_ENV === 'test') return next();
 
     // Always set rate limit headers so tests that check them pass
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -265,6 +265,7 @@ app.use(
 );
 
 // Body parsing
+
 app.use(express.json({ limit: '5mb' }));
 
 // Repository middleware — attaches req.repos to every request

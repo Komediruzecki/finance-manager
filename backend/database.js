@@ -7,6 +7,7 @@ const DB_PATH = path.join(
   'db',
   process.env.NODE_ENV === 'test' ? 'test.db' : 'finance.db'
 );
+
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for better performance
