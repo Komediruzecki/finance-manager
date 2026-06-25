@@ -13,7 +13,7 @@ export default defineConfig({
   workers: os.cpus().length,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3800',
+    baseURL: 'http://127.0.0.1:3800',
     trace: 'retain-on-failure',
     headless: true,
     testIdAttribute: 'data-test-id',
@@ -28,8 +28,8 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3800',
-    reuseExistingServer: true,
+    url: 'http://127.0.0.1:3800',
+    reuseExistingServer: !process.env.CI,
     timeout: 120000,
     stdout: 'pipe',
     stderr: 'pipe',

@@ -89,7 +89,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cd frontend && node --input-type=cjs -e "
+          cd frontend && node -e "
             const fs = require('fs');
             const rtk = require('rtk-cli');
 
@@ -114,17 +114,19 @@ jobs:
               });
             };
 
-            if (process.env.RTK_GITHUB_TOKEN) {
-              try {
-                const status = await rtkExec('rtk git add -A');
-                const commitMsg = \`fix: auto-push ESLint fix via CI\`;
-                const commit = await rtkExec(\`rtk git commit -m "\${commitMsg}"\`);
-                const push = await rtkExec('rtk git push origin HEAD');
-                console.log('✓ Auto-push successful');
-              } catch (error) {
-                console.log('⚠ RTK push failed (expected on forks):', error.message);
+            (async () => {
+              if (process.env.RTK_GITHUB_TOKEN) {
+                try {
+                  const status = await rtkExec('rtk git add -A');
+                  const commitMsg = \`fix: auto-push ESLint fix via CI\`;
+                  const commit = await rtkExec(\`rtk git commit -m \"\${commitMsg}\"\`);
+                  const push = await rtkExec('rtk git push origin HEAD');
+                  console.log('✓ Auto-push successful');
+                } catch (error) {
+                  console.log('⚠ RTK push failed (expected on forks):', error.message);
+                }
+              } else {
+                console.log('⚠ RTK not configured, skipping auto-push');
               }
-            } else {
-              console.log('⚠ RTK not configured, skipping auto-push');
-            }
+            })();
           "

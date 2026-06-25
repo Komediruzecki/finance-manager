@@ -63,13 +63,13 @@ export interface Transaction {
   profile_id: ProfileId
   account_id?: number | null
   transfer_account_id?: number | null
-  category_name?: string
-  category_color?: string
+  category_name?: string | null
+  category_color?: string | null
   reconciled?: boolean
-  means_of_payment?: string
+  means_of_payment?: string | null
   tags?: Array<{ id: number; name: string; color: string }>
   receipt_id?: number | null
-  receipt_name?: string
+  receipt_name?: string | null
 }
 
 // ============ CATEGORIES ============
@@ -101,13 +101,13 @@ export interface CategoryMapping {
 export interface Account {
   id: AccountId
   name: string
-  bank_name?: string
+  bank_name?: string | null
   type: AccountType
   currency: Currency
   balance: number
-  notes?: string
+  notes?: string | null
   profile_id: ProfileId
-  starting_balance?: number
+  starting_balance?: number | null
   starting_date?: string | null
 }
 
@@ -179,7 +179,7 @@ export interface SavingsGoal {
   target_amount: number
   current_amount: number
   deadline: string | null
-  notes?: string
+  notes?: string | null
   created_at: string
   profile_id: ProfileId
 }
