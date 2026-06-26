@@ -119,9 +119,12 @@ later, alongside the wrangler/D1 setup.
 
 ## Open items
 
-- **Domain** — not purchased yet (name ideas in `~/.dotfiles/personal/finance/name-ideas.md`).
-  All domain/route/CORS spots in `wrangler.jsonc` are `PLACEHOLDER_DOMAIN` (and
-  `frontend/.env.dev` / `frontend/wrangler.jsonc` for the dev frontend).
+- **Domain** — `tokencircles.com`. Dev is wired and being brought up first: app at
+  `dev.tokencircles.com`, API at `api.dev.tokencircles.com` (cookie shared via
+  `COOKIE_DOMAIN=.dev.tokencircles.com`). Prod (`app.`/`api.tokencircles.com`) is filled but its
+  route stays commented until you deploy it. The zone must be active in Cloudflare so the
+  `custom_domain` routes can provision DNS on deploy. Remaining placeholders: D1 `database_id`s
+  (from `d1:create:dev`/`:prod`), `GOOGLE_CLIENT_ID`, optional `account_id`, and the secrets.
 - **Premium billing** — receipt upload is gated to `users.plan = 'premium'`, but there's no
   billing/upgrade flow yet; set a user premium manually for now
   (`UPDATE users SET plan='premium' WHERE id=?`). PDF reports + spreadsheet import are free.

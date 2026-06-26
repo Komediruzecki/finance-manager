@@ -14,11 +14,11 @@
   "env": {
     "dev": {
       "name": "finance-manager-dev",
-      // "routes": [{ "pattern": "dev.PLACEHOLDER_DOMAIN", "custom_domain": true }],
+      "routes": [{ "pattern": "dev.tokencircles.com", "custom_domain": true }],
     },
     "prod": {
       "name": "finance-manager",
-      // "routes": [{ "pattern": "app.PLACEHOLDER_DOMAIN", "custom_domain": true }],
+      // "routes": [{ "pattern": "app.tokencircles.com", "custom_domain": true }],
     },
   },
 }
