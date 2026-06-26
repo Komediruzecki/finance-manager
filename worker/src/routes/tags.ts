@@ -84,9 +84,22 @@ async function replaceTransactionTags(c: Context<AppEnv>): Promise<Response> {
   const txId = c.req.param('id')
   const tx = await db.first(c.env.DB, 'SELECT id FROM transactions WHERE id = ? AND profile_id = ?', txId, pid)
   if (!tx) throw new HttpError(404, 'Transaction not found')
+  // Only attach tags owned by this profile — prevents attaching another tenant's tag id,
+  // and the SELECT de-dupes so a repeated id can't violate the PK.
+  const ids = b.tagIds.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n))
+  let owned: Array<{ id: number }> = []
+  if (ids.length) {
+    const ph = ids.map(() => '?').join(',')
+    owned = await db.all<{ id: number }>(
+      c.env.DB,
+      `SELECT id FROM tags WHERE profile_id = ? AND id IN (${ph})`,
+      pid,
+      ...ids
+    )
+  }
   const stmts = [c.env.DB.prepare('DELETE FROM transaction_tags WHERE transaction_id = ?').bind(txId)]
-  for (const tagId of b.tagIds) {
-    stmts.push(c.env.DB.prepare('INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)').bind(txId, tagId))
+  for (const row of owned) {
+    stmts.push(c.env.DB.prepare('INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)').bind(txId, row.id))
   }
   await c.env.DB.batch(stmts)
   return c.json({ ok: true })
