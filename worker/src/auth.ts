@@ -64,14 +64,16 @@ async function verifyJwt(token: string, secret: string): Promise<JwtPayload | nu
   const parts = token.split('.')
   if (parts.length !== 3) return null
   const [header, body, sig] = parts
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    await hmacKey(secret),
-    b64urlDecode(sig),
-    encoder.encode(`${header}.${body}`)
-  )
-  if (!valid) return null
   try {
+    // b64urlDecode can throw on a malformed cookie — keep it inside the try so a garbage
+    // token fails closed to null (→ 401), never an unhandled 500.
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      await hmacKey(secret),
+      b64urlDecode(sig),
+      encoder.encode(`${header}.${body}`)
+    )
+    if (!valid) return null
     const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(body))) as JwtPayload
     if (typeof payload.sub !== 'string' || typeof payload.exp !== 'number') return null
     if (payload.exp < Math.floor(Date.now() / 1000)) return null
@@ -263,11 +265,18 @@ export async function resolveGoogleUser(db: D1Database, claims: GoogleClaims): P
     }
   }
 
+  // New Google user. Store the email only if verified (avoids a UNIQUE(email) collision
+  // with an existing account); username stays NULL for OAuth accounts.
+  const verified = claims.email_verified === 'true'
   const res = await db
     .prepare(
-      "INSERT INTO users (username, email, email_verified, auth_provider, provider_id) VALUES (?, ?, ?, 'google', ?)"
+      "INSERT INTO users (username, email, email_verified, auth_provider, provider_id) VALUES (NULL, ?, ?, 'google', ?)"
     )
-    .bind(claims.email ?? null, claims.email ?? null, claims.email_verified === 'true' ? 1 : 0, claims.sub)
+    .bind(verified ? (claims.email ?? null) : null, verified ? 1 : 0, claims.sub)
     .run()
-  return res.meta.last_row_id as number
+  const userId = res.meta.last_row_id as number
+  // Every user needs a default profile (the Express backend seeded one at bootstrap);
+  // without it every profile-scoped route would 403 immediately after sign-up.
+  await db.prepare('INSERT INTO profiles (name, user_id) VALUES (?, ?)').bind('Personal Profile', userId).run()
+  return userId
 }
