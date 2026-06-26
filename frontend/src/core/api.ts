@@ -122,7 +122,7 @@ export class ApiClient {
         const errorMsg = (errorData.error || errorData.message) ?? `HTTP ${response.status}`
 
         // Auth check 401s are expected when not logged in — don't log as errors
-        const isAuthEndpoint = endpoint === '/auth/check' || endpoint === '/auth/me'
+        const isAuthEndpoint = endpoint === '/auth/me'
         if (!isAuthEndpoint || response.status !== 401) {
           // Debug: trace POST /transactions failures
           if (endpoint === '/transactions' && method === 'POST') {
@@ -161,7 +161,7 @@ export class ApiClient {
       return rawData
     } catch (error) {
       // Don't re-log errors from auth endpoints — already handled above or expected
-      const isAuthEndpoint = endpoint === '/auth/check' || endpoint === '/auth/me'
+      const isAuthEndpoint = endpoint === '/auth/me'
       if (!isAuthEndpoint) {
         const message = error instanceof Error ? error.message : 'Network error'
         logger.error('API Request Failed', { endpoint, method, message }, 'ApiClient')
@@ -171,16 +171,6 @@ export class ApiClient {
   }
 
   // ============ AUTH ============
-
-  /**
-   * Login with username and password
-   */
-  async login(username: string, password: string): Promise<void> {
-    await this.request<unknown>('/auth/login', undefined, {
-      method: 'POST',
-      body: { username, password },
-    })
-  }
 
   /**
    * Check if a session cookie is valid (worker: GET /api/auth/me).
