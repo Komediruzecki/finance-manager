@@ -32,14 +32,15 @@
     "dev": {
       "name": "finance-manager-api-dev",
       // API on its own subdomain so the session cookie is same-site with the app
-      // (SameSite=Lax + COOKIE_DOMAIN). Uncomment + set once you own the domain.
-      // "routes": [{ "pattern": "api.dev.PLACEHOLDER_DOMAIN", "custom_domain": true }],
+      // (SameSite=Lax + COOKIE_DOMAIN). tokencircles.com must be an active zone in this
+      // Cloudflare account; `deploy:dev` then provisions the api.dev.tokencircles.com DNS.
+      "routes": [{ "pattern": "api.dev.tokencircles.com", "custom_domain": true }],
       "vars": {
         "APP_ENV": "dev",
         "GOOGLE_CLIENT_ID": "PLACEHOLDER.apps.googleusercontent.com",
-        "CORS_ORIGIN": "https://dev.PLACEHOLDER_DOMAIN",
-        "APP_ORIGINS": "https://dev.PLACEHOLDER_DOMAIN",
-        "COOKIE_DOMAIN": ".dev.PLACEHOLDER_DOMAIN",
+        "CORS_ORIGIN": "https://dev.tokencircles.com",
+        "APP_ORIGINS": "https://dev.tokencircles.com",
+        "COOKIE_DOMAIN": ".dev.tokencircles.com",
       },
       "d1_databases": [
         {
@@ -54,13 +55,14 @@
     // ── PROD  →  api.<domain>  (deploy: pnpm run deploy:prod) ────────────────────
     "prod": {
       "name": "finance-manager-api",
-      // "routes": [{ "pattern": "api.PLACEHOLDER_DOMAIN", "custom_domain": true }],
+      // Uncomment for the prod deploy (api.tokencircles.com). Dev is being brought up first.
+      // "routes": [{ "pattern": "api.tokencircles.com", "custom_domain": true }],
       "vars": {
         "APP_ENV": "production",
         "GOOGLE_CLIENT_ID": "PLACEHOLDER.apps.googleusercontent.com",
-        "CORS_ORIGIN": "https://app.PLACEHOLDER_DOMAIN",
-        "APP_ORIGINS": "https://app.PLACEHOLDER_DOMAIN",
-        "COOKIE_DOMAIN": ".PLACEHOLDER_DOMAIN",
+        "CORS_ORIGIN": "https://app.tokencircles.com",
+        "APP_ORIGINS": "https://app.tokencircles.com",
+        "COOKIE_DOMAIN": ".tokencircles.com",
       },
       "d1_databases": [
         {
