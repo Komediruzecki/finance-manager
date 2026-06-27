@@ -174,17 +174,17 @@ transactionsRoutes.get('/api/transactions', requireAuth, async (c) => {
   // Attach tags in ONE query (was N+1 — a tag query per row, which made large pages time out:
   // ~4800 transactions = ~4800 sequential tag SELECTs).
   if (rows.length) {
-    const txIds = rows.map((r) => r.id);
-    const txPh = txIds.map(() => '?').join(',');
     const profPh = pids.map(() => '?').join(',');
+    // Profile-scoped (NOT a per-row IN list of every id) so we never exceed D1's bound-variable
+    // limit. transaction_tags is small (only tagged rows exist), so this stays one cheap query.
     const tagRows = await db.all<TagRow & { transaction_id: number }>(
       c.env.DB,
       `SELECT tt.transaction_id, t.id, t.name, t.color
          FROM tags t
          JOIN transaction_tags tt ON t.id = tt.tag_id
-         WHERE tt.transaction_id IN (${txPh}) AND t.profile_id IN (${profPh})
+         JOIN transactions tx ON tx.id = tt.transaction_id
+         WHERE tx.profile_id IN (${profPh})
          ORDER BY t.name`,
-      ...txIds,
       ...pids
     );
     const byTx = new Map<number, TagRow[]>();
