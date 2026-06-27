@@ -41,7 +41,7 @@
         "CORS_ORIGIN": "https://dev.tokencircles.com",
         "APP_ORIGINS": "https://dev.tokencircles.com",
         "COOKIE_DOMAIN": ".dev.tokencircles.com",
-        "EMAIL_FROM": "Token Circles <noreply@tokencircles.com>",
+        "EMAIL_FROM": "Token Circles <hello@tokencircles.com>",
       },
       "d1_databases": [
         {

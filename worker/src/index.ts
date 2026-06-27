@@ -44,7 +44,7 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string; // secret — Stripe webhook signing secret (whsec_…)
   STRIPE_PRICE_ID?: string; // var — recurring Price id (price_…) for the premium plan
   RESEND_API_KEY?: string; // secret — Resend API key for reminder emails (unset → emails skip)
-  EMAIL_FROM?: string; // var — From address, e.g. "Token Circles <noreply@tokencircles.com>"
+  EMAIL_FROM?: string; // var — From address, e.g. "Token Circles <hello@tokencircles.com>" (repliable, not no-reply)
   SUPPORT_EMAIL?: string; // secret — private inbox the contact form relays to (unset → disabled)
 }
 
