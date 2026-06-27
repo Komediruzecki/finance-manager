@@ -37,6 +37,7 @@ export default function SupportContact(props: { label?: string; prefillEmail?: s
   const [message, setMessage] = createSignal('')
   const [status, setStatus] = createSignal<'idle' | 'sending' | 'sent'>('idle')
   const [error, setError] = createSignal('')
+  const [ticketId, setTicketId] = createSignal('')
 
   const send = async (e: Event) => {
     e.preventDefault()
@@ -56,6 +57,7 @@ export default function SupportContact(props: { label?: string; prefillEmail?: s
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your message')
+      setTicketId(typeof data.ticketId === 'string' ? data.ticketId : '')
       setStatus('sent')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send your message')
@@ -139,6 +141,11 @@ export default function SupportContact(props: { label?: string; prefillEmail?: s
                   >
                     Thanks — your message is on its way. We'll reply to your email.
                   </p>
+                  <Show when={ticketId()}>
+                    <p style={{ 'font-size': '13px', margin: '0 0 16px', color: 'var(--text)' }}>
+                      Your reference number: <strong>{ticketId()}</strong>
+                    </p>
+                  </Show>
                   <div style={{ display: 'flex', 'justify-content': 'flex-end' }}>
                     <button
                       type="button"
