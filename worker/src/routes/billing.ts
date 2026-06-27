@@ -37,11 +37,48 @@ async function stripePost(
   return data;
 }
 
-// POST /api/billing/checkout — start a subscription checkout; returns { url } to redirect to.
+// ── Per-tier price mapping ───────────────────────────────────────────────────
+type Interval = 'monthly' | 'annual';
+type PaidPlan = 'basic' | 'advanced' | 'ultimate';
+const PAID: PaidPlan[] = ['basic', 'advanced', 'ultimate'];
+
+function paidPlan(v: unknown): PaidPlan | null {
+  return v === 'basic' || v === 'advanced' || v === 'ultimate' ? v : null;
+}
+// The Stripe Price id for a tier×interval. The legacy single STRIPE_PRICE_ID is treated as
+// Advanced monthly so existing setups keep working ('premium' still maps to 'advanced' in plans.ts).
+function priceId(env: AppEnv['Bindings'], plan: string, interval: Interval): string | undefined {
+  const m: Record<string, { monthly?: string; annual?: string }> = {
+    basic: { monthly: env.STRIPE_PRICE_BASIC_MONTHLY, annual: env.STRIPE_PRICE_BASIC_ANNUAL },
+    advanced: {
+      monthly: env.STRIPE_PRICE_ADVANCED_MONTHLY ?? env.STRIPE_PRICE_ID,
+      annual: env.STRIPE_PRICE_ADVANCED_ANNUAL,
+    },
+    ultimate: {
+      monthly: env.STRIPE_PRICE_ULTIMATE_MONTHLY,
+      annual: env.STRIPE_PRICE_ULTIMATE_ANNUAL,
+    },
+  };
+  return m[plan]?.[interval];
+}
+function planForPrice(env: AppEnv['Bindings'], id: string): PaidPlan | null {
+  for (const p of PAID)
+    if (priceId(env, p, 'monthly') === id || priceId(env, p, 'annual') === id) return p;
+  return null;
+}
+function availablePlans(env: AppEnv['Bindings']): PaidPlan[] {
+  return PAID.filter((p) => priceId(env, p, 'monthly') || priceId(env, p, 'annual'));
+}
+
+// POST /api/billing/checkout — start a subscription checkout for { plan, interval }; returns { url }.
 billingRoutes.post('/api/billing/checkout', requireAuth, async (c) => {
-  if (!c.env.STRIPE_SECRET_KEY || !c.env.STRIPE_PRICE_ID) {
-    throw new HttpError(501, 'Billing is not configured');
-  }
+  if (!c.env.STRIPE_SECRET_KEY) throw new HttpError(501, 'Billing is not configured');
+  const b = (await c.req.json().catch(() => ({}))) as { plan?: string; interval?: string };
+  const plan = paidPlan(b.plan) ?? 'advanced'; // default to Advanced (the legacy single price)
+  const interval: Interval = b.interval === 'annual' ? 'annual' : 'monthly';
+  const price = priceId(c.env, plan, interval);
+  if (!price) throw new HttpError(501, `The ${plan} (${interval}) plan isn't available yet`);
+
   const userId = c.get('userId');
   const u = await db.first<{ email: string | null; stripe_customer_id: string | null }>(
     c.env.DB,
@@ -51,9 +88,11 @@ billingRoutes.post('/api/billing/checkout', requireAuth, async (c) => {
   const origin = c.env.CORS_ORIGIN ?? new URL(c.req.url).origin;
   const params: Record<string, string> = {
     mode: 'subscription',
-    'line_items[0][price]': c.env.STRIPE_PRICE_ID,
+    'line_items[0][price]': price,
     'line_items[0][quantity]': '1',
     client_reference_id: String(userId),
+    'metadata[plan]': plan,
+    'subscription_data[metadata][plan]': plan, // so subscription.updated/deleted know the tier
     success_url: `${origin}/?billing=success`,
     cancel_url: `${origin}/?billing=cancel`,
   };
@@ -93,7 +132,8 @@ billingRoutes.get('/api/billing/status', requireAuth, async (c) => {
     plan: u?.plan ?? 'free',
     status: u?.subscription_status ?? null,
     renews_at: u?.plan_renews_at ?? null,
-    configured: !!(c.env.STRIPE_SECRET_KEY && c.env.STRIPE_PRICE_ID),
+    configured: !!c.env.STRIPE_SECRET_KEY,
+    availablePlans: availablePlans(c.env), // which paid tiers have a Price configured
   });
 });
 
@@ -134,11 +174,14 @@ billingRoutes.post('/api/billing/webhook', async (c) => {
   switch (event.type) {
     case 'checkout.session.completed': {
       const userId = obj.client_reference_id;
+      const plan = paidPlan((obj.metadata as { plan?: string } | undefined)?.plan) ?? 'premium';
       if (userId) {
         await db.run(
           c.env.DB,
-          "UPDATE users SET stripe_customer_id = ?, plan = 'premium', subscription_status = 'active' WHERE id = ?",
+          'UPDATE users SET stripe_customer_id = ?, plan = ?, subscription_status = ? WHERE id = ?',
           String(obj.customer),
+          plan,
+          'active',
           Number(userId)
         );
       }
@@ -147,9 +190,13 @@ billingRoutes.post('/api/billing/webhook', async (c) => {
     case 'customer.subscription.updated': {
       const status = String(obj.status);
       const active = status === 'active' || status === 'trialing';
+      const metaPlan = paidPlan((obj.metadata as { plan?: string } | undefined)?.plan);
+      const priceIdInSub = (obj.items as { data?: Array<{ price?: { id?: string } }> } | undefined)
+        ?.data?.[0]?.price?.id;
+      const subPlan = priceIdInSub ? planForPrice(c.env, priceIdInSub) : null;
       await setPlanByCustomer(
         String(obj.customer),
-        active ? 'premium' : 'free',
+        active ? (metaPlan ?? subPlan ?? 'premium') : 'free',
         status,
         (obj.current_period_end as number | undefined) ?? null
       );

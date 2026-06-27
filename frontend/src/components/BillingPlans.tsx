@@ -62,8 +62,9 @@ function DashIcon() {
 export default function BillingPlans(props: {
   currentPlan: () => string
   configured: () => boolean
+  availablePlans: () => string[]
   busy: () => boolean
-  onUpgrade: (planId: string) => void
+  onUpgrade: (planId: string, interval: 'monthly' | 'annual') => void
   onManage: () => void
 }) {
   const [plans, setPlans] = createSignal<PlanDef[]>([])
@@ -255,12 +256,20 @@ export default function BillingPlans(props: {
                     <button
                       type="button"
                       onClick={() => {
-                        props.onUpgrade(p.id)
+                        props.onUpgrade(p.id, interval())
                       }}
-                      disabled={props.busy() || !props.configured()}
+                      disabled={
+                        props.busy() ||
+                        !props.configured() ||
+                        !props.availablePlans().includes(p.id)
+                      }
                       style={ctaStyle(recommended)}
                     >
-                      {props.busy() ? 'Redirecting…' : 'Upgrade'}
+                      {props.busy()
+                        ? 'Redirecting…'
+                        : props.configured() && props.availablePlans().includes(p.id)
+                          ? 'Upgrade'
+                          : 'Coming soon'}
                     </button>
                   </Show>
                 </div>
@@ -276,8 +285,7 @@ export default function BillingPlans(props: {
         </p>
       </Show>
       <p style={{ 'font-size': '12px', color: 'var(--text-secondary)', margin: '10px 0 0' }}>
-        Choosing a specific paid tier at checkout is coming soon; upgrading currently activates the
-        paid plan. {notices().beta} {notices().fairUse}
+        {notices().beta} {notices().fairUse}
       </p>
     </div>
   )
