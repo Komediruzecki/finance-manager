@@ -6,6 +6,9 @@ import { adapter, idParam, json, notFound, ok } from './helpers'
 
 export async function profilesList(): Promise<Response> {
   const db = await getDB()
+  // Ensure the first-run demo seed has happened before reading, so every caller (the sidebar
+  // dropdown and the Settings household view) sees the same data regardless of call timing.
+  await adapter.getCurrentProfileId().catch(() => {})
   const profiles = await db.getAll('profiles')
 
   // Compute per-profile counts for the Settings Household Overview table
