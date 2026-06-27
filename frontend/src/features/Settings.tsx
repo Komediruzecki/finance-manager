@@ -27,6 +27,7 @@
  * Application configuration and preferences with storage switching
  */
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import BillingPlans from '../components/BillingPlans'
 import ChangelogModal from '../components/ChangelogModal'
 import DangerZone from '../components/DangerZone'
 import { LogViewer } from '../components/LogViewer'
@@ -645,48 +646,28 @@ export default function Settings() {
         </div>
         <div class={styles.settingsGrid}>
           <div class={styles.settingsCol}>
-            <Show when={activeTab() === 'billing' && storageMode() === 'self-hosted' && billing()}>
+            <Show when={activeTab() === 'billing' && storageMode() === 'self-hosted'}>
               <div class={styles.card}>
                 <div class={styles.settingsSection}>
                   <div class={styles.settingsSectionTitle}>Plan &amp; Billing</div>
-                  <p style="margin: 4px 0 12px; color: var(--text-secondary); font-size: 13px;">
-                    Current plan:{' '}
+                  <p style="margin: 4px 0 16px; color: var(--text-secondary); font-size: 13px;">
+                    You're on the{' '}
                     <strong style="color: var(--text);">
-                      {billing()!.plan === 'premium' ? 'Premium' : 'Free'}
-                    </strong>
-                    {billing()!.status ? ` (${billing()!.status})` : ''}
+                      {billing()?.plan === 'premium' ? 'Advanced' : 'Free'}
+                    </strong>{' '}
+                    plan{billing()?.status ? ` (${billing()!.status})` : ''}.
                   </p>
-                  <Show when={!billing()!.configured}>
-                    <p style="color: var(--text-secondary); font-size: 13px;">
-                      Billing isn't configured on the server yet.
-                    </p>
-                  </Show>
-                  <Show when={billing()!.configured && billing()!.plan !== 'premium'}>
-                    <button
-                      class={styles.btnPrimary}
-                      onclick={() =>
-                        redirectToStripe('/api/billing/checkout', 'Could not start checkout')
-                      }
-                      disabled={billingBusy()}
-                    >
-                      {billingBusy() ? 'Redirecting…' : 'Upgrade to Premium'}
-                    </button>
-                  </Show>
-                  <Show when={billing()!.configured && billing()!.plan === 'premium'}>
-                    <button
-                      class={styles.btnSecondary}
-                      onclick={() =>
-                        redirectToStripe('/api/billing/portal', 'Could not open billing portal')
-                      }
-                      disabled={billingBusy()}
-                    >
-                      {billingBusy() ? 'Redirecting…' : 'Manage billing'}
-                    </button>
-                  </Show>
-                  <p style="margin-top:12px; color: var(--text-secondary); font-size: 12px; line-height:1.5;">
-                    Plans, prices and limits may change at any time during beta. Ultimate
-                    &ldquo;unlimited&rdquo; usage is subject to fair-use limits.
-                  </p>
+                  <BillingPlans
+                    currentPlan={() => billing()?.plan ?? 'free'}
+                    configured={() => billing()?.configured ?? false}
+                    busy={billingBusy}
+                    onUpgrade={() =>
+                      redirectToStripe('/api/billing/checkout', 'Could not start checkout')
+                    }
+                    onManage={() =>
+                      redirectToStripe('/api/billing/portal', 'Could not open billing portal')
+                    }
+                  />
                 </div>
               </div>
             </Show>
