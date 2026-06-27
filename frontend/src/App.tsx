@@ -48,7 +48,7 @@ import {
   spotlightStep,
   tourSteps,
 } from './core/spotlightStore'
-import { getStorageMode } from './core/storage/storageFactory'
+import { getStorageMode, setStorageMode } from './core/storage/storageFactory'
 import { pages as allPages } from './router.tsx'
 import type { PageName } from './router.tsx'
 import type { Category, Profile } from './types/models'
@@ -218,6 +218,13 @@ export function App() {
   }
 
   const handleLogin = () => {
+    // From demo (client-only) mode, "Sign in" means leaving the demo for a real account:
+    // switch to server mode and reload into the full login gate (email/password + Google).
+    if (!serverMode) {
+      setStorageMode('self-hosted')
+      window.location.reload()
+      return
+    }
     setIsLoginModalOpen(true)
   }
 
