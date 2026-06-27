@@ -221,6 +221,7 @@ export default function Settings() {
     status: string | null
     renews_at: string | null
     configured: boolean
+    availablePlans?: string[]
   } | null>(null)
   const [billingBusy, setBillingBusy] = createSignal(false)
   const loadBilling = async () => {
@@ -231,10 +232,16 @@ export default function Settings() {
       setBilling(null)
     }
   }
-  const redirectToStripe = async (path: string, failMsg: string) => {
+  const redirectToStripe = async (path: string, failMsg: string, body?: unknown) => {
     setBillingBusy(true)
     try {
-      const res = await apiFetch(path, { method: 'POST', credentials: 'include' })
+      const res = await apiFetch(path, {
+        method: 'POST',
+        credentials: 'include',
+        ...(body
+          ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+          : {}),
+      })
       const data = await res.json()
       if (res.ok && data.url) window.location.href = data.url
       else throw new Error(data.error || failMsg)
@@ -660,9 +667,13 @@ export default function Settings() {
                   <BillingPlans
                     currentPlan={() => billing()?.plan ?? 'free'}
                     configured={() => billing()?.configured ?? false}
+                    availablePlans={() => billing()?.availablePlans ?? []}
                     busy={billingBusy}
-                    onUpgrade={() =>
-                      redirectToStripe('/api/billing/checkout', 'Could not start checkout')
+                    onUpgrade={(plan, interval) =>
+                      redirectToStripe('/api/billing/checkout', 'Could not start checkout', {
+                        plan,
+                        interval,
+                      })
                     }
                     onManage={() =>
                       redirectToStripe('/api/billing/portal', 'Could not open billing portal')

@@ -43,7 +43,13 @@ export interface Env {
   RECEIPTS?: R2Bucket; // R2 bucket for premium receipt files (optional until the bucket exists)
   STRIPE_SECRET_KEY?: string; // secret — Stripe API key (sk_…); unset → billing endpoints 501
   STRIPE_WEBHOOK_SECRET?: string; // secret — Stripe webhook signing secret (whsec_…)
-  STRIPE_PRICE_ID?: string; // var — recurring Price id (price_…) for the premium plan
+  STRIPE_PRICE_ID?: string; // var — legacy single Price id; treated as Advanced monthly
+  STRIPE_PRICE_BASIC_MONTHLY?: string; // var — per-tier Price ids (set when created in Stripe)
+  STRIPE_PRICE_BASIC_ANNUAL?: string;
+  STRIPE_PRICE_ADVANCED_MONTHLY?: string;
+  STRIPE_PRICE_ADVANCED_ANNUAL?: string;
+  STRIPE_PRICE_ULTIMATE_MONTHLY?: string;
+  STRIPE_PRICE_ULTIMATE_ANNUAL?: string;
   RESEND_API_KEY?: string; // secret — Resend API key for reminder emails (unset → emails skip)
   EMAIL_FROM?: string; // var — From address, e.g. "Token Circles <hello@tokencircles.com>" (repliable, not no-reply)
   SUPPORT_EMAIL?: string; // secret — private inbox the contact form relays to (unset → disabled)
