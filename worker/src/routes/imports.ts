@@ -303,6 +303,9 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   const b = (await c.req.json()) as Record<string, any>;
   const { rows, mapping, categoryTypes, accountTypes, accountBalances, accountBalanceDates } = b;
   if (!rows || !mapping) throw new HttpError(400, 'Missing data');
+  // Stable client-supplied id for this import; stamped on every row so a retry is idempotent
+  // (the prior attempt's rows are deleted first). Null for old clients → unchanged behaviour.
+  const importId = typeof b.importId === 'string' && b.importId ? b.importId : null;
 
   const DB = c.env.DB;
   const today = () => new Date().toISOString().split('T')[0];
@@ -401,8 +404,8 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   // Build all transaction inserts, then flush in chunks — one D1 round-trip per chunk instead of
   // one per row (the old per-row loop was the hang for large imports).
   const TX_SQL = `INSERT INTO transactions (description, amount, date, beneficiary, payor, category_id,
-        currency, amount_local, means_of_payment, exchange_rate, type, notes, profile_id, account_id, transfer_account_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        currency, amount_local, means_of_payment, exchange_rate, type, notes, profile_id, account_id, transfer_account_id, import_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const txStmts: D1PreparedStatement[] = [];
 
   for (const row of rows as Array<Record<string, any>>) {
@@ -470,11 +473,22 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
         pick(row, mapping, 'notes') || '',
         pid,
         accountId,
-        transferAccountId
+        transferAccountId,
+        importId
       )
     );
   }
 
+  // Idempotent retry: drop any rows a prior (partial) run of THIS import created before re-inserting,
+  // so a retry can't duplicate transactions. Balances are recomputed from the survivors below.
+  if (importId) {
+    await db.run(
+      DB,
+      'DELETE FROM transactions WHERE profile_id = ? AND import_id = ?',
+      pid,
+      importId
+    );
+  }
   const CHUNK = 100;
   for (let i = 0; i < txStmts.length; i += CHUNK) {
     await DB.batch(txStmts.slice(i, i + CHUNK));
