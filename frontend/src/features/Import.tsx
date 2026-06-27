@@ -217,6 +217,9 @@ export default function Import() {
   // Loading/error
   const [loading, setLoading] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
+  // Stable id for the current import so a retry after a failed/partial /execute is idempotent
+  // server-side (the worker removes rows already inserted for this id). Cleared on reset.
+  const [importId, setImportId] = createSignal('')
   const [resultMessage, setResultMessage] = createSignal<{
     type: 'success' | 'error'
     text: string
@@ -309,6 +312,7 @@ export default function Import() {
     setCurrentPage(1)
     setError(null)
     setResultMessage(null)
+    setImportId('')
   }
 
   // File upload
@@ -505,6 +509,12 @@ export default function Import() {
         }
       }
 
+      // Reuse a stable id across retries so the worker can de-dupe a re-run of the same import.
+      let iid = importId()
+      if (!iid) {
+        iid = window.crypto.randomUUID()
+        setImportId(iid)
+      }
       const response = await apiFetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...profileHeaders() },
@@ -515,6 +525,7 @@ export default function Import() {
           accountTypes: accountTypes(),
           accountBalances: accountBalances(),
           accountBalanceDates: accountBalanceDates(),
+          importId: iid,
         }),
       })
 
