@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Relicensed the project from MIT to the GNU Affero General Public License v3.0 (AGPL-3.0).
+- Vendored the SheetJS (`xlsx`) tarball into `vendor/` and reference it via a `file:` dependency, so installs no longer depend on the SheetJS CDN being reachable.
+- The in-app changelog now renders the repository `CHANGELOG.md` directly (single source of truth) instead of a separate hardcoded copy.
 - Improved public repo readiness: CODE_OF_CONDUCT, CONTRIBUTING, issue/PR templates
 - Cleaned docs/ directory structure with organized specs, postmortems, and archive
 - Replaced internal todo.md with public ROADMAP.md
