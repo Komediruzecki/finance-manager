@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Cloudflare Worker + D1 API scaffold for Finance Manager (preparation; not yet live).",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "wrangler dev",
     "deploy:dev": "wrangler deploy --env dev",
@@ -23,7 +24,7 @@
   "dependencies": {
     "hono": "^4.6.0",
     "pdf-lib": "^1.17.1",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "file:../vendor/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

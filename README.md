@@ -1,8 +1,8 @@
 # Token Circles — open-source personal finance manager
 
 <p align="center">
-  <img src="https://img.shields.io/github/package-json/v/Komediruzecki/finance-manager?filename=frontend%2Fpackage.json&label=version&color=blue" alt="Version">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT">
+  <img src="https://img.shields.io/badge/version-5.1.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-green" alt="License AGPL-3.0">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
 </p>
 
@@ -69,4 +69,6 @@ Run your own backend on Cloudflare's free tier (Workers + D1 + R2). See **[worke
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+[GNU AGPL-3.0](./LICENSE) — Copyright (C) 2026 Komediruzecki.
+
+Token Circles is free software: use, study, share, and modify it under the AGPL. If you run a modified version as a network service, you must offer its users the corresponding source (AGPL §13).

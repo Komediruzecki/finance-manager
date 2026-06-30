@@ -4,15 +4,11 @@
     "title": "Finance Manager API",
     "description": "REST API for the Finance Manager personal finance tracker. All endpoints are profile-scoped via the `X-Profile-Id` header.",
     "version": "1.1.0",
-    "license": { "name": "MIT" },
+    "license": { "name": "AGPL-3.0-only" },
     "contact": { "url": "https://github.com/Komediruzecki/finance-manager" }
   },
-  "servers": [
-    { "url": "http://localhost:3847", "description": "Local development" }
-  ],
-  "security": [
-    { "cookieAuth": [] }
-  ],
+  "servers": [{ "url": "http://localhost:3847", "description": "Local development" }],
+  "security": [{ "cookieAuth": [] }],
   "components": {
     "securitySchemes": {
       "cookieAuth": {
@@ -340,14 +336,27 @@
           { "$ref": "#/components/parameters/profileId" },
           { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
           { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "category_ids", "in": "query", "schema": { "type": "string" }, "description": "Comma-separated category IDs" },
-          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["income", "expense", "transfer"] } },
+          {
+            "name": "category_ids",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Comma-separated category IDs"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["income", "expense", "transfer"] }
+          },
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "reconciled", "in": "query", "schema": { "type": "integer" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer" } },
           { "name": "offset", "in": "query", "schema": { "type": "integer" } },
           { "name": "sort", "in": "query", "schema": { "type": "string" } },
-          { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"] } },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"] }
+          },
           { "name": "tag_ids", "in": "query", "schema": { "type": "string" } }
         ],
         "responses": {
@@ -358,7 +367,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "rows": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } },
+                    "rows": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Transaction" }
+                    },
                     "total": { "type": "integer" },
                     "limit": { "type": "integer" },
                     "offset": { "type": "integer" }
@@ -572,9 +584,7 @@
       "get": {
         "tags": ["Transactions"],
         "summary": "Reconciliation summary",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Reconciliation counts and totals" } }
       }
     },
@@ -618,9 +628,7 @@
       "get": {
         "tags": ["Accounts"],
         "summary": "List accounts",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of accounts" } }
       },
       "post": {
@@ -731,9 +739,7 @@
       "get": {
         "tags": ["Accounts"],
         "summary": "Net worth timeline",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Timeline of net worth by date" } }
       }
     },
@@ -866,9 +872,7 @@
       "get": {
         "tags": ["Budgets"],
         "summary": "List budgets",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of budgets with category info" } }
       },
       "post": {
@@ -1002,9 +1006,7 @@
       "post": {
         "tags": ["Budgets"],
         "summary": "Allocate zero-based budget",
-        "parameters": [
-          { "name": "month", "in": "query", "schema": { "type": "string" } }
-        ],
+        "parameters": [{ "name": "month", "in": "query", "schema": { "type": "string" } }],
         "requestBody": {
           "required": true,
           "content": {
@@ -1088,9 +1090,7 @@
       "get": {
         "tags": ["Bills"],
         "summary": "Upcoming bills",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Upcoming bills with due info" } }
       }
     },
@@ -1126,9 +1126,7 @@
       "get": {
         "tags": ["Bills"],
         "summary": "Bills summary",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Bills summary" } }
       }
     },
@@ -1136,9 +1134,7 @@
       "get": {
         "tags": ["Bills"],
         "summary": "Bill notifications",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Bill notifications" } }
       }
     },
@@ -1146,9 +1142,7 @@
       "get": {
         "tags": ["Recurring"],
         "summary": "List recurring transactions",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of active recurring transactions" } }
       },
       "post": {
@@ -1182,9 +1176,7 @@
       "get": {
         "tags": ["Recurring"],
         "summary": "Upcoming recurring transactions",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Upcoming recurring with category breakdown" } }
       }
     },
@@ -1228,9 +1220,7 @@
       "get": {
         "tags": ["Tags"],
         "summary": "List tags",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of tags" } }
       },
       "post": {
@@ -1251,7 +1241,9 @@
             }
           }
         },
-        "responses": { "201": { "description": "Tag created with auto-assigned color if none provided" } }
+        "responses": {
+          "201": { "description": "Tag created with auto-assigned color if none provided" }
+        }
       }
     },
     "/api/tags/{id}": {
@@ -1299,9 +1291,7 @@
       "get": {
         "tags": ["Loans"],
         "summary": "List loans",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of loans with prepayment totals" } }
       },
       "post": {
@@ -1362,7 +1352,9 @@
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
-        "responses": { "200": { "description": "Amortization schedule with prepayment comparison" } }
+        "responses": {
+          "200": { "description": "Amortization schedule with prepayment comparison" }
+        }
       }
     },
     "/api/loans/{id}/rates": {
@@ -1420,9 +1412,7 @@
       "get": {
         "tags": ["Savings Goals"],
         "summary": "List savings goals",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of savings goals" } }
       },
       "post": {
@@ -1532,9 +1522,7 @@
       "get": {
         "tags": ["Dashboard"],
         "summary": "Net worth",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Net worth with account breakdown" } }
       }
     },
@@ -1565,9 +1553,7 @@
       "get": {
         "tags": ["Analytics"],
         "summary": "Distinct years with data",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "List of years" } }
       }
     },
@@ -1613,19 +1599,17 @@
       "get": {
         "tags": ["Counterparties"],
         "summary": "List counterparties",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
-        "responses": { "200": { "description": "Array of counterparties with incoming/outgoing/net" } }
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
+        "responses": {
+          "200": { "description": "Array of counterparties with incoming/outgoing/net" }
+        }
       }
     },
     "/api/housing": {
       "get": {
         "tags": ["Housing"],
         "summary": "List housing entries",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Housing entries with total monthly" } }
       },
       "post": {
@@ -1675,9 +1659,7 @@
       "get": {
         "tags": ["Portfolio"],
         "summary": "List holdings",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Holdings with current prices and market values" } }
       },
       "post": {
@@ -1726,9 +1708,7 @@
       "get": {
         "tags": ["Portfolio"],
         "summary": "Portfolio summary",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Total value, gains, allocation" } }
       }
     },
@@ -1754,9 +1734,7 @@
       "get": {
         "tags": ["Receipts"],
         "summary": "List receipts",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of receipts" } }
       },
       "post": {
@@ -1861,7 +1839,12 @@
         "tags": ["Receipts"],
         "summary": "Get receipt by transaction",
         "parameters": [
-          { "name": "transactionId", "in": "path", "required": true, "schema": { "type": "integer" } }
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
         ],
         "responses": { "200": { "description": "Receipt for transaction" } }
       }
@@ -1873,7 +1856,9 @@
         "parameters": [
           { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "Receipt image file", "content": { "image/*": {} } } }
+        "responses": {
+          "200": { "description": "Receipt image file", "content": { "image/*": {} } }
+        }
       }
     },
     "/api/reports/monthly-pdf": {
@@ -1973,9 +1958,7 @@
       "get": {
         "tags": ["Reports"],
         "summary": "Saved reports",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Array of saved reports" } }
       }
     },
@@ -2039,9 +2022,7 @@
       "get": {
         "tags": ["Retirement"],
         "summary": "List retirement goals",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Goals and settings" } }
       },
       "post": {
@@ -2112,9 +2093,7 @@
       "get": {
         "tags": ["Calculators"],
         "summary": "Emergency fund calculation",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Emergency fund status" } }
       }
     },
@@ -2309,9 +2288,7 @@
         "tags": ["Tax"],
         "summary": "Tax estimate",
         "security": [{ "cookieAuth": [] }],
-        "parameters": [
-          { "name": "export", "in": "query", "schema": { "type": "string" } }
-        ],
+        "parameters": [{ "name": "export", "in": "query", "schema": { "type": "string" } }],
         "requestBody": {
           "required": true,
           "content": {
@@ -2321,7 +2298,10 @@
                 "required": ["annualIncome", "filingStatus", "state"],
                 "properties": {
                   "annualIncome": { "type": "number" },
-                  "filingStatus": { "type": "string", "enum": ["single", "married_joint", "head_of_household"] },
+                  "filingStatus": {
+                    "type": "string",
+                    "enum": ["single", "married_joint", "head_of_household"]
+                  },
                   "state": { "type": "string", "description": "Two-letter state code" }
                 }
               }
@@ -2429,7 +2409,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "type": { "type": "string", "enum": ["budget-alert", "report", "bills"] } }
+                "properties": {
+                  "type": { "type": "string", "enum": ["budget-alert", "report", "bills"] }
+                }
               }
             }
           }
@@ -2526,9 +2508,7 @@
       "get": {
         "tags": ["Export"],
         "summary": "Full data export",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Complete data export" } }
       }
     },
@@ -2538,8 +2518,20 @@
         "summary": "Export by type",
         "parameters": [
           { "$ref": "#/components/parameters/profileId" },
-          { "name": "type", "in": "path", "required": true, "schema": { "type": "string", "enum": ["transactions", "categories", "accounts", "budgets", "loans", "recurring"] } },
-          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["csv", "json"] } }
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["transactions", "categories", "accounts", "budgets", "loans", "recurring"]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["csv", "json"] }
+          }
         ],
         "responses": { "200": { "description": "Exported data" } }
       }
@@ -2586,9 +2578,7 @@
       "get": {
         "tags": ["Settings"],
         "summary": "Get settings",
-        "parameters": [
-          { "$ref": "#/components/parameters/profileId" }
-        ],
+        "parameters": [{ "$ref": "#/components/parameters/profileId" }],
         "responses": { "200": { "description": "Key-value settings" } }
       },
       "put": {
