@@ -4,7 +4,7 @@
   "description": "Personal Finance Tracker - Monorepo Root",
   "private": true,
   "author": "Komediruzecki",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/Komediruzecki/finance-manager"
