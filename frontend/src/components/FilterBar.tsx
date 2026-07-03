@@ -47,14 +47,14 @@ interface FilterBarProps {
   accounts?: AccountOption[]
   selectedCategories: number[] | undefined
   selectedTags: number[] | undefined
-  selectedAccountId?: number | null
+  selectedAccountIds?: number[]
   dateRange: { from: string; to: string }
   selectedPreset: string
   showReconciled?: boolean
   reconciledCount?: number
   onToggleReconciled?: () => void
   onCategoryChange?: (ids: number[]) => void
-  onAccountChange?: (id: number | null) => void
+  onAccountChange?: (ids: number[]) => void
   searchTerm?: string
   onSearchChange?: (term: string) => void
   filterType?: string
@@ -69,6 +69,7 @@ export default function FilterBar(props: FilterBarProps) {
 
   const selectedTags = () => props.selectedTags || []
   const selectedCats = () => props.selectedCategories || []
+  const selectedAccts = () => props.selectedAccountIds || []
 
   const closeAllDropdowns = () => {
     setIsTagDropdownOpen(false)
@@ -94,9 +95,12 @@ export default function FilterBar(props: FilterBarProps) {
     setIsTagDropdownOpen(false)
   }
 
-  const selectAccount = (id: number | null) => {
-    props.onAccountChange?.(id)
-    setIsAccountDropdownOpen(false)
+  const toggleAccount = (accountId: number) => {
+    if (selectedAccts().includes(accountId)) {
+      props.onAccountChange?.(selectedAccts().filter((id) => id !== accountId))
+    } else {
+      props.onAccountChange?.([...selectedAccts(), accountId])
+    }
   }
 
   const toggleTag = (tagId: number) => {
@@ -130,7 +134,7 @@ export default function FilterBar(props: FilterBarProps) {
 
   const clearFilters = () => {
     if (props.onCategoryChange) props.onCategoryChange([])
-    if (props.onAccountChange) props.onAccountChange(null)
+    if (props.onAccountChange) props.onAccountChange([])
     if (props.onSearchChange) props.onSearchChange('')
     if (props.onFilterTypeChange) props.onFilterTypeChange('all')
     props.onChange({
@@ -152,10 +156,13 @@ export default function FilterBar(props: FilterBarProps) {
   }
 
   const accountLabel = () => {
-    const id = props.selectedAccountId ?? null
-    if (id === null) return 'All Accounts'
-    const acct = props.accounts?.find((a) => a.id === id)
-    return acct ? acct.name : 'All Accounts'
+    const ids = selectedAccts()
+    if (ids.length === 0) return 'All Accounts'
+    if (ids.length === 1) {
+      const acct = props.accounts?.find((a) => a.id === ids[0])
+      return acct ? acct.name : '1 Selected'
+    }
+    return `${ids.length} Selected`
   }
 
   const now = createMemo(() => new Date())
@@ -290,11 +297,10 @@ export default function FilterBar(props: FilterBarProps) {
                 <div class={styles.optionList}>
                   <label class={styles.checkboxLabel}>
                     <input
-                      type="radio"
-                      name="account-filter"
-                      checked={(props.selectedAccountId ?? null) === null}
+                      type="checkbox"
+                      checked={selectedAccts().length === 0}
                       onChange={() => {
-                        selectAccount(null)
+                        props.onAccountChange?.([])
                       }}
                     />
                     All Accounts
@@ -303,11 +309,10 @@ export default function FilterBar(props: FilterBarProps) {
                     {(acct) => (
                       <label class={styles.checkboxLabel}>
                         <input
-                          type="radio"
-                          name="account-filter"
-                          checked={props.selectedAccountId === acct.id}
+                          type="checkbox"
+                          checked={selectedAccts().includes(acct.id)}
                           onChange={() => {
-                            selectAccount(acct.id)
+                            toggleAccount(acct.id)
                           }}
                         />
                         <span>{acct.name}</span>
