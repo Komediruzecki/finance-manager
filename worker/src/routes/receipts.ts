@@ -171,6 +171,31 @@ receiptsRoutes.get('/api/receipts/file/:filename', requireAuth, async (c) => {
   });
 });
 
+// ── GET /api/receipts/:id/file — stream the file from R2 by receipt id ────────
+// This is the path the frontend's api.getReceiptFile() uses (and what the serverless
+// router serves); without it the receipt viewer 404s in server mode.
+receiptsRoutes.get('/api/receipts/:id/file', requireAuth, async (c) => {
+  if (!c.env.RECEIPTS)
+    throw new HttpError(501, 'Receipt storage is not configured (R2 bucket missing)');
+  const pid = await getProfileId(c);
+  const receipt = await db.first<ReceiptRow>(
+    c.env.DB,
+    'SELECT * FROM receipts WHERE id = ? AND profile_id = ?',
+    c.req.param('id'),
+    pid
+  );
+  if (!receipt) throw new HttpError(404, 'Receipt not found');
+  const obj = await c.env.RECEIPTS.get(receipt.storage_path);
+  if (!obj) throw new HttpError(404, 'File not found');
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': receipt.file_type || 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${receipt.original_name}"`,
+      'Cache-Control': 'private, max-age=3600',
+    },
+  });
+});
+
 // ── GET /api/receipts/transaction/:transactionId ──────────────────────────────
 // receiptsRepo.getByTransactionId. Registered before /api/receipts/:id so the
 // literal "transaction" segment isn't captured as an :id.

@@ -154,10 +154,14 @@ transactionsRoutes.get('/api/transactions', requireAuth, async (c) => {
   }
   const whereSql = where.length ? ` AND ${where.join(' AND ')}` : '';
 
+  // Receipt join: one receipt per transaction (upload replaces the previous one), so a
+  // LEFT JOIN stays 1:1. Exposing receipt_id/receipt_name lets the table show the chip.
   let sql = `
-    SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon
+    SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon,
+           r.id as receipt_id, r.original_name as receipt_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
+    LEFT JOIN receipts r ON r.transaction_id = t.id AND r.profile_id = t.profile_id
     WHERE t.profile_id IN (${inClause})${whereSql}
   `;
 
@@ -662,9 +666,11 @@ transactionsRoutes.get('/api/transactions/:id', requireAuth, async (c) => {
   const tx = await db.first<Record<string, unknown>>(
     c.env.DB,
     `
-    SELECT t.*, c.name as category_name, c.color as category_color
+    SELECT t.*, c.name as category_name, c.color as category_color,
+           r.id as receipt_id, r.original_name as receipt_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id AND c.profile_id = t.profile_id
+    LEFT JOIN receipts r ON r.transaction_id = t.id AND r.profile_id = t.profile_id
     WHERE t.id = ? AND t.profile_id = ?
     `,
     id,

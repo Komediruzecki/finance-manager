@@ -119,6 +119,28 @@
   color: var(--text-secondary);
 }
 
+.receipt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.receipt-chip:hover {
+  border-color: var(--primary);
+  background: var(--table-header-bg);
+}
+
 .amount-col {
   width: 130px;
   font-weight: 600;
