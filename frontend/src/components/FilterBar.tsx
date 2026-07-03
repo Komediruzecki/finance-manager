@@ -27,6 +27,11 @@ interface FilterOption {
   type?: string
 }
 
+interface AccountOption {
+  id: number
+  name: string
+}
+
 interface FilterState {
   categories?: FilterOption[]
   tags?: FilterOption[]
@@ -39,14 +44,17 @@ interface FilterState {
 interface FilterBarProps {
   categories: FilterOption[]
   tags: FilterOption[]
+  accounts?: AccountOption[]
   selectedCategories: number[] | undefined
   selectedTags: number[] | undefined
+  selectedAccountId?: number | null
   dateRange: { from: string; to: string }
   selectedPreset: string
   showReconciled?: boolean
   reconciledCount?: number
   onToggleReconciled?: () => void
   onCategoryChange?: (ids: number[]) => void
+  onAccountChange?: (id: number | null) => void
   searchTerm?: string
   onSearchChange?: (term: string) => void
   filterType?: string
@@ -57,6 +65,7 @@ interface FilterBarProps {
 export default function FilterBar(props: FilterBarProps) {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = createSignal(false)
   const [isCatDropdownOpen, setIsCatDropdownOpen] = createSignal(false)
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = createSignal(false)
 
   const selectedTags = () => props.selectedTags || []
   const selectedCats = () => props.selectedCategories || []
@@ -64,16 +73,30 @@ export default function FilterBar(props: FilterBarProps) {
   const closeAllDropdowns = () => {
     setIsTagDropdownOpen(false)
     setIsCatDropdownOpen(false)
+    setIsAccountDropdownOpen(false)
   }
 
   const toggleTagDropdown = () => {
     setIsTagDropdownOpen(!isTagDropdownOpen())
     setIsCatDropdownOpen(false)
+    setIsAccountDropdownOpen(false)
   }
 
   const toggleCatDropdown = () => {
     setIsCatDropdownOpen(!isCatDropdownOpen())
     setIsTagDropdownOpen(false)
+    setIsAccountDropdownOpen(false)
+  }
+
+  const toggleAccountDropdown = () => {
+    setIsAccountDropdownOpen(!isAccountDropdownOpen())
+    setIsCatDropdownOpen(false)
+    setIsTagDropdownOpen(false)
+  }
+
+  const selectAccount = (id: number | null) => {
+    props.onAccountChange?.(id)
+    setIsAccountDropdownOpen(false)
   }
 
   const toggleTag = (tagId: number) => {
@@ -107,6 +130,7 @@ export default function FilterBar(props: FilterBarProps) {
 
   const clearFilters = () => {
     if (props.onCategoryChange) props.onCategoryChange([])
+    if (props.onAccountChange) props.onAccountChange(null)
     if (props.onSearchChange) props.onSearchChange('')
     if (props.onFilterTypeChange) props.onFilterTypeChange('all')
     props.onChange({
@@ -125,6 +149,13 @@ export default function FilterBar(props: FilterBarProps) {
   const tagLabel = () => {
     if (selectedTags().length === 0) return 'All Tags'
     return `${selectedTags().length} Selected`
+  }
+
+  const accountLabel = () => {
+    const id = props.selectedAccountId ?? null
+    if (id === null) return 'All Accounts'
+    const acct = props.accounts?.find((a) => a.id === id)
+    return acct ? acct.name : 'All Accounts'
   }
 
   const now = createMemo(() => new Date())
@@ -237,6 +268,57 @@ export default function FilterBar(props: FilterBarProps) {
             </div>
           )}
         </div>
+
+        {/* Account dropdown */}
+        {props.accounts && props.accounts.length > 0 && (
+          <div class={styles.filterDropdown}>
+            <button class={styles.filterBtn} onClick={toggleAccountDropdown}>
+              <span class={styles.filterLabel}>{accountLabel()}</span>
+              <svg
+                width="10"
+                height="10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isAccountDropdownOpen() && (
+              <div class={styles.dropdownContent}>
+                <div class={styles.optionList}>
+                  <label class={styles.checkboxLabel}>
+                    <input
+                      type="radio"
+                      name="account-filter"
+                      checked={(props.selectedAccountId ?? null) === null}
+                      onChange={() => {
+                        selectAccount(null)
+                      }}
+                    />
+                    All Accounts
+                  </label>
+                  <For each={props.accounts}>
+                    {(acct) => (
+                      <label class={styles.checkboxLabel}>
+                        <input
+                          type="radio"
+                          name="account-filter"
+                          checked={props.selectedAccountId === acct.id}
+                          onChange={() => {
+                            selectAccount(acct.id)
+                          }}
+                        />
+                        <span>{acct.name}</span>
+                      </label>
+                    )}
+                  </For>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tag dropdown */}
         <div class={styles.filterDropdown}>
@@ -394,7 +476,7 @@ export default function FilterBar(props: FilterBarProps) {
       </div>
 
       {/* Click-outside backdrop for dropdowns */}
-      {(isCatDropdownOpen() || isTagDropdownOpen()) && (
+      {(isCatDropdownOpen() || isTagDropdownOpen() || isAccountDropdownOpen()) && (
         <div class={styles.dropdownBackdrop} onClick={closeAllDropdowns} />
       )}
 
