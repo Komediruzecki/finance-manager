@@ -182,6 +182,24 @@
   line-height: 8px;
 }
 
+/* Mini brand icon for subscriptions, shown directly in the day cell (touch devices
+   have no hover tooltips, so dots alone carried no information there). */
+.billIconMini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.billIconMini svg {
+  width: 15px;
+  height: 15px;
+}
+.iconPaid {
+  opacity: 0.45;
+}
+
 /* ---- Popover ---- */
 .popoverBackdrop {
   position: fixed;

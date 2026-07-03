@@ -101,6 +101,7 @@ export {
 
 // Bills
 export {
+  billsCalendar,
   billsCreate,
   billsDelete,
   billsGet,

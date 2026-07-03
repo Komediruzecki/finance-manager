@@ -71,3 +71,41 @@
 .summaryBarPage .summaryLabel {
   font-size: 10px;
 }
+
+/* Mobile: the single flex row with 18px totals overflows a phone screen once the
+   all-time numbers get long. Wrap into a compact 2-up grid with smaller figures. */
+@media (max-width: 640px) {
+  .summaryBar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    padding: 10px 12px;
+  }
+
+  .summaryItem {
+    min-width: 0;
+  }
+
+  .summaryValue {
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+
+  .summaryLabel {
+    font-size: 10px;
+  }
+
+  .periodLabel {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-right: 0;
+  }
+
+  .summaryDivider {
+    display: none;
+  }
+
+  .summaryBarPage .summaryValue {
+    font-size: 13px;
+  }
+}

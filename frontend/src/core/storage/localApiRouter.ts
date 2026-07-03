@@ -583,6 +583,11 @@ const routes: RouteDef[] = [
     handler: dispatch({ GET: () => h.billsUpcoming() }),
   },
   {
+    pattern: /^\/bills\/calendar$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: (ctx) => h.billsCalendar(ctx.query) }),
+  },
+  {
     pattern: /^\/bills\/(\d+)\/(pay|mark-paid)$/,
     methods: ['POST'],
     handler: dispatch({ POST: (ctx) => h.billsPayOrMarkPaid(ctx.params) }),

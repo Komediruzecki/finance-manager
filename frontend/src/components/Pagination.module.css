@@ -58,3 +58,17 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+/* Mobile: info + page buttons don't fit side by side — stack and let buttons wrap
+   instead of clipping the last pages off-screen. */
+@media (max-width: 640px) {
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .paginationControls {
+    flex-wrap: wrap;
+  }
+}

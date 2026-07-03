@@ -872,11 +872,14 @@ export function App() {
 
             <button
               class={layoutStyles['mobile-toggle']}
+              classList={{ [layoutStyles['mobile-toggle-open']]: !sidebarCollapsed() }}
               onClick={() => {
                 setSidebarCollapsedStore(!state.sidebarCollapsed)
               }}
               aria-label="Toggle sidebar"
             >
+              {/* Closed: hamburger at top-left. Open: back-chevron parked at the sidebar's
+                  top-right so it never covers the logo. */}
               <svg
                 width="20"
                 height="20"
@@ -885,7 +888,7 @@ export function App() {
                 stroke-width="2"
                 viewBox="0 0 24 24"
               >
-                <path d={sidebarCollapsed() ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12'} />
+                <path d={sidebarCollapsed() ? 'M4 6h16M4 12h16M4 18h16' : 'M15 19l-7-7 7-7'} />
               </svg>
             </button>
 
