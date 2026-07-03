@@ -66,6 +66,25 @@ export default function Portfolio() {
     })
   )
 
+  // Summary cards recomputed from the live-priced holdings so Total Value / Gain match
+  // the table after "Refresh Prices". Falls back to the server summary before any
+  // prices are fetched (and keeps its allocation breakdown either way).
+  const liveSummary = createMemo(() => {
+    const base = summary()
+    if (!base || Object.keys(prices()).length === 0) return base
+    const dh = displayHoldings()
+    const totalValue = dh.reduce((s, h) => s + (h.marketValue || 0), 0)
+    const totalCostBasis = dh.reduce((s, h) => s + h.purchase_price * h.shares, 0)
+    const totalGain = totalValue - totalCostBasis
+    return {
+      ...base,
+      totalValue,
+      totalCostBasis,
+      totalGain,
+      totalGainPercent: totalCostBasis ? (totalGain / totalCostBasis) * 100 : 0,
+    }
+  })
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -261,19 +280,19 @@ export default function Portfolio() {
         <div data-test-id="portfolio-summary" class={styles.summaryRow}>
           <div class={styles.summaryCard}>
             <div class={styles.summaryLabel}>Portfolio Value</div>
-            <div class={styles.summaryValue}>{formatAmount(summary()!.totalValue)}</div>
+            <div class={styles.summaryValue}>{formatAmount(liveSummary()!.totalValue)}</div>
           </div>
           <div class={styles.summaryCard}>
             <div class={styles.summaryLabel}>Total Cost Basis</div>
-            <div class={styles.summaryValue}>{formatAmount(summary()!.totalCostBasis)}</div>
+            <div class={styles.summaryValue}>{formatAmount(liveSummary()!.totalCostBasis)}</div>
           </div>
           <div class={styles.summaryCard}>
             <div class={styles.summaryLabel}>Total Gain/Loss</div>
             <div
-              class={`${styles.summaryValue} ${summary()!.totalGain >= 0 ? styles.positive : styles.negative}`}
+              class={`${styles.summaryValue} ${liveSummary()!.totalGain >= 0 ? styles.positive : styles.negative}`}
             >
-              {formatAmount(summary()!.totalGain)}
-              <span class={styles.gainPercent}>({formatPercent(summary()!.totalGainPercent)})</span>
+              {formatAmount(liveSummary()!.totalGain)}
+              <span class={styles.gainPercent}>({formatPercent(liveSummary()!.totalGainPercent)})</span>
             </div>
           </div>
           <div class={styles.summaryCard}>
@@ -389,7 +408,7 @@ export default function Portfolio() {
                 <div class={styles.pieContainer}>
                   <svg viewBox="0 0 200 200" class={styles.pieChart}>
                     {(() => {
-                      const alloc = summary()!.allocation
+                      const alloc = liveSummary()!.allocation
                       if (alloc.length === 0) return null
                       const total = alloc.reduce((s, a) => s + a.value, 0) || 1
                       let cumulativeAngle = 0
@@ -428,11 +447,11 @@ export default function Portfolio() {
                     <circle cx="100" cy="100" r="45" fill="var(--card-bg)" />
                   </svg>
                   <div class={styles.pieTotal}>
-                    <div class={styles.pieTotalValue}>{formatAmount(summary()!.totalValue)}</div>
+                    <div class={styles.pieTotalValue}>{formatAmount(liveSummary()!.totalValue)}</div>
                   </div>
                 </div>
                 <div class={styles.legend}>
-                  <For each={summary()!.allocation}>
+                  <For each={liveSummary()!.allocation}>
                     {(a, i) => (
                       <div class={styles.legendItem}>
                         <span
