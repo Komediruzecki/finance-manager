@@ -324,6 +324,7 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
 
   // Batch-create accounts for the category names the user flagged as 'account' type (+ history).
   let accountsCreated = 0;
+  const createdAccountNames: string[] = [];
   if (categoryTypes) {
     const toCreate = Object.entries(categoryTypes as Record<string, string>)
       .filter(
@@ -345,6 +346,7 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
       );
       await loadAccounts(); // pick up the new ids
       accountsCreated = toCreate.length;
+      createdAccountNames.push(...toCreate.map((a) => a.name));
       const hist = toCreate
         .map((a) => {
           const id = accountIdMap.get(a.name.trim().toLowerCase());
@@ -545,6 +547,9 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   return c.json({
     imported,
     accounts_created: accountsCreated,
+    categories_created: newCats.length,
+    created_accounts: createdAccountNames,
+    created_categories: newCats,
     message: `Successfully imported ${imported} transactions`,
   });
 });

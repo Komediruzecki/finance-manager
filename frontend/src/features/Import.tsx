@@ -105,6 +105,17 @@ interface SheetResult {
 
 type Step = 'upload' | 'mapping' | 'preview' | 'importing' | 'done'
 
+interface ImportLogEntry {
+  id: number
+  source: string
+  imported: number
+  duplicates_skipped: number
+  accounts_created: number
+  categories_created: number
+  details: string | null
+  created_at: string
+}
+
 export default function Import() {
   // Import method tab
   type ImportTab = 'google-sheets' | 'file-upload' | 'paste-csv'
@@ -117,6 +128,20 @@ export default function Import() {
 
   // Step state
   const [activeStep, setActiveStep] = createSignal<Step>('upload')
+
+  // Import session log (what past imports created; written after each successful import)
+  const [importLogs, setImportLogs] = createSignal<ImportLogEntry[]>([])
+  const loadImportLogs = async () => {
+    try {
+      const res = await apiFetch('/api/import-logs', { headers: profileHeaders() })
+      if (res.ok) {
+        const rows = await res.json()
+        if (Array.isArray(rows)) setImportLogs(rows as ImportLogEntry[])
+      }
+    } catch {
+      // Log section simply stays empty
+    }
+  }
 
   // File upload state
   const [uploadResult, setUploadResult] = createSignal<UploadResult | null>(null)
@@ -179,6 +204,9 @@ export default function Import() {
       setActiveStep('upload')
     } catch {
       setError('Failed to parse pasted data')
+    } finally {
+      // Missing on the success path before — the "Processing..." overlay stayed up
+      // forever and kept "Continue to Preview" disabled after a successful parse.
       setLoading(false)
     }
   }
@@ -540,6 +568,34 @@ export default function Import() {
           `Imported ${data.imported ?? 0} transactions${data.skipped ? ` (${data.skipped} skipped)` : ''}`,
       })
 
+      // Record the session in the import log (best-effort; the import itself succeeded)
+      const source =
+        activeImportTab() === 'file-upload'
+          ? uploadResult()?.filename || 'File upload'
+          : activeImportTab() === 'google-sheets'
+            ? `Google Sheet${selectedSheet() ? ` (${selectedSheet()})` : ''}`
+            : 'Pasted CSV'
+      apiFetch('/api/import-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...profileHeaders() },
+        body: JSON.stringify({
+          import_id: iid,
+          source,
+          imported: data.imported ?? 0,
+          duplicates_skipped: mode === 'new' ? dupCount : 0,
+          accounts_created: data.accounts_created ?? 0,
+          categories_created: data.categories_created ?? 0,
+          details: JSON.stringify({
+            mode,
+            created_accounts: data.created_accounts ?? [],
+            created_categories: data.created_categories ?? [],
+            rows_skipped_invalid: data.skipped ?? 0,
+          }),
+        }),
+      })
+        .then(() => loadImportLogs())
+        .catch((e: unknown) => { console.error('Failed to record import log:', e); })
+
       // Reset after delay
       setTimeout(() => {
         resetForm()
@@ -559,6 +615,7 @@ export default function Import() {
       types[cat] = classifyCategory(cat)
     })
     setCategoryTypes(types)
+    void loadImportLogs()
   })
 
   // Data entry step (with tabs for Google Sheets, File Upload, Paste CSV)
@@ -1553,6 +1610,77 @@ export default function Import() {
           >
             Import More
           </button>
+        </div>
+      </Show>
+
+      {/* Import history */}
+      <Show when={importLogs().length > 0 && activeStep() === 'upload'}>
+        <div class={styles.settingsCard} style={{ 'margin-top': '24px' }}>
+          <h2 class={styles.settingsCardTitle}>Recent Imports</h2>
+          <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px' }}>
+            <For each={importLogs()}>
+              {(log) => {
+                const details = (() => {
+                  try {
+                    return log.details
+                      ? (JSON.parse(log.details) as {
+                          created_accounts?: string[]
+                          created_categories?: string[]
+                          rows_skipped_invalid?: number
+                        })
+                      : null
+                  } catch {
+                    return null
+                  }
+                })()
+                return (
+                  <details
+                    style={{
+                      border: '1px solid var(--border)',
+                      'border-radius': '8px',
+                      padding: '10px 14px',
+                    }}
+                  >
+                    <summary style={{ cursor: 'pointer', 'font-size': '14px' }}>
+                      <strong>{log.source || 'Import'}</strong>
+                      <span style={{ color: 'var(--text-secondary)', 'margin-left': '8px' }}>
+                        {new Date(log.created_at).toLocaleString()} — {log.imported} imported
+                        {log.duplicates_skipped > 0 && `, ${log.duplicates_skipped} duplicates skipped`}
+                      </span>
+                    </summary>
+                    <div
+                      style={{
+                        'font-size': '13px',
+                        color: 'var(--text-secondary)',
+                        'margin-top': '8px',
+                        display: 'flex',
+                        'flex-direction': 'column',
+                        gap: '4px',
+                      }}
+                    >
+                      <span>Transactions imported: {log.imported}</span>
+                      <span>Duplicates skipped: {log.duplicates_skipped}</span>
+                      <span>
+                        Accounts created: {log.accounts_created}
+                        {details?.created_accounts?.length
+                          ? ` (${details.created_accounts.join(', ')})`
+                          : ''}
+                      </span>
+                      <span>
+                        Categories created: {log.categories_created}
+                        {details?.created_categories?.length
+                          ? ` (${details.created_categories.join(', ')})`
+                          : ''}
+                      </span>
+                      {(details?.rows_skipped_invalid ?? 0) > 0 && (
+                        <span>Rows skipped as invalid: {details!.rows_skipped_invalid}</span>
+                      )}
+                    </div>
+                  </details>
+                )
+              }}
+            </For>
+          </div>
         </div>
       </Show>
     </div>
