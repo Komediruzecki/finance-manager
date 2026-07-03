@@ -89,6 +89,7 @@ export default function Transactions() {
   const [tags, setTags] = createSignal<Array<{ id: number; name: string; color: string }>>([])
   const [selectedCategories, setSelectedCategories] = createSignal<number[]>([])
   const [selectedTags, setSelectedTags] = createSignal<number[]>([])
+  const [selectedAccountId, setSelectedAccountId] = createSignal<number | null>(null)
   const [dateRange, setDateRange] = createSignal<{ from: string; to: string }>({ from: '', to: '' })
   const [selectedPreset, setSelectedPreset] = createSignal<string>('')
   const [currentPage, setCurrentPage] = createSignal(1)
@@ -347,6 +348,13 @@ export default function Transactions() {
         return false
       }
 
+      // Filter by account — matches money moving in or out of the account:
+      // its own income/expense/transfer-out (account_id) plus transfers received (transfer_account_id).
+      const acctId = selectedAccountId()
+      if (acctId !== null && tx.account_id !== acctId && tx.transfer_account_id !== acctId) {
+        return false
+      }
+
       // Filter by tag
       if (
         selectedTags().length > 0 &&
@@ -601,7 +609,25 @@ export default function Transactions() {
     }
     try {
       const acctData = await api.getAccounts()
-      if (Array.isArray(acctData)) setAccounts(acctData as any[])
+      if (Array.isArray(acctData)) {
+        setAccounts(acctData as any[])
+        // Check hash for account filter (e.g. #transactions?account=5 from an account card's "View All")
+        const hash = window.location.hash.slice(1)
+        const queryIdx = hash.indexOf('?')
+        if (queryIdx >= 0) {
+          const params = new URLSearchParams(hash.slice(queryIdx + 1))
+          const accountIdRaw = params.get('account')
+          if (accountIdRaw) {
+            const accountId = parseInt(accountIdRaw, 10)
+            if (
+              !isNaN(accountId) &&
+              (acctData as Array<{ id: number }>).some((a) => a.id === accountId)
+            ) {
+              setSelectedAccountId(accountId)
+            }
+          }
+        }
+      }
     } catch {
       // Accounts will remain empty
     }
@@ -673,8 +699,10 @@ export default function Transactions() {
       <FilterBar
         categories={categories() as any}
         tags={tags() as any}
+        accounts={accounts() as any}
         selectedCategories={selectedCategories()}
         selectedTags={selectedTags()}
+        selectedAccountId={selectedAccountId()}
         dateRange={dateRange()}
         selectedPreset={selectedPreset()}
         showReconciled={showReconciled()}
@@ -682,6 +710,10 @@ export default function Transactions() {
         onToggleReconciled={() => setShowReconciled(!showReconciled())}
         onCategoryChange={(ids) => {
           setSelectedCategories(ids)
+          setCurrentPage(1)
+        }}
+        onAccountChange={(id) => {
+          setSelectedAccountId(id)
           setCurrentPage(1)
         }}
         searchTerm={searchTerm()}
@@ -1053,9 +1085,7 @@ export default function Transactions() {
                             if (existing) {
                               // Removing a stored receipt deletes it server-side
                               if (
-                                !(await showConfirm(
-                                  `Delete receipt "${existing.original_name}"?`
-                                ))
+                                !(await showConfirm(`Delete receipt "${existing.original_name}"?`))
                               )
                                 return
                               try {
