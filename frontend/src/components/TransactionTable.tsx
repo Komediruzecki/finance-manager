@@ -16,6 +16,7 @@ interface TransactionTableProps {
   loading?: boolean
   onEdit?: (transaction: Transaction) => void
   onDelete?: (transaction: Transaction) => void
+  onViewReceipt?: (transaction: Transaction) => void
 }
 
 export default function TransactionTable(props: TransactionTableProps) {
@@ -148,7 +149,36 @@ export default function TransactionTable(props: TransactionTableProps) {
                   {new Date(transaction.date).toLocaleDateString()}
                 </td>
                 <td class={styles.descriptionCol}>
-                  <div class={styles.description}>{transaction.description}</div>
+                  <div class={styles.description}>
+                    {transaction.description}
+                    {typeof transaction.receipt_id === 'number' && (
+                      <button
+                        class={styles.receiptChip}
+                        title={`View receipt${transaction.receipt_name ? `: ${transaction.receipt_name}` : ''}`}
+                        aria-label="View receipt"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          props.onViewReceipt?.(transaction)
+                        }}
+                      >
+                        <svg
+                          width="11"
+                          height="11"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
+                          />
+                        </svg>
+                        Receipt
+                      </button>
+                    )}
+                  </div>
                   {transaction.tags !== undefined && transaction.tags.length > 0 && (
                     <div class={styles.tags}>
                       <For each={transaction.tags.slice(0, 2)}>

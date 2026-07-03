@@ -7,7 +7,8 @@ import { adapter, idParam, json, notFound, ok } from './helpers'
 export async function receiptsUpload(body: unknown): Promise<Response> {
   try {
     const formData = body as FormData
-    const file = formData.get('file') as File | null
+    // The API client appends the file as 'receipt' (the worker accepts both keys)
+    const file = (formData.get('receipt') ?? formData.get('file')) as File | null
     const transactionIdRaw = formData.get('transaction_id')
 
     if (!file) return json({ error: 'No file uploaded' }, 400)
@@ -21,6 +22,14 @@ export async function receiptsUpload(body: unknown): Promise<Response> {
     const profileId = await adapter.getCurrentProfileId()
     const filename = `${Date.now()}-${file.name}`
     const db = await getDB()
+
+    // One receipt per transaction (mirrors the worker): re-upload replaces the old one
+    if (transactionId !== null) {
+      const previous = await db.getAllFromIndex('receipts', 'by_transaction', transactionId)
+      for (const prev of previous) {
+        await db.delete('receipts', prev.id)
+      }
+    }
 
     const id = (await db.add('receipts', {
       transaction_id: transactionId,
