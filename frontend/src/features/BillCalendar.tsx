@@ -21,6 +21,7 @@ import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { apiGet, apiPost, formatCurrency, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import styles from './BillCalendar.module.css'
+import { matchBrand } from './subscriptionBrands'
 import type { Component } from 'solid-js'
 
 interface CalendarBill {
@@ -290,25 +291,44 @@ const BillCalendar: Component<BillCalendarProps> = (props) => {
                   {bills.length > 0 && (
                     <div class={styles.billDots}>
                       <For each={bills.slice(0, 4)}>
-                        {(bill) => (
-                          <span
-                            class={`${styles.billDot} ${
-                              bill.paid
-                                ? styles.dotPaid
-                                : bill.is_overdue
-                                  ? styles.dotOverdue
-                                  : styles.dotUpcoming
-                            }`}
-                            style={
-                              bill.category_color
-                                ? {
-                                    'background-color': bill.paid ? undefined : bill.category_color,
-                                  }
-                                : undefined
-                            }
-                            title={bill.name}
-                          />
-                        )}
+                        {(bill) => {
+                          // Subscriptions with a recognizable brand show a mini brand icon
+                          // right in the cell — hover tooltips don't exist on touch devices,
+                          // so the dot alone told mobile users nothing.
+                          const brand = matchBrand(bill.name, bill.category_color ?? undefined)
+                          if (bill.type === 'subscription' && brand.displayName) {
+                            return (
+                              <span
+                                class={`${styles.billIconMini} ${bill.paid ? styles.iconPaid : ''}`}
+                                style={{ color: brand.color }}
+                                title={bill.name}
+                              >
+                                {brand.icon()}
+                              </span>
+                            )
+                          }
+                          return (
+                            <span
+                              class={`${styles.billDot} ${
+                                bill.paid
+                                  ? styles.dotPaid
+                                  : bill.is_overdue
+                                    ? styles.dotOverdue
+                                    : styles.dotUpcoming
+                              }`}
+                              style={
+                                bill.category_color
+                                  ? {
+                                      'background-color': bill.paid
+                                        ? undefined
+                                        : bill.category_color,
+                                    }
+                                  : undefined
+                              }
+                              title={bill.name}
+                            />
+                          )
+                        }}
                       </For>
                       {bills.length > 4 && (
                         <span class={styles.moreBills}>+{bills.length - 4}</span>

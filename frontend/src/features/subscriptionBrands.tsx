@@ -20,9 +20,10 @@ interface SubscriptionBrand {
 /* ── SVG Icons ── */
 
 function NetflixIcon() {
+  // A plain bold letter N (the old path accidentally traced an "M").
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path d="M4 3h3l5 11.5L17 3h3v18h-2.5V8.5L13.5 20h-2L7.5 8.5V21H4V3z" fill="currentColor" />
+      <path d="M5 3h4l6 12V3h4v18h-4L9 9v12H5V3z" fill="currentColor" />
     </svg>
   )
 }
@@ -51,12 +52,16 @@ function SpotifyIcon() {
 }
 
 function DisneyPlusIcon() {
+  // A simple "D+" mark (the old path was an unrecognizable zigzag).
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <path
-        d="M5.636 2h5.91l-2.954 8.182L11.546 2h5.909l-4.432 12.273L16.6 22h-5.909l2.954-8.182L10.69 22H4.782l4.431-12.273L5.636 2z"
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M3 4h4.5a7 7 0 0 1 7 7 7 7 0 0 1-7 7H3V4zm3 3v8h1.5a4 4 0 0 0 4-4 4 4 0 0 0-4-4H6z"
         fill="currentColor"
       />
+      <path d="M17.5 9h2v2.5H22v2h-2.5V16h-2v-2.5H15v-2h2.5V9z" fill="currentColor" />
     </svg>
   )
 }
@@ -83,16 +88,21 @@ function HuluIcon() {
 }
 
 function AmazonIcon() {
+  // The signature a-to-z smile swoosh with an arrow tip (the old paths were an
+  // incoherent blob). A lowercase "a" sits above it for recognizability.
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <path
-        d="M13.5 2c-3 0-5.5 1.5-7 3.5C5.5 3.5 3 2 1.5 2c-.5 0-.5.5 0 1 1.5 1 3 3 3 5.5 0 2-1.5 3.5-3 4-.5 0-.5.5 0 1 1-.5 3-2 4.5-4 1 1.5 3 2.5 5 2.5 2.5 0 4.5-1.5 5.5-3.5 1 1.5 2.5 2.5 4 3 .5.5 1 0 1-.5-.5-.5-1.5-1-2.5-3 1.5-1.5 2-3.5 2-5.5 0-2 1-3 2-4 .5-.5 0-1-.5-.5-1.5.5-3 1.5-4 3-1-1.5-3-2.5-5.5-2.5z"
+        d="M12.5 4.5c-2 0-3.6.7-4.3 2l1.9.9c.4-.7 1.2-1.1 2.3-1.1 1.4 0 2.2.7 2.2 1.9v.4c-.7-.2-1.5-.3-2.3-.3-2.6 0-4.5 1.2-4.5 3.3 0 1.9 1.5 3.1 3.6 3.1 1.4 0 2.5-.5 3.2-1.4.1.4.3.8.6 1.1l1.8-1c-.3-.4-.5-1-.5-1.7V8.2c0-2.3-1.6-3.7-4-3.7zm2.1 6.3c0 1.5-1.2 2.5-2.7 2.5-1.1 0-1.8-.5-1.8-1.4 0-1 .9-1.6 2.4-1.6.8 0 1.5.2 2.1.4v.1z"
         fill="currentColor"
       />
       <path
-        d="M3 19.5c0 .5.5.5 1 .5 1 0 2.5-1 4-1 1.5 0 3 .5 5 .5s3.5-.5 5-.5 3 1 4 1c.5 0 1 0 1-.5-.5-1-1.5-2-3-2-1.5 0-3 .5-5 .5s-3.5-.5-5-.5-3 .5-5 .5c-1 0-2-.5-2-1.5 0-1 1-1.5 2-1.5v-1c-2 0-3.5 1-3.5 2.5z"
-        fill="currentColor"
+        d="M3 15.5c3.3 3 7.9 4.5 12.2 4.5 2.5 0 5-.5 7-1.6"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
       />
+      <path d="M22.9 16.7l-.8 3.3-2.6-1.8 3.4-1.5z" fill="currentColor" />
     </svg>
   )
 }

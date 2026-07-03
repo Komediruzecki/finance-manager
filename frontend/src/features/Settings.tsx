@@ -216,6 +216,13 @@ export default function Settings() {
   const [migrateDataEnabled, setMigrateDataEnabled] = createSignal(false)
   const [migrating, setMigrating] = createSignal(false)
   const [showChangelog, setShowChangelog] = createSignal(false)
+  // Signed-in account (server mode): shown in the About card so users can see which
+  // email they are logged in with. Null = local mode or signed out.
+  const [accountInfo, setAccountInfo] = createSignal<{
+    email?: string
+    username?: string
+    auth_provider?: string
+  } | null>(null)
   // Settings tabs: General (settings) / Exports (data + household) / Billing (plan).
   type SettingsTab = 'general' | 'exports' | 'billing'
   const [activeTab, setActiveTab] = createSignal<SettingsTab>('general')
@@ -334,19 +341,25 @@ export default function Settings() {
       setNotifBusy(false)
     }
   }
-  const sendTestEmail = async () => {
+  const sendTestEmail = async (type: 'basic' | 'spending' | 'budget' = 'basic') => {
     setNotifBusy(true)
     try {
       const res = await apiFetch('/api/notifications/test-email', {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send')
       toast(
         data.skipped
           ? 'Email is not configured on the server yet (no-op in dev).'
-          : 'Test email sent — check your inbox.',
+          : type === 'spending'
+            ? 'Spending-report preview sent — check your inbox.'
+            : type === 'budget'
+              ? 'Budget-alert preview sent — check your inbox.'
+              : 'Test email sent — check your inbox.',
         data.skipped ? 'info' : 'success'
       )
     } catch (e) {
@@ -381,6 +394,14 @@ export default function Settings() {
     if (storageMode() === 'self-hosted') {
       void loadBilling()
       void loadNotifications()
+      // Who am I signed in as (shown in the About card).
+      void apiFetch('/api/auth/me', { credentials: 'include' })
+        .then(async (res) => {
+          if (res.ok) setAccountInfo(await res.json())
+        })
+        .catch(() => {
+          /* signed out — leave null */
+        })
     }
     const billingParam = new URLSearchParams(window.location.search).get('billing')
     if (billingParam === 'success' || billingParam === 'cancel') {
@@ -809,7 +830,7 @@ export default function Settings() {
                     />
                     <span>Spending report (biweekly)</span>
                   </label>
-                  <div style="display:flex; gap:8px; margin-top:12px;">
+                  <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
                     <button
                       class={styles.btnPrimary}
                       onclick={() => void saveNotifications()}
@@ -823,6 +844,22 @@ export default function Settings() {
                       disabled={notifBusy()}
                     >
                       Send test email
+                    </button>
+                    <button
+                      class={styles.btnSecondary}
+                      onclick={() => void sendTestEmail('spending')}
+                      disabled={notifBusy()}
+                      title="Emails you the real spending report, built from your data, right now"
+                    >
+                      Preview spending report
+                    </button>
+                    <button
+                      class={styles.btnSecondary}
+                      onclick={() => void sendTestEmail('budget')}
+                      disabled={notifBusy()}
+                      title="Emails you the real budget alert, built from your data, right now"
+                    >
+                      Preview budget alert
                     </button>
                   </div>
                 </div>
@@ -841,15 +878,15 @@ export default function Settings() {
                     class={styles.formControl}
                     value={storageMode()}
                     onchange={handleStorageModeChange}
-                    style="max-width: 250px;"
+                    style="max-width: 250px; width: 100%;"
                   >
-                    <option value="self-hosted">Self-Hosted (Backend Server SQLite)</option>
-                    <option value="serverless">Serverless (Browser LocalStorage)</option>
+                    <option value="self-hosted">Server (Backend Database)</option>
+                    <option value="serverless">Local (Browser Storage)</option>
                   </select>
                 </div>
                 {showStorageWarning() && storageMode() === 'serverless' && (
                   <div class={styles.warningBox}>
-                    <strong>Switch to Serverless Mode</strong>
+                    <strong>Switch to Local Mode</strong>
                     <p style="margin-top: 8px; color: var(--text-secondary); font-size: 13px;">
                       Your data will be completely offline and stored in your browser's IndexedDB.
                       You will not be able to sync across devices unless you export/import manually.
@@ -875,13 +912,13 @@ export default function Settings() {
                         ? 'Migrating...'
                         : migrateDataEnabled()
                           ? 'Migrate & Switch'
-                          : 'Apply Serverless Mode'}
+                          : 'Switch to Local Mode'}
                     </button>
                   </div>
                 )}
                 {showStorageWarning() && storageMode() === 'self-hosted' && (
                   <div class={styles.warningBox}>
-                    <strong>Switch to Self-Hosted Mode</strong>
+                    <strong>Switch to Server Mode</strong>
                     <p style="margin-top: 8px; color: var(--text-secondary); font-size: 13px;">
                       Your data will be stored on the backend SQLite server. You need the backend
                       server running for this mode to work.
@@ -907,13 +944,13 @@ export default function Settings() {
                         ? 'Migrating...'
                         : migrateDataEnabled()
                           ? 'Migrate & Switch'
-                          : 'Switch to Self-Hosted'}
+                          : 'Switch to Server Mode'}
                     </button>
                   </div>
                 )}
                 {!showStorageWarning() && storageMode() === 'serverless' && (
                   <p style="margin-top: 12px; color: var(--text-secondary); font-size: 13px;">
-                    Currently running in completely offline Serverless mode.
+                    Running in Local mode — data stays in this browser, fully offline.
                   </p>
                 )}
                 {!showStorageWarning() && storageMode() === 'self-hosted' && (
@@ -1301,6 +1338,21 @@ export default function Settings() {
           <div class={styles.card} style={{ 'margin-top': '24px', display: tabSel('general') }}>
             <div class={styles.settingsSection}>
               <div class={styles.settingsSectionTitle}>About</div>
+              <p style="margin-top: 12px; margin-bottom: 0; font-size: 13px; color: var(--text-secondary);">
+                {accountInfo()?.email || accountInfo()?.username ? (
+                  <>
+                    Signed in as{' '}
+                    <span style="color: var(--text); font-weight: 600;">
+                      {accountInfo()!.email || accountInfo()!.username}
+                    </span>
+                    {accountInfo()!.auth_provider === 'google' ? ' (Google account)' : ''}
+                  </>
+                ) : storageMode() === 'serverless' ? (
+                  'Local mode — no account; data is stored in this browser only.'
+                ) : (
+                  'Not signed in.'
+                )}
+              </p>
               <div class={styles.formGroup} style="margin-top: 16px;">
                 <button class={styles.btnSecondary} onclick={() => setShowChangelog(true)}>
                   View Changelog

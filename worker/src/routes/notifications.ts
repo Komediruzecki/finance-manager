@@ -5,7 +5,11 @@ import { getProfileId } from '../profile';
 import { HttpError } from '../http';
 import * as db from '../db';
 import { sendMail } from '../email';
-import { sendBudgetAlertsForUser, sendSpendingReportForUser } from '../reminders';
+import {
+  composeReminderPreview,
+  sendBudgetAlertsForUser,
+  sendSpendingReportForUser,
+} from '../reminders';
 import type { UserRow } from '../reminders';
 import { enforce } from '../ratelimit';
 
@@ -68,9 +72,14 @@ notificationsRoutes.put('/api/notifications/settings', requireAuth, async (c) =>
   return c.json({ ok: true });
 });
 
-// POST — send a test email to the user's own address.
+// POST — send a test email to the user's own address. Optional body { type }:
+//   "basic" (default) — plain connectivity check
+//   "spending"        — the REAL periodic spending-report email, composed from your data
+//   "budget"          — the REAL budget-alert email (threshold 0 so it always has content)
+// Report/budget previews bypass prefs/quota/period-dedup so they never block (or get
+// blocked by) the scheduled sends — this exists to preview the layouts on demand.
 notificationsRoutes.post('/api/notifications/test-email', requireAuth, async (c) => {
-  const rl = await enforce(c, `testmail:${c.get('userId')}`, 3, 3600);
+  const rl = await enforce(c, `testmail:${c.get('userId')}`, 6, 3600);
   if (rl) return rl;
   const user = await db.first<{ email: string | null }>(
     c.env.DB,
@@ -78,13 +87,28 @@ notificationsRoutes.post('/api/notifications/test-email', requireAuth, async (c)
     c.get('userId')
   );
   if (!user?.email) throw new HttpError(400, 'No email on your account');
-  const r = await sendMail(
-    c.env,
-    user.email,
-    'Test email — Token Circles',
-    '<p>This is a test email from Token Circles. Your notifications are working.</p>'
-  );
-  return c.json({ ok: true, ...r });
+
+  const type = ((await c.req.json().catch(() => ({}))) as { type?: string }).type ?? 'basic';
+  let subject = 'Test email — Token Circles';
+  let html = '<p>This is a test email from Token Circles. Your notifications are working.</p>';
+  if (type === 'spending' || type === 'budget') {
+    const preview = await composeReminderPreview(c.env, c.get('userId'), type);
+    if (!preview) {
+      throw new HttpError(
+        400,
+        type === 'spending'
+          ? 'No spending data to build a report from yet'
+          : 'No budgets with spending to build an alert from yet'
+      );
+    }
+    subject = preview.subject;
+    html = preview.html;
+  } else if (type !== 'basic') {
+    throw new HttpError(400, 'Unknown test email type (use "basic", "spending" or "budget")');
+  }
+
+  const r = await sendMail(c.env, user.email, subject, html);
+  return c.json({ ok: true, type, ...r });
 });
 
 // POST — manually run a reminder for yourself (smoke-test without waiting for cron).

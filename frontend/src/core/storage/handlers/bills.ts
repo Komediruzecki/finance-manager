@@ -62,6 +62,89 @@ export async function billsList(query?: URLSearchParams): Promise<Response> {
   }
 }
 
+/**
+ * GET /api/bills/calendar?year=&month= — mirror of the worker route of the same path.
+ * The Bills Calendar tab 404'd in serverless/demo mode because only the worker served it.
+ */
+export async function billsCalendar(query?: URLSearchParams): Promise<Response> {
+  const db = await getDB()
+  const pids = adapter.getCurrentProfileIds()
+  const now = new Date()
+
+  const yearParam = parseInt(query?.get('year') || String(now.getFullYear()), 10)
+  const monthParam = parseInt(query?.get('month') || String(now.getMonth() + 1), 10)
+  if (isNaN(yearParam) || yearParam < 1900) return json({ error: 'Invalid year' }, 400)
+  if (isNaN(monthParam) || monthParam < 1 || monthParam > 12) {
+    return json({ error: 'Invalid month' }, 400)
+  }
+
+  const year = yearParam
+  const month = monthParam
+  const monthLabel = new Date(year, month - 1, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  })
+  const firstDow = new Date(year, month - 1, 1).getDay()
+  const lastDay = new Date(year, month, 0).getDate()
+
+  const days: Record<string, unknown[]> = {}
+  for (let d = 1; d <= lastDay; d++) days[String(d)] = []
+
+  const bills: Record<string, unknown>[] = []
+  for (const pid of pids) {
+    const rows = await db.getAllFromIndex('bills', 'by_profile', pid)
+    bills.push(...rows.filter((b) => b.is_active !== 0))
+  }
+
+  let totalAmount = 0
+  let paidAmount = 0
+  let billCount = 0
+
+  for (const b of bills) {
+    // Occurrence day in the given month: due_date's day-of-month, else day_of_month field.
+    let day = 1
+    if (b.due_date) {
+      const parsed = new Date(b.due_date as string)
+      if (!isNaN(parsed.getTime())) day = parsed.getDate()
+    } else if (b.day_of_month) {
+      day = Number(b.day_of_month) || 1
+    }
+    if (day < 1 || day > lastDay) continue
+
+    const billDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const isPaid = isBillPaidForCurrentPeriod(b, now)
+    const daysUntil = Math.ceil((new Date(billDateStr).getTime() - now.getTime()) / 86_400_000)
+    const amount = Number(b.amount) || 0
+
+    days[String(day)]!.push({
+      id: b.id,
+      name: b.name,
+      amount,
+      frequency: b.frequency,
+      category_id: b.category_id ?? null,
+      category_name: (b.category_name as string) ?? null,
+      category_color: (b.category_color as string) ?? null,
+      date: billDateStr,
+      paid: isPaid,
+      type: (b.type as string) || 'bill',
+      is_overdue: daysUntil < 0 && !isPaid,
+    })
+
+    totalAmount += amount
+    if (isPaid) paidAmount += amount
+    billCount++
+  }
+
+  return json({
+    year,
+    month,
+    monthLabel,
+    firstDow,
+    days,
+    summary: { totalAmount, paidAmount, billCount },
+  })
+}
+
 export async function billsCreate(body: unknown): Promise<Response> {
   try {
     if (!body || typeof body !== 'object') return json({ error: 'Invalid data' }, 400)
