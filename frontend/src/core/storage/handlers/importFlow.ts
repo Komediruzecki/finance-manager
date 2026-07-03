@@ -480,6 +480,10 @@ export async function importExecute(body: unknown): Promise<Response> {
     const profileId = await adapter.getCurrentProfileId()
     const db = await getDB()
     const categories = await db.getAllFromIndex('categories', 'by_profile', profileId)
+    // Names of records this import actually created (reused ones excluded) — reported
+    // back to the UI for the import session log.
+    const newlyCreatedAccounts: string[] = []
+    const newlyCreatedCategories: string[] = []
 
     // Normalize keys to lowercase so lookups are case-insensitive
     const normalizeKeys = (obj: Record<string, string>) => {
@@ -531,6 +535,7 @@ export async function importExecute(body: unknown): Promise<Response> {
         const id = await db.add('accounts', account)
         accountIdMap.set(catLower, id as number)
         createdAccountNames.add(catLower)
+        newlyCreatedAccounts.push(catName)
       }
 
       // Also build account map from means_of_payment column values.
@@ -647,6 +652,7 @@ export async function importExecute(body: unknown): Promise<Response> {
             icon: 'tag',
           } as any
           categories.push(cat)
+          newlyCreatedCategories.push(storedName)
         }
         if (cat) categoryId = cat.id
         // Map category to account: for transfers on account-type categories,
@@ -766,7 +772,11 @@ export async function importExecute(body: unknown): Promise<Response> {
       dry_run: dryRun,
       imported_ids: dryRun ? [] : imported,
       skipped_items: skipped,
-      accounts_created: dryRun ? 0 : accountIdMap.size,
+      // Count what this run actually created (accountIdMap also holds reused accounts)
+      accounts_created: dryRun ? 0 : newlyCreatedAccounts.length,
+      categories_created: dryRun ? 0 : newlyCreatedCategories.length,
+      created_accounts: newlyCreatedAccounts,
+      created_categories: newlyCreatedCategories,
     })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)

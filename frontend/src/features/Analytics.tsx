@@ -27,9 +27,11 @@
  * Visualizes financial data with charts and insights
  */
 import { createEffect, createMemo, createResource, createSignal, For, onMount } from 'solid-js'
+import CalcTracer, { isCalcTracerEnabled } from '../components/CalcTracer'
 import Chart from '../components/Chart'
 import D3HeatmapChart from '../components/D3HeatmapChart'
 import ExportChartButton from '../components/ExportChartButton'
+import InfoTip from '../components/InfoTip'
 import SankeyChart from '../components/SankeyChart'
 import { api, formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../core/api'
@@ -38,6 +40,7 @@ import { theme } from '../core/theme'
 import { downloadBlob } from '../utils/chartExport'
 import styles from './AnalyticsPage.module.css'
 import type { Chart as ChartJS } from 'chart.js'
+import type { CalcTrace } from '../components/CalcTracer'
 import type { SankeyData, Transaction } from '../types/models'
 
 interface CategoryTrendsRow {
@@ -179,6 +182,68 @@ export default function Analytics() {
   } | null>(null)
   const [categoryChart, setCategoryChart] = createSignal<ChartJS | undefined>(undefined)
   const [stackedChart, setStackedChart] = createSignal<ChartJS | undefined>(undefined)
+  // Trends chart category focus: '' = all visible. Kept in a signal so the mobile-friendly
+  // dropdown and the legend double-click solo stay one mechanism.
+  const [soloCategory, setSoloCategory] = createSignal('')
+
+  // Dev-mode calculation tracer: clicking an instrumented stat card opens the trace modal
+  const tracerOn = isCalcTracerEnabled()
+  const [trace, setTrace] = createSignal<CalcTrace | null>(null)
+  const monthRows = () => ({
+    columns: ['Month', 'Income', 'Expense'],
+    data: (data()?.byMonth ?? []).map((m) => [
+      m.month,
+      formatAmount(m.income),
+      formatAmount(m.expense),
+    ]),
+  })
+  const traceCardProps = (build: () => CalcTrace) =>
+    tracerOn
+      ? {
+          onClick: () => setTrace(build()),
+          style: { cursor: 'pointer' },
+          title: 'Click to trace this calculation (dev mode)',
+        }
+      : {}
+
+  // Show only the datasets belonging to one category (matches the compare-mode
+  // "Category (2026)" labels too); '' restores all.
+  const applySoloCategory = (category: string) => {
+    setSoloCategory(category)
+    const chart = stackedChart()
+    if (!chart) return
+    chart.data.datasets.forEach((ds, i) => {
+      const label = ds.label ?? ''
+      const matches = !category || label === category || label.startsWith(`${category} (`)
+      chart.setDatasetVisibility(i, matches)
+    })
+    chart.update()
+  }
+
+  // Legend click: single toggles a category, double-click within 350ms solos it
+  // (or restores everything if it is already solo).
+  let lastLegendClick = { index: -1, time: 0 }
+  const handleLegendClick = (datasetIndex: number) => {
+    const chart = stackedChart()
+    if (!chart) return
+    const now = Date.now()
+    const isDouble =
+      lastLegendClick.index === datasetIndex && now - lastLegendClick.time < 350
+    lastLegendClick = { index: datasetIndex, time: now }
+    if (isDouble) {
+      const alreadySolo = chart.data.datasets.every(
+        (_, i) => chart.isDatasetVisible(i) === (i === datasetIndex)
+      )
+      const label = chart.data.datasets[datasetIndex]?.label ?? ''
+      // Strip the compare-mode " (2026)" suffix so solo keeps both series of the category
+      const category = label.replace(/ \(\w+ ?\d{4}\)$| \(\d{4}\)$/, '')
+      applySoloCategory(alreadySolo ? '' : category)
+    } else {
+      chart.setDatasetVisibility(datasetIndex, !chart.isDatasetVisible(datasetIndex))
+      setSoloCategory('')
+      chart.update()
+    }
+  }
   const [monthlyChart, setMonthlyChart] = createSignal<ChartJS | undefined>(undefined)
   const [sankeyContainer, setSankeyContainer] = createSignal<HTMLDivElement | undefined>(undefined)
   const [heatmapContainer, setHeatmapContainer] = createSignal<HTMLDivElement | undefined>(
@@ -311,6 +376,8 @@ export default function Analytics() {
   // Load stacked trend data
   const loadStackedData = async () => {
     try {
+      // New data arrives with every dataset visible again — reflect that in the dropdown
+      setSoloCategory('')
       const isYearView = stackedView() === 'year'
       const params = new URLSearchParams({
         year: String(stackedYear()),
@@ -430,8 +497,26 @@ export default function Analytics() {
         <>
           {/* Summary Stats */}
           <div class={styles.analyticsStats}>
-            <div class={styles.statCard}>
-              <div class={styles.statLabel}>Savings Rate</div>
+            <div
+              class={styles.statCard}
+              {...traceCardProps(() => ({
+                title: 'Savings Rate',
+                formula: `(Total income − Total expenses) ÷ Total income × 100\n= (${formatAmount(totalIncome())} − ${formatAmount(totalExpense())}) ÷ ${formatAmount(totalIncome())} × 100\n= ${formatPercent(data()!.savingsRate)}`,
+                inputs: [
+                  { label: 'Year', value: stackedYear() },
+                  { label: 'Total income', value: formatAmount(totalIncome()) },
+                  { label: 'Total expenses', value: formatAmount(totalExpense()) },
+                ],
+                rows: monthRows(),
+                note: 'Monthly totals come from /api/stats/monthly filtered to the selected year.',
+              }))}
+            >
+              <div class={styles.statLabel}>
+                Savings Rate
+                <InfoTip
+                  text={`(Income − Expenses) ÷ Income × 100, across ${stackedYear()}`}
+                />
+              </div>
               <div
                 class={`${styles.statValue} ${data()!.savingsRate >= 20 ? styles.positive : data()!.savingsRate >= 10 ? styles.warning : styles.negative}`}
               >
@@ -439,22 +524,67 @@ export default function Analytics() {
               </div>
               <div class={styles.statDesc}>{stackedYear()}</div>
             </div>
-            <div class={styles.statCard}>
-              <div class={styles.statLabel}>Total Income</div>
+            <div
+              class={styles.statCard}
+              {...traceCardProps(() => ({
+                title: 'Total Income',
+                formula: `Sum of monthly income totals in ${stackedYear()}\n= ${formatAmount(totalIncome())}`,
+                inputs: [
+                  { label: 'Year', value: stackedYear() },
+                  { label: 'Months with data', value: data()!.byMonth.length },
+                ],
+                rows: monthRows(),
+                note: 'Monthly totals come from /api/stats/monthly filtered to the selected year.',
+              }))}
+            >
+              <div class={styles.statLabel}>
+                Total Income
+                <InfoTip text={`Sum of all income transactions in ${stackedYear()}`} />
+              </div>
               <div class={`${styles.statValue} ${styles.positive}`}>
                 {formatAmount(totalIncome())}
               </div>
               <div class={styles.statDesc}>{stackedYear()}</div>
             </div>
-            <div class={styles.statCard}>
-              <div class={styles.statLabel}>Total Expense</div>
+            <div
+              class={styles.statCard}
+              {...traceCardProps(() => ({
+                title: 'Total Expense',
+                formula: `Sum of monthly expense totals in ${stackedYear()}\n= ${formatAmount(totalExpense())}`,
+                inputs: [
+                  { label: 'Year', value: stackedYear() },
+                  { label: 'Months with data', value: data()!.byMonth.length },
+                ],
+                rows: monthRows(),
+                note: 'Monthly totals come from /api/stats/monthly filtered to the selected year.',
+              }))}
+            >
+              <div class={styles.statLabel}>
+                Total Expense
+                <InfoTip text={`Sum of all expense transactions in ${stackedYear()}`} />
+              </div>
               <div class={`${styles.statValue} ${styles.negative}`}>
                 {formatAmount(totalExpense())}
               </div>
               <div class={styles.statDesc}>{stackedYear()}</div>
             </div>
-            <div class={styles.statCard}>
-              <div class={styles.statLabel}>Net Savings</div>
+            <div
+              class={styles.statCard}
+              {...traceCardProps(() => ({
+                title: 'Net Savings',
+                formula: `Total income − Total expenses\n= ${formatAmount(totalIncome())} − ${formatAmount(totalExpense())}\n= ${formatAmount(totalIncome() - totalExpense())}`,
+                inputs: [
+                  { label: 'Year', value: stackedYear() },
+                  { label: 'Total income', value: formatAmount(totalIncome()) },
+                  { label: 'Total expenses', value: formatAmount(totalExpense()) },
+                ],
+                rows: monthRows(),
+              }))}
+            >
+              <div class={styles.statLabel}>
+                Net Savings
+                <InfoTip text={`Total income − total expenses in ${stackedYear()}`} />
+              </div>
               <div class={`${styles.statValue} ${styles.positive}`}>
                 {formatAmount(totalIncome() - totalExpense())}
               </div>
@@ -489,35 +619,102 @@ export default function Analytics() {
             </div>
             {monthlyStats() && (
               <>
-                <div class={styles.statCard}>
-                  <div class={styles.statLabel}>Monthly Income</div>
-                  <div class={`${styles.statValue} ${styles.positive}`}>
-                    {formatAmount(monthlyStats()!.income)}
-                  </div>
-                </div>
-                <div class={styles.statCard}>
-                  <div class={styles.statLabel}>Monthly Expense</div>
-                  <div class={`${styles.statValue} ${styles.negative}`}>
-                    {formatAmount(monthlyStats()!.expense)}
-                  </div>
-                </div>
-                <div class={styles.statCard}>
-                  <div class={styles.statLabel}>Monthly Net</div>
-                  <div
-                    class={`${styles.statValue} ${monthlyStats()!.income - monthlyStats()!.expense >= 0 ? styles.positive : styles.negative}`}
-                  >
-                    {formatAmount(monthlyStats()!.income - monthlyStats()!.expense)}
-                  </div>
-                </div>
-                <div class={styles.statCard}>
-                  <div class={styles.statLabel}>Monthly Savings Rate</div>
-                  <div
-                    class={`${styles.statValue} ${monthlyStats()!.savingsRate >= 20 ? styles.positive : monthlyStats()!.savingsRate >= 10 ? styles.warning : styles.negative}`}
-                  >
-                    {formatPercent(monthlyStats()!.savingsRate)}
-                  </div>
-                  <div class={styles.statDesc}>Target: 20%+</div>
-                </div>
+                {(() => {
+                  const monthLabel = () =>
+                    new Date(stackedYear(), monthlyMonth() - 1).toLocaleDateString('en-US', {
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  const monthTrace = (title: string, formulaLine: string): CalcTrace => ({
+                    title,
+                    formula: formulaLine,
+                    inputs: [
+                      { label: 'Month', value: monthLabel() },
+                      { label: 'Income', value: formatAmount(monthlyStats()!.income) },
+                      { label: 'Expenses', value: formatAmount(monthlyStats()!.expense) },
+                    ],
+                    note: 'Totals come from /api/stats/monthly for the selected month.',
+                  })
+                  return (
+                    <>
+                      <div
+                        class={styles.statCard}
+                        {...traceCardProps(() =>
+                          monthTrace(
+                            'Monthly Income',
+                            `Sum of income transactions in ${monthLabel()}\n= ${formatAmount(monthlyStats()!.income)}`
+                          )
+                        )}
+                      >
+                        <div class={styles.statLabel}>
+                          Monthly Income
+                          <InfoTip text={`Sum of income transactions in ${monthLabel()}`} />
+                        </div>
+                        <div class={`${styles.statValue} ${styles.positive}`}>
+                          {formatAmount(monthlyStats()!.income)}
+                        </div>
+                      </div>
+                      <div
+                        class={styles.statCard}
+                        {...traceCardProps(() =>
+                          monthTrace(
+                            'Monthly Expense',
+                            `Sum of expense transactions in ${monthLabel()}\n= ${formatAmount(monthlyStats()!.expense)}`
+                          )
+                        )}
+                      >
+                        <div class={styles.statLabel}>
+                          Monthly Expense
+                          <InfoTip text={`Sum of expense transactions in ${monthLabel()}`} />
+                        </div>
+                        <div class={`${styles.statValue} ${styles.negative}`}>
+                          {formatAmount(monthlyStats()!.expense)}
+                        </div>
+                      </div>
+                      <div
+                        class={styles.statCard}
+                        {...traceCardProps(() =>
+                          monthTrace(
+                            'Monthly Net',
+                            `Income − Expenses\n= ${formatAmount(monthlyStats()!.income)} − ${formatAmount(monthlyStats()!.expense)}\n= ${formatAmount(monthlyStats()!.income - monthlyStats()!.expense)}`
+                          )
+                        )}
+                      >
+                        <div class={styles.statLabel}>
+                          Monthly Net
+                          <InfoTip text={`Income − expenses in ${monthLabel()}`} />
+                        </div>
+                        <div
+                          class={`${styles.statValue} ${monthlyStats()!.income - monthlyStats()!.expense >= 0 ? styles.positive : styles.negative}`}
+                        >
+                          {formatAmount(monthlyStats()!.income - monthlyStats()!.expense)}
+                        </div>
+                      </div>
+                      <div
+                        class={styles.statCard}
+                        {...traceCardProps(() =>
+                          monthTrace(
+                            'Monthly Savings Rate',
+                            `(Income − Expenses) ÷ Income × 100\n= (${formatAmount(monthlyStats()!.income)} − ${formatAmount(monthlyStats()!.expense)}) ÷ ${formatAmount(monthlyStats()!.income)} × 100\n= ${formatPercent(monthlyStats()!.savingsRate)}`
+                          )
+                        )}
+                      >
+                        <div class={styles.statLabel}>
+                          Monthly Savings Rate
+                          <InfoTip
+                            text={`(Income − Expenses) ÷ Income × 100, for ${monthLabel()}`}
+                          />
+                        </div>
+                        <div
+                          class={`${styles.statValue} ${monthlyStats()!.savingsRate >= 20 ? styles.positive : monthlyStats()!.savingsRate >= 10 ? styles.warning : styles.negative}`}
+                        >
+                          {formatPercent(monthlyStats()!.savingsRate)}
+                        </div>
+                        <div class={styles.statDesc}>Target: 20%+</div>
+                      </div>
+                    </>
+                  )
+                })()}
               </>
             )}
           </div>
@@ -546,6 +743,19 @@ export default function Analytics() {
                     filename="category-trends"
                     variant="inline"
                   />
+                  {stackedData().datasets.length > 0 && (
+                    <select
+                      class={styles.heatmapTypeSelect}
+                      value={soloCategory()}
+                      onchange={(e) => { applySoloCategory(e.currentTarget.value); }}
+                      title="Focus the chart on a single category"
+                    >
+                      <option value="">All categories</option>
+                      <For each={stackedData().datasets}>
+                        {(d) => <option value={d.category}>{d.category}</option>}
+                      </For>
+                    </select>
+                  )}
                   <select
                     class={styles.heatmapTypeSelect}
                     value={categoryType()}
@@ -737,6 +947,10 @@ export default function Analytics() {
                       plugins: {
                         legend: {
                           position: 'bottom',
+                          onClick: (_e, legendItem) => {
+                            if (legendItem.datasetIndex !== undefined)
+                              handleLegendClick(legendItem.datasetIndex)
+                          },
                           labels: {
                             usePointStyle: true,
                             padding: 10,
@@ -758,11 +972,22 @@ export default function Analytics() {
                   />
                 )}
               </div>
+              {stackedData().datasets.length > 0 && (
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:6px;padding:0 4px;">
+                  Tip: click a category in the legend to hide it, double-click to show only that
+                  category. On small screens use the category dropdown above.
+                </div>
+              )}
               {/* Averages below stacked chart */}
               {stackedData().numDays > 0 && (
                 <div class={styles.averages}>
                   <div class={styles.avgCard}>
-                    <div class={styles.avgLabel}>Daily Average</div>
+                    <div class={styles.avgLabel}>
+                      Daily Average
+                      <InfoTip
+                        text={`Chart total ÷ ${stackedData().numDays} days in the selected period`}
+                      />
+                    </div>
                     <div class={styles.avgValue}>
                       {formatAmount(
                         stackedData().datasets.reduce(
@@ -773,7 +998,10 @@ export default function Analytics() {
                     </div>
                   </div>
                   <div class={styles.avgCard}>
-                    <div class={styles.avgLabel}>Weekly Average</div>
+                    <div class={styles.avgLabel}>
+                      Weekly Average
+                      <InfoTip text="Daily average × 7" />
+                    </div>
                     <div class={styles.avgValue}>
                       {formatAmount(
                         (stackedData().datasets.reduce(
@@ -786,7 +1014,10 @@ export default function Analytics() {
                     </div>
                   </div>
                   <div class={styles.avgCard}>
-                    <div class={styles.avgLabel}>Monthly Average</div>
+                    <div class={styles.avgLabel}>
+                      Monthly Average
+                      <InfoTip text="Daily average × 30" />
+                    </div>
                     <div class={styles.avgValue}>
                       {formatAmount(
                         (stackedData().datasets.reduce(
@@ -1269,7 +1500,12 @@ export default function Analytics() {
           {data()!.byCategory.length > 0 && (
             <div class={styles.chartsFullWidth}>
               <div class={styles.analyticsChart}>
-                <h3 class={styles.chartTitle}>Top Categories Breakdown</h3>
+                <h3 class={styles.chartTitle}>
+                  Top Categories Breakdown ({stackedYear()})
+                  <InfoTip
+                    text={`Top ${data()!.byCategory.length} ${categoryType()} categories of ${stackedYear()}, ranked by yearly total. Follows the year selected on the Category Trends chart.`}
+                  />
+                </h3>
                 <div class={styles.chartContainer}>
                   <div class={styles.categoryBars}>
                     {(() => {
@@ -1320,24 +1556,57 @@ export default function Analytics() {
                       )
                       const count = data()!.byCategory.length
                       const avg = count > 0 ? total / count : 0
-                      const monthly = total / 6
-                      const daily = monthly / 30
+                      // Divide by the period the data actually covers: full months/days
+                      // for past years, elapsed months/days for the current year
+                      // (the old hardcoded /6 and /30 were wrong for any year view).
+                      const year = stackedYear()
+                      const now = new Date()
+                      const isCurrentYear = year === now.getFullYear()
+                      const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+                      const dayOfYear = Math.floor(
+                        (now.getTime() - new Date(year, 0, 0).getTime()) / 86400000
+                      )
+                      const monthsCovered = Math.max(1, isCurrentYear ? now.getMonth() + 1 : 12)
+                      const daysCovered = Math.max(
+                        1,
+                        isCurrentYear ? dayOfYear : isLeap(year) ? 366 : 365
+                      )
+                      const monthly = total / monthsCovered
+                      const daily = total / daysCovered
                       return (
                         <>
                           <div>
-                            <div class={styles.statLabel}>Total {categoryType()}</div>
+                            <div class={styles.statLabel}>
+                              Total {categoryType()}
+                              <InfoTip
+                                text={`Sum of the top ${count} ${categoryType()} categories in ${year}`}
+                              />
+                            </div>
                             <div class={styles.statValue}>{formatAmount(total)}</div>
                           </div>
                           <div>
-                            <div class={styles.statLabel}>Monthly Average</div>
+                            <div class={styles.statLabel}>
+                              Monthly Average
+                              <InfoTip
+                                text={`Total ÷ ${monthsCovered} month${monthsCovered === 1 ? '' : 's'}${isCurrentYear ? ` elapsed in ${year}` : ` of ${year}`}`}
+                              />
+                            </div>
                             <div class={styles.statValue}>{formatAmount(monthly)}</div>
                           </div>
                           <div>
-                            <div class={styles.statLabel}>Daily Average</div>
+                            <div class={styles.statLabel}>
+                              Daily Average
+                              <InfoTip
+                                text={`Total ÷ ${daysCovered} day${daysCovered === 1 ? '' : 's'}${isCurrentYear ? ` elapsed in ${year}` : ` of ${year}`}`}
+                              />
+                            </div>
                             <div class={styles.statValue}>{formatAmount(daily)}</div>
                           </div>
                           <div>
-                            <div class={styles.statLabel}>Per-Category Avg</div>
+                            <div class={styles.statLabel}>
+                              Per-Category Avg
+                              <InfoTip text={`Total ÷ ${count} categories shown`} />
+                            </div>
                             <div class={styles.statValue}>{formatAmount(avg)}</div>
                           </div>
                         </>
@@ -1387,6 +1656,7 @@ export default function Analytics() {
           </div>
         </>
       )}
+      <CalcTracer trace={trace()} onClose={() => setTrace(null)} />
     </div>
   )
 }
