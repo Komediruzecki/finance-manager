@@ -21,17 +21,25 @@ export async function transactionsList(query: URLSearchParams): Promise<Response
     filters as Parameters<typeof adapter.listTransactions>[0]
   )
 
-  // Enrich transactions with category name/color (like the backend SQL JOIN)
+  // Enrich transactions with category name/color and receipt id/name (like the
+  // backend SQL JOINs) so the table can render the category cell and receipt chip.
   const db = await getDB()
   const pid = await adapter.getCurrentProfileId()
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
   const catMap = new Map(cats.map((c) => [c.id, c]))
+  const receipts = await db.getAllFromIndex('receipts', 'by_profile', pid)
+  const receiptByTx = new Map(
+    receipts.filter((r) => typeof r.transaction_id === 'number').map((r) => [r.transaction_id, r])
+  )
   const enriched = txns.map((t) => {
     const cat = catMap.get(t.category_id)
+    const receipt = receiptByTx.get(t.id)
     return normalizeTransaction({
       ...t,
       category_name: cat?.name || null,
       category_color: cat?.color || null,
+      receipt_id: receipt?.id ?? null,
+      receipt_name: receipt?.original_name ?? null,
     })
   })
 
@@ -45,14 +53,16 @@ export async function transactionsCreate(body: unknown): Promise<Response> {
   const id = await adapter.createTransaction(
     tx as unknown as Parameters<typeof adapter.createTransaction>[0]
   )
-  return json({ id, ...tx }, 201)
+  // Normalize like the list endpoint: the client validates this response against the
+  // full TransactionSchema, and callers omit optional fields (beneficiary, notes, ...).
+  return json(normalizeTransaction({ id, ...tx }), 201)
 }
 
 export async function transactionsGet(params: Record<string, string>): Promise<Response> {
   const db = await getDB()
   const txn = await db.get('transactions', idParam(params))
   if (!txn) return notFound('Transaction')
-  return json(txn)
+  return json(normalizeTransaction(txn))
 }
 
 export async function transactionsUpdate(

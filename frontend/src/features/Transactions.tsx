@@ -58,6 +58,8 @@ export default function Transactions() {
   const [isReconciliationModalOpen, setReconciliationModalOpen] = createSignal(false)
   const [selectedFile, setSelectedFile] = createSignal<File | null>(null)
   const [receiptPreviewUrl, setReceiptPreviewUrl] = createSignal<string | null>(null)
+  // Receipt already attached to the transaction being edited (shown in the edit modal).
+  const [existingReceipt, setExistingReceipt] = createSignal<Receipt | null>(null)
   const [formId, setFormId] = createSignal<string | null>(null)
   const [type, setType] = createSignal<TransactionType>('expense')
   const [formDate, setFormDate] = createSignal(new Date().toISOString().slice(0, 10))
@@ -133,9 +135,34 @@ export default function Transactions() {
     return 'Filtered Period'
   })
 
-  // _loadTransactionReceipt - placeholder for receipt loading
-  const _loadTransactionReceipt = async (_receipt: Receipt | null) => {
-    // Placeholder - functionality can be extended
+  // Revoke a blob: object URL (no-op for data/file URLs from the picker preview)
+  const revokePreviewUrl = () => {
+    const url = receiptPreviewUrl()
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+    setReceiptPreviewUrl(null)
+  }
+
+  // Fetch the receipt file through the API client (cookie-authenticated, API_BASE-aware)
+  // and expose it as an object URL — a plain <img src="/api/..."> would miss both on
+  // deployed builds where the API lives on another origin.
+  const loadReceiptBlobUrl = async (receiptId: number): Promise<string> => {
+    const blob = await api.getReceiptFile(receiptId)
+    return URL.createObjectURL(blob)
+  }
+
+  // Open the receipt view modal for a transaction (from the table's receipt chip)
+  const openReceiptForTransaction = async (transaction: Transaction) => {
+    if (typeof transaction.receipt_id !== 'number') return
+    try {
+      const receipt = (await api.getReceipt(transaction.receipt_id)) as Receipt
+      const url = await loadReceiptBlobUrl(receipt.id)
+      setSelectedReceipt(receipt)
+      setReceiptPreviewUrl(url)
+      setIsReceiptModalOpen(true)
+    } catch (error) {
+      console.error('Failed to load receipt:', error)
+      toast('Failed to load receipt', 'error')
+    }
   }
 
   /**
@@ -155,12 +182,9 @@ export default function Transactions() {
     }
 
     setSelectedFile(file)
-
-    // Create preview URL for images
-    if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file)
-      setReceiptPreviewUrl(url)
-    }
+    setExistingReceipt(null)
+    revokePreviewUrl()
+    setReceiptPreviewUrl(URL.createObjectURL(file))
   }
 
   // Close all modals
@@ -171,7 +195,7 @@ export default function Transactions() {
   // Close receipt modal
   const closeReceiptModal = () => {
     setIsReceiptModalOpen(false)
-    setReceiptPreviewUrl(null)
+    revokePreviewUrl()
     setSelectedReceipt(null)
   }
 
@@ -179,15 +203,16 @@ export default function Transactions() {
   const deleteReceipt = async () => {
     const receipt = selectedReceipt()
     if (!receipt) return
+    if (!(await showConfirm(`Delete receipt "${receipt.original_name}"?`))) return
 
     try {
       await api.deleteReceipt(receipt.id)
-      // Reload transactions to remove the deleted receipt reference
-      const data = (await api.getTransactions()) as Transaction[]
-      setTransactions(data)
       closeReceiptModal()
+      // Reload transactions to remove the deleted receipt chip
+      await refreshTransactions()
     } catch (error) {
       console.error('Failed to delete receipt:', error)
+      toast('Failed to delete receipt', 'error')
     }
   }
 
@@ -501,6 +526,9 @@ export default function Transactions() {
     setFormAccountId(null)
     setFormAmountLocal('')
     setFormDate(new Date().toISOString().slice(0, 10))
+    setSelectedFile(null)
+    setExistingReceipt(null)
+    revokePreviewUrl()
     setTransactionModalOpen(true)
   }
 
@@ -518,7 +546,23 @@ export default function Transactions() {
     setFormDate(transaction.date)
     setFormMeans(transaction.means_of_payment || '')
     setFormAccountId(transaction.account_id || null)
+    setSelectedFile(null)
+    setExistingReceipt(null)
+    revokePreviewUrl()
     setTransactionModalOpen(true)
+    // Show the already-attached receipt in the modal (async; modal opens immediately)
+    if (typeof transaction.receipt_id === 'number') {
+      void (async () => {
+        try {
+          const receipt = (await api.getReceipt(transaction.receipt_id!)) as Receipt
+          const url = await loadReceiptBlobUrl(receipt.id)
+          setExistingReceipt(receipt)
+          setReceiptPreviewUrl(url)
+        } catch (error) {
+          console.error('Failed to load existing receipt:', error)
+        }
+      })()
+    }
   }
 
   onMount(async () => {
@@ -952,7 +996,9 @@ export default function Transactions() {
                   />
                   {receiptPreviewUrl() && (
                     <>
-                      {selectedFile()?.type.startsWith('image/') ? (
+                      {(selectedFile()?.type || existingReceipt()?.file_type || '').startsWith(
+                        'image/'
+                      ) ? (
                         <img
                           src={receiptPreviewUrl()!}
                           alt="Receipt preview"
@@ -984,9 +1030,14 @@ export default function Transactions() {
                               d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
                             />
                           </svg>
-                          <div style="font-size: 14px">{selectedFile()?.name || 'Unknown'}</div>
+                          <div style="font-size: 14px">
+                            {selectedFile()?.name || existingReceipt()?.original_name || 'Unknown'}
+                          </div>
                           <div style="font-size: 12px; color: var(--text-secondary)">
-                            {selectedFile() ? (selectedFile()!.size / 1024).toFixed(1) : 0} KB
+                            {(
+                              (selectedFile()?.size ?? existingReceipt()?.file_size ?? 0) / 1024
+                            ).toFixed(1)}{' '}
+                            KB
                           </div>
                         </div>
                       )}
@@ -994,9 +1045,28 @@ export default function Transactions() {
                         <button
                           type="button"
                           class={`${styles.btnGhost} ${styles.btnSm}`}
-                          onClick={() => {
+                          onClick={async () => {
+                            const existing = existingReceipt()
+                            if (existing) {
+                              // Removing a stored receipt deletes it server-side
+                              if (
+                                !(await showConfirm(
+                                  `Delete receipt "${existing.original_name}"?`
+                                ))
+                              )
+                                return
+                              try {
+                                await api.deleteReceipt(existing.id)
+                                setExistingReceipt(null)
+                                await refreshTransactions()
+                              } catch (error) {
+                                console.error('Failed to delete receipt:', error)
+                                toast('Failed to delete receipt', 'error')
+                                return
+                              }
+                            }
                             setSelectedFile(null)
-                            setReceiptPreviewUrl(null)
+                            revokePreviewUrl()
                           }}
                           title="Remove receipt"
                         >
@@ -1101,7 +1171,8 @@ export default function Transactions() {
                   await refreshTransactions()
                   setTransactionModalOpen(false)
                   setSelectedFile(null)
-                  setReceiptPreviewUrl(null)
+                  setExistingReceipt(null)
+                  revokePreviewUrl()
                 } catch (error) {
                   console.error('Failed to save transaction:', error)
                 }
@@ -1137,17 +1208,30 @@ export default function Transactions() {
               </button>
             </div>
             <div class={styles.modalBody}>
-              <img
-                src={receiptPreviewUrl() || `/api/receipts/${selectedReceipt()!.id}/file`}
-                alt="Receipt"
-                style={{
-                  'max-width': '100%',
-                  'max-height': '70vh',
-                  display: 'block',
-                  margin: '0 auto',
-                  'border-radius': '8px',
-                }}
-              />
+              {(selectedReceipt()!.file_type || '').startsWith('image/') ? (
+                <img
+                  src={receiptPreviewUrl() || ''}
+                  alt="Receipt"
+                  style={{
+                    'max-width': '100%',
+                    'max-height': '70vh',
+                    display: 'block',
+                    margin: '0 auto',
+                    'border-radius': '8px',
+                  }}
+                />
+              ) : (
+                <iframe
+                  src={receiptPreviewUrl() || ''}
+                  title="Receipt"
+                  style={{
+                    width: '100%',
+                    height: '60vh',
+                    border: '1px solid var(--border)',
+                    'border-radius': '8px',
+                  }}
+                />
+              )}
               <div class={styles.receiptMeta}>
                 <div class={styles.receiptMetaItem}>
                   <span class={styles.receiptMetaLabel}>File Name</span>
@@ -1169,7 +1253,7 @@ export default function Transactions() {
             </div>
             <div class={styles.modalFooter}>
               <a
-                href={`/api/receipts/${selectedReceipt()!.id}/file`}
+                href={receiptPreviewUrl() || '#'}
                 download={selectedReceipt()!.original_name}
                 class={styles.btnSecondary}
               >
@@ -1240,6 +1324,7 @@ export default function Transactions() {
             sortOrder={sortOrder()}
             onEdit={handleEditTransaction}
             onDelete={handleDeleteTransaction}
+            onViewReceipt={(t) => void openReceiptForTransaction(t)}
           />
           {/* Page Summary (bottom) */}
           <TransactionSummaryBar
