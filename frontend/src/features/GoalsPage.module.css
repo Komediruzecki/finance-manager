@@ -390,6 +390,16 @@
   margin-top: 16px;
   max-width: 100%;
   overflow: hidden;
+  /* Charts render with maintainAspectRatio:false — without a fixed container height
+     Chart.js grows the canvas unboundedly and the doughnut spills out of the card. */
+  height: 300px;
+  position: relative;
+}
+
+@media (max-width: 480px) {
+  .chart-wrapper {
+    height: 240px;
+  }
 }
 
 /* legacy class mappings for goals page */

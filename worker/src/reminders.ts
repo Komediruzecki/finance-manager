@@ -396,6 +396,47 @@ export async function sendSpendingReportForUser(env: Env, u: UserRow): Promise<b
   return false;
 }
 
+/**
+ * Compose the REAL reminder email for a user without any of the sending guards
+ * (prefs, quota, per-period dedup slots) — used by the test-email endpoint so the
+ * actual layouts can be previewed on demand from Settings. Budget alerts use a
+ * threshold of 0 here so the preview has content even when nothing is over 80%.
+ * Returns null when the user's data produces no content at all.
+ */
+export async function composeReminderPreview(
+  env: Env,
+  userId: number,
+  type: 'budget' | 'spending'
+): Promise<{ subject: string; html: string } | null> {
+  const u = await db.first<UserRow>(
+    env.DB,
+    'SELECT id, email, plan, notifications_unsubscribed, unsubscribe_token FROM users WHERE id = ?',
+    userId
+  );
+  if (!u?.email) return null;
+  const pids = await profileIdsForUser(env, u.id);
+  if (pids.length === 0) return null;
+  const token = await ensureUnsubToken(env, u);
+
+  if (type === 'spending') {
+    for (const pid of pids) {
+      const report = await getSpendingReport(env, pid);
+      const html = spendingReportHtml(report, token, env);
+      if (html) return { subject: `[Test] Your spending report — ${BRAND}`, html };
+    }
+    return null;
+  }
+
+  const all: BudgetAlert[] = [];
+  for (const pid of pids) all.push(...(await getBudgetAlerts(env, pid, 0)));
+  const seen = new Set<string>();
+  const deduped = all
+    .sort((a, b) => b.percentage - a.percentage)
+    .filter((a) => (seen.has(a.categoryName) ? false : seen.add(a.categoryName) && true));
+  const html = budgetAlertHtml(deduped, token, env);
+  return html ? { subject: `[Test] Budget alert — ${BRAND}`, html } : null;
+}
+
 // ── Cron dispatch (scheduled handler) ────────────────────────────────────────
 async function usersWithEmail(env: Env): Promise<UserRow[]> {
   return db.all<UserRow>(

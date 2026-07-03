@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Preview the real notification emails on demand: Settings → Reminders now has "Preview spending report" and "Preview budget alert" buttons that immediately email you the actual report/alert built from your data (without touching the scheduled sends).
+- The Bills calendar now shows small brand icons directly in the day cells for due subscriptions, so you can see what's due at a glance — especially on phones, where the hover tooltips never worked.
+- Settings → About now shows which account (email) you are signed in with, or that you're in local mode.
+
 ### Fixed
+
+- The Bills calendar tab failed with "not found" in local/demo mode — the calendar endpoint existed only on the cloud API and is now served locally too.
+- Netflix, Amazon, and Disney+ subscription icons were malformed (Netflix literally rendered the letter "M"); replaced with proper simple marks and audited the whole icon set.
+- The Savings Goals progress chart could grow past its card; it now stays contained.
+- Mobile: transaction summary totals no longer overflow the screen (compact two-column layout), pagination wraps instead of clipping, and the sidebar toggle becomes a back-chevron at the sidebar's top-right when open instead of covering the logo.
+- Storage-mode options renamed to fit the dropdown: "Server (Backend Database)" and "Local (Browser Storage)".
 
 - Subscriptions: the "Monthly Total" now normalizes each plan to its monthly cost (a yearly plan counts as amount/12, weekly as x52/12) instead of summing raw amounts, and each card shows its real billing period ("/yr", "/wk") instead of always reading like a monthly price. The bill form also offers a Yearly frequency now.
 - Adding a bill or subscription in the local/demo (serverless) mode failed with a validation error — the form sends the same field names as the cloud API (`dueDate`), which the local validator did not accept.

@@ -321,6 +321,14 @@
   }
 }
 
+/* Sidebar open: park the toggle at the sidebar's top-right (as a back-chevron) so it
+   doesn't sit on top of the logo. 240px sidebar - 36px button - 10px inset. */
+.mobile-toggle-open {
+  left: 194px;
+  background: transparent;
+  box-shadow: none;
+}
+
 @media (max-width: 380px) {
   .main {
     padding: calc(56px + env(safe-area-inset-top, 0px)) 8px 12px;
