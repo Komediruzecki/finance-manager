@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The dashboard period selector is now a compact segmented control (Today / Week / Month / Quarter / Year / 7D / 30D / 90D / All) that fits on one row — about half the header on desktop — and scrolls horizontally on phones instead of wrapping into multiple rows. Full period names show as tooltips.
+
+### Fixed
+
+- The Auto-Categorize dialog now follows the app theme; it previously rendered with a hardcoded white background in dark mode (its dark styles were behind a class that was never applied).
+
 ### Added
 
 - Preview the real notification emails on demand: Settings → Reminders now has "Preview spending report" and "Preview budget alert" buttons that immediately email you the actual report/alert built from your data (without touching the scheduled sends).

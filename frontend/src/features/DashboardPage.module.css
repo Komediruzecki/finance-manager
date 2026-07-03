@@ -32,6 +32,10 @@
 .periodPills {
   display: flex;
   align-items: center;
+  /* Let the segmented period strip shrink to the viewport (flex items default to
+     min-width:auto) so it scrolls inside itself instead of clipping off-screen. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 768px) {
