@@ -3,6 +3,7 @@
  */
 
 import { createEffect, createSignal, For, onMount, Show } from 'solid-js'
+import CalcTracer, { isCalcTracerEnabled } from '../components/CalcTracer'
 import { ChartErrorBoundary } from '../components/ChartErrorBoundary'
 import ChartWrapper from '../components/ChartWrapper'
 import BudgetAlertsCard from '../components/Dashboard/BudgetAlertsCard'
@@ -10,10 +11,12 @@ import { PeriodNavigator } from '../components/Dashboard/PeriodNavigator'
 import RecurringInsightsCard from '../components/Dashboard/RecurringInsightsCard'
 import SavingsRateCard from '../components/Dashboard/SavingsRateCard'
 import { DashboardSettings } from '../components/DashboardSettings'
+import InfoTip from '../components/InfoTip'
 import { PeriodPills } from '../components/PeriodPills'
 import { api, formatCurrency, formatDate, getLocalCurrency, toast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import styles from './DashboardPage.module.css'
+import type { CalcTrace } from '../components/CalcTracer'
 import type * as Models from '../types/models'
 
 // Format money in the user's selected currency (not the EUR default of formatCurrency).
@@ -69,6 +72,27 @@ export default function Dashboard() {
   const [loading, setLoading] = createSignal(true)
   const [pillPeriod, setPillPeriod] = createSignal('month')
   const [allTime, setAllTime] = createSignal(false)
+
+  // Human-readable label for the currently selected dashboard period
+  const periodText = () =>
+    allTime()
+      ? 'all time'
+      : new Date(year(), month() - 1).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        })
+
+  // Dev-mode calculation tracer (click an instrumented metric card to see the math)
+  const tracerOn = isCalcTracerEnabled()
+  const [trace, setTrace] = createSignal<CalcTrace | null>(null)
+  const traceCardProps = (build: () => CalcTrace) =>
+    tracerOn
+      ? {
+          onClick: () => setTrace(build()),
+          style: { cursor: 'pointer' },
+          title: 'Click to trace this calculation (dev mode)',
+        }
+      : {}
   const [dataMinYear, setDataMinYear] = createSignal<number | undefined>(undefined)
   const [dataMaxYear, setDataMaxYear] = createSignal<number | undefined>(undefined)
   const [dataYears, setDataYears] = createSignal<number[] | undefined>(undefined)
@@ -580,8 +604,22 @@ export default function Dashboard() {
               data-test-id="dashboard-metrics"
               data-tour="dashboard-metrics"
             >
-              <div class={`${styles.metricCard} ${styles.networth}`}>
-                <div class={styles.metricLabel}>Net Worth</div>
+              <div
+                class={`${styles.metricCard} ${styles.networth}`}
+                {...traceCardProps(() => ({
+                  title: 'Net Worth',
+                  formula: `Sum of all account balances (current)\n= ${money(metrics()!.balance)}`,
+                  inputs: [
+                    { label: 'Value', value: money(metrics()!.balance) },
+                    { label: 'Scope', value: 'All accounts in the selected profiles' },
+                  ],
+                  note: 'From /api/dashboard — account balances are maintained per transaction and not filtered by the selected period.',
+                }))}
+              >
+                <div class={styles.metricLabel}>
+                  Net Worth
+                  <InfoTip text="Sum of all account balances right now (not period-filtered)" />
+                </div>
                 <div class={styles.metricValue}>{money(metrics()!.balance)}</div>
                 <div class={styles.metricSubtext}>Total account balances</div>
                 {/* eslint-disable-next-line eqeqeq */}
@@ -607,8 +645,22 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <div class={`${styles.metricCard} ${styles.income}`}>
-                <div class={styles.metricLabel}>Income</div>
+              <div
+                class={`${styles.metricCard} ${styles.income}`}
+                {...traceCardProps(() => ({
+                  title: 'Income',
+                  formula: `Sum of income transactions in ${periodText()}\n= ${money(metrics()!.totalIncome)}`,
+                  inputs: [
+                    { label: 'Period', value: periodText() },
+                    { label: 'Total', value: money(metrics()!.totalIncome) },
+                  ],
+                  note: 'From /api/dashboard for the selected period. See the Transactions page filtered to income for the contributing rows.',
+                }))}
+              >
+                <div class={styles.metricLabel}>
+                  Income
+                  <InfoTip text={`Sum of income transactions in ${periodText()}`} />
+                </div>
                 <div class={`${styles.metricValue} ${styles.positive}`}>
                   {money(metrics()!.totalIncome)}
                 </div>
@@ -636,8 +688,22 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <div class={`${styles.metricCard} ${styles.expense}`}>
-                <div class={styles.metricLabel}>Expenses</div>
+              <div
+                class={`${styles.metricCard} ${styles.expense}`}
+                {...traceCardProps(() => ({
+                  title: 'Expenses',
+                  formula: `Sum of expense transactions in ${periodText()}\n= ${money(metrics()!.totalExpenses)}`,
+                  inputs: [
+                    { label: 'Period', value: periodText() },
+                    { label: 'Total', value: money(metrics()!.totalExpenses) },
+                  ],
+                  note: 'From /api/dashboard for the selected period. See the Transactions page filtered to expenses for the contributing rows.',
+                }))}
+              >
+                <div class={styles.metricLabel}>
+                  Expenses
+                  <InfoTip text={`Sum of expense transactions in ${periodText()}`} />
+                </div>
                 <div class={`${styles.metricValue} ${styles.expense}`}>
                   {money(metrics()!.totalExpenses)}
                 </div>
@@ -665,8 +731,22 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <div class={`${styles.metricCard} ${styles.balance}`}>
-                <div class={styles.metricLabel}>Balance</div>
+              <div
+                class={`${styles.metricCard} ${styles.balance}`}
+                {...traceCardProps(() => ({
+                  title: 'Balance',
+                  formula: `Income − Expenses for ${periodText()}\n= ${money(metrics()!.totalIncome)} − ${money(metrics()!.totalExpenses)}\n= ${money(metrics()!.totalIncome - metrics()!.totalExpenses)}`,
+                  inputs: [
+                    { label: 'Period', value: periodText() },
+                    { label: 'Income', value: money(metrics()!.totalIncome) },
+                    { label: 'Expenses', value: money(metrics()!.totalExpenses) },
+                  ],
+                }))}
+              >
+                <div class={styles.metricLabel}>
+                  Balance
+                  <InfoTip text={`Income − expenses in ${periodText()}`} />
+                </div>
                 <div
                   class={`${styles.metricValue} ${metrics()!.totalIncome - metrics()!.totalExpenses >= 0 ? styles.positive : styles.expense}`}
                 >
@@ -802,6 +882,7 @@ export default function Dashboard() {
       ) : (
         <div class={styles.emptyState}>Failed to load data</div>
       )}
+      <CalcTracer trace={trace()} onClose={() => setTrace(null)} />
     </div>
   )
 }

@@ -201,6 +201,9 @@ export {
   importUpload,
 } from './handlers/importFlow'
 
+// Import session logs
+export { importLogsCreate, importLogsList } from './handlers/importLogs'
+
 // Exchange Rates
 export { exchangeRates, exchangeRateSingle } from './handlers/exchangeRates'
 

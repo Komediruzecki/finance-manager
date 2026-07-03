@@ -702,6 +702,14 @@ const routes: RouteDef[] = [
     handler: dispatch({ POST: (ctx) => h.importExecute(ctx.body) }),
   },
   {
+    pattern: /^\/import-logs$/,
+    methods: ['GET', 'POST'],
+    handler: dispatch({
+      GET: () => h.importLogsList(),
+      POST: (ctx) => h.importLogsCreate(ctx.body),
+    }),
+  },
+  {
     pattern: /^\/import\/preview$/,
     methods: ['POST'],
     handler: dispatch({ POST: (ctx) => h.importBulk(ctx.body) }),

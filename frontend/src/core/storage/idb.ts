@@ -20,7 +20,7 @@ import type {
 } from '../../types/storage'
 
 const DB_NAME = 'finance-manager'
-const DB_VERSION = 8
+const DB_VERSION = 9
 
 function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
   // v1: base stores
@@ -101,6 +101,12 @@ function upgradeSchema(db: IDBPDatabase, oldVersion: number) {
 
   // v8: no schema change — bills get `type` field via seed data and handler defaults.
   // IndexedDB is schemaless so existing records default to type='bill' in application code.
+
+  // v9: import session logs (mirrors worker migration 0014_import_logs)
+  if (oldVersion < 9) {
+    const il = db.createObjectStore('import_logs', { keyPath: 'id', autoIncrement: true })
+    il.createIndex('by_profile', 'profile_id')
+  }
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null
