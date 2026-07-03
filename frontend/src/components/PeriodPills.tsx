@@ -8,6 +8,8 @@ import periodPillsStyles from './PeriodPills.module.css'
 export interface PeriodPill {
   id: string
   label: string
+  /** Full description shown as a tooltip (the visible label stays short). */
+  title?: string
   icon?: string
 }
 
@@ -17,23 +19,25 @@ export interface PeriodPillsProps {
   periods?: PeriodPill[]
 }
 
+// Short labels so the selector reads as ONE compact segmented control instead of nine
+// wide pills spilling across rows; the full wording lives in the tooltip.
 const DEFAULT_PERIODS: PeriodPill[] = [
   { id: 'today', label: 'Today' },
-  { id: 'week', label: 'This Week' },
-  { id: 'month', label: 'This Month' },
-  { id: 'quarter', label: 'This Quarter' },
-  { id: 'year', label: 'This Year' },
-  { id: 'last7', label: 'Last 7 Days' },
-  { id: 'last30', label: 'Last 30 Days' },
-  { id: 'last90', label: 'Last 90 Days' },
-  { id: 'all', label: 'All Time' },
+  { id: 'week', label: 'Week', title: 'This week' },
+  { id: 'month', label: 'Month', title: 'This month' },
+  { id: 'quarter', label: 'Quarter', title: 'This quarter' },
+  { id: 'year', label: 'Year', title: 'This year' },
+  { id: 'last7', label: '7D', title: 'Last 7 days' },
+  { id: 'last30', label: '30D', title: 'Last 30 days' },
+  { id: 'last90', label: '90D', title: 'Last 90 days' },
+  { id: 'all', label: 'All', title: 'All time' },
 ]
 
 export function PeriodPills(props: PeriodPillsProps) {
   const periods = createMemo(() => props.periods || DEFAULT_PERIODS)
 
   return (
-    <div class={periodPillsStyles.pillsContainer}>
+    <div class={periodPillsStyles.pillsContainer} role="group" aria-label="Time period">
       <For each={periods()}>
         {(period) => (
           <button
@@ -42,6 +46,8 @@ export function PeriodPills(props: PeriodPillsProps) {
               props.onChange(period.id)
             }}
             type="button"
+            title={period.title || period.label}
+            aria-pressed={props.value === period.id}
           >
             {period.icon && <span class={periodPillsStyles.pillIcon}>{period.icon}</span>}
             <span class={periodPillsStyles.pillLabel}>{period.label}</span>
