@@ -31,7 +31,28 @@ export async function recalcGoalsByCategory(categoryId: number | null | undefine
   }
 }
 
+// Recompute every category-linked goal for the active profile(s). Mirrors the worker's
+// recalcAllGoals so demo mode also refreshes progress on page load, independent of which
+// mutation path last touched the data.
+export async function recalcAllGoals(): Promise<void> {
+  const db = await getDB()
+  const pids = adapter.getCurrentProfileIds()
+  const cats = new Set<number>()
+  for (const pid of pids) {
+    for (const g of await db.getAllFromIndex('goals', 'by_profile', pid)) {
+      if (g.category_id) cats.add(g.category_id as number)
+    }
+  }
+  for (const c of cats) await recalcGoalsByCategory(c)
+}
+
 export async function goalsList(): Promise<Response> {
+  // Refresh category-linked progress on load so the page never shows a stale amount.
+  try {
+    await recalcAllGoals()
+  } catch (e) {
+    console.error('recalcAllGoals failed', e)
+  }
   const goals = await adapter.listGoals()
   return json(goals)
 }

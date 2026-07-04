@@ -86,6 +86,30 @@ describe('category goal tracking window', () => {
     expect(await goalAmount(id)).toBeCloseTo(625, 2);
   });
 
+  it('recomputes category progress on GET, even after a direct write that skipped recalc', async () => {
+    const res = await api('/api/savings-goals', 'POST', {
+      name: 'Car',
+      target_amount: 1000,
+      category_id: 9,
+      tracking_start_date: '2026-07-01',
+    });
+    const { id } = (await res.json()) as { id: number };
+    expect(await goalAmount(id)).toBeCloseTo(125, 2);
+    // Simulate a mutation path that didn't run recalc (e.g. bulk import / older client):
+    // insert straight into the table so the stored current_amount is now stale.
+    await env.DB.prepare(
+      "INSERT INTO transactions (profile_id, description, amount, type, date, category_id) VALUES (700, 'direct', 75, 'expense', '2026-08-20', 9)"
+    ).run();
+    expect(await goalAmount(id)).toBeCloseTo(125, 2); // still stale in the table
+    // Loading the Goals page (GET) refreshes it: 125 + 75 = 200.
+    const list = (await (await api('/api/savings-goals', 'GET')).json()) as Array<{
+      id: number;
+      current_amount: number;
+    }>;
+    expect(list.find((g) => g.id === id)?.current_amount).toBeCloseTo(200, 2);
+    expect(await goalAmount(id)).toBeCloseTo(200, 2); // and persisted
+  });
+
   it('a new transaction in the category updates the goal', async () => {
     const res = await api('/api/savings-goals', 'POST', {
       name: 'Car',

@@ -3,7 +3,7 @@ import type { AppEnv } from '../index'
 import { requireAuth } from '../auth'
 import { getProfileId, getProfileIds } from '../profile'
 import { HttpError } from '../http'
-import { recalcGoalsByCategory } from '../recalc-goals'
+import { recalcAllGoals, recalcGoalsByCategory } from '../recalc-goals'
 import * as db from '../db'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
@@ -14,6 +14,13 @@ export const savingsGoalsRoutes = new Hono<AppEnv>()
 
 savingsGoalsRoutes.get('/api/savings-goals', requireAuth, async (c) => {
   const pids = await getProfileIds(c)
+  // Refresh category-linked progress on load so the page never shows a stale amount.
+  // Best-effort: if the recompute fails, still return the stored values rather than 500.
+  try {
+    await recalcAllGoals(c.env.DB, pids)
+  } catch (e) {
+    console.error('recalcAllGoals failed', e)
+  }
   const ph = pids.map(() => '?').join(',')
   const rows = await db.all(c.env.DB, `SELECT * FROM savings_goals WHERE profile_id IN (${ph}) ORDER BY id`, ...pids)
   return c.json(rows)

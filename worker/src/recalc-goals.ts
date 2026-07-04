@@ -41,3 +41,21 @@ export async function recalcGoalsByCategory(
     await db.update(d1, 'savings_goals', { current_amount: total?.total ?? 0 }, 'id = ?', g.id);
   }
 }
+
+// Recompute every category-linked goal for the given profile(s). Called when the Goals
+// page loads so progress is always fresh — it doesn't rely on every transaction/category
+// mutation having gone through a recalc path (imports, bulk edits, direct writes, or an
+// older client could otherwise leave a stale current_amount until the next reload).
+export async function recalcAllGoals(d1: D1Database, pids: number[]): Promise<void> {
+  if (pids.length === 0) return;
+  const inClause = pids.map(() => '?').join(',');
+  const cats = await db.all<{ category_id: number }>(
+    d1,
+    `SELECT DISTINCT category_id FROM savings_goals
+       WHERE category_id IS NOT NULL AND profile_id IN (${inClause})`,
+    ...pids
+  );
+  for (const { category_id } of cats) {
+    await recalcGoalsByCategory(d1, category_id, pids);
+  }
+}
