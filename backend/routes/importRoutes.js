@@ -9,22 +9,8 @@ const { asyncHandler } = require('../lib/errors');
 module.exports = function ({ apiRateLimiter, logError, uploadImport, spreadsheetService , requireAuth }) {
   const router = express.Router();
 
-  function parseDateString(dateStr) {
-    if (!dateStr) return new Date().toISOString().split('T')[0];
-    if (typeof dateStr === 'number') {
-      const d = spreadsheetService.parseExcelDate(dateStr);
-      if (d) return new Date(d.y, d.m - 1, d.d).toISOString().split('T')[0];
-    }
-    const s = String(dateStr).trim();
-    const euMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-    if (euMatch) {
-      const [, d, m, y] = euMatch;
-      return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).toISOString().split('T')[0];
-    }
-    const date = new Date(s);
-    if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
-    return new Date().toISOString().split('T')[0];
-  }
+  const { createParseDateString } = require('../lib/dates');
+  const parseDateString = createParseDateString(spreadsheetService);
 
   const importFiles = {};
 

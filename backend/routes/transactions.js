@@ -19,26 +19,9 @@ const {
   bulkReconcileSchema,
 } = require('../validators/schemas');
 
-// Date parsing utility - handles DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
-function parseDateString(dateStr) {
-  if (!dateStr) return new Date().toISOString().split('T')[0];
-  if (typeof dateStr === 'number') {
-    // Excel date code
-    const d = spreadsheetService.parseExcelDate(dateStr);
-    if (d) return new Date(d.y, d.m - 1, d.d).toISOString().split('T')[0];
-  }
-  const s = String(dateStr).trim();
-  // Try DD/MM/YYYY or DD-MM-YYYY (European)
-  const euMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (euMatch) {
-    const [, d, m, y] = euMatch;
-    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).toISOString().split('T')[0];
-  }
-  // Try MM/DD/YYYY (US) or ISO
-  const date = new Date(s);
-  if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
-  return new Date().toISOString().split('T')[0];
-}
+// Date parsing utility — shared with lib/dates.js
+const { createParseDateString } = require('../lib/dates');
+const parseDateString = createParseDateString(spreadsheetService);
 
 module.exports = function ({ apiRateLimiter, requireAuth, logError }) {
   const router = express.Router();
