@@ -137,7 +137,7 @@ module.exports = function ({ apiRateLimiter, requireAuth, logError }) {
       }
       if (reconciled !== undefined) {
         if (reconciled === '0' || reconciled === 'false') {
-          sql += ' AND (t.reconciled = 0 OR t.reconciled IS NULL)';
+          sql += ' AND COALESCE(t.reconciled, 0) = 0';
         } else if (reconciled === '1' || reconciled === 'true') {
           sql += ' AND t.reconciled = 1';
         }

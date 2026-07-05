@@ -293,10 +293,12 @@ module.exports = function ({ apiRateLimiter, logError, uploadImport, spreadsheet
     // Also populate a name→accountId map for resolving Means of Payment (FROM) and Category (TO)
     const accountIdMap = new Map();
 
-    // First, add existing accounts to the map so they can be referenced by name
+    // First, add existing accounts to the map so they can be referenced by name.
+    // Restrict to the primary profile so imported transactions don't get linked
+    // to another profile's account with the same name.
     const existingAccounts = repos.accounts.all(
-      `SELECT id, name FROM accounts WHERE profile_id IN (${pids.map(() => '?').join(',')})`,
-      ...pids
+      'SELECT id, name FROM accounts WHERE profile_id = ?',
+      pid
     );
     for (const acc of existingAccounts) {
       accountIdMap.set(acc.name.toLowerCase(), acc.id);

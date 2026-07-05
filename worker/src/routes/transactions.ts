@@ -128,7 +128,7 @@ transactionsRoutes.get('/api/transactions', requireAuth, async (c) => {
   }
   if (reconciled !== undefined) {
     if (reconciled === '0' || reconciled === 'false') {
-      where.push('(t.reconciled = 0 OR t.reconciled IS NULL)');
+      where.push('COALESCE(t.reconciled, 0) = 0');
     } else if (reconciled === '1' || reconciled === 'true') {
       where.push('t.reconciled = 1');
     }
@@ -390,19 +390,23 @@ transactionsRoutes.put('/api/transactions/bulk', requireAuth, async (c) => {
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(data, field)) {
         if (field === 'category_id') {
-          updates.push('category_id = ?');
-          setParams.push(
+          const catId =
             data.category_id === null || data.category_id === ''
               ? null
               : parseInt(data.category_id, 10)
-          );
+          if (catId !== null && (!Number.isFinite(catId) || catId <= 0)) {
+            throw new HttpError(400, 'Invalid category_id — must be a positive integer or null')
+          }
+          updates.push('category_id = ?');
+          setParams.push(catId);
         } else if (field === 'reconciled') {
-          // Convert boolean to integer for SQLite.
+          // Convert boolean to integer for SQLite — coerce safely to avoid
+          // string "false" being truthy in JS.
           updates.push('reconciled = ?');
-          setParams.push(data.reconciled ? 1 : 0);
+          setParams.push(data.reconciled === true || data.reconciled === 1 || data.reconciled === '1' ? 1 : 0);
         } else if (field === 'type') {
-          if (!['income', 'expense', 'transfer'].includes(data.type)) {
-            throw new HttpError(400, 'Invalid type. Must be income, expense, or transfer');
+          if (!['income', 'expense', 'transfer', 'deduction'].includes(data.type)) {
+            throw new HttpError(400, 'Invalid type. Must be income, expense, transfer, or deduction');
           }
           updates.push('type = ?');
           setParams.push(data.type);
@@ -470,8 +474,8 @@ transactionsRoutes.get('/api/transactions/reconcile/summary', requireAuth, async
     `SELECT
       COUNT(*) as total,
       SUM(CASE WHEN reconciled = 1 THEN 1 ELSE 0 END) as reconciled_count,
-      SUM(CASE WHEN reconciled = 0 OR reconciled IS NULL THEN 1 ELSE 0 END) as unreconciled_count,
-      SUM(CASE WHEN reconciled = 0 OR reconciled IS NULL THEN amount ELSE 0 END) as unreconciled_total
+      SUM(CASE WHEN COALESCE(reconciled, 0) = 0 THEN 1 ELSE 0 END) as unreconciled_count,
+      SUM(CASE WHEN COALESCE(reconciled, 0) = 0 THEN amount ELSE 0 END) as unreconciled_total
      FROM transactions WHERE profile_id IN (${inClause})`,
     ...pids
   );

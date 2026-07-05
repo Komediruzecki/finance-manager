@@ -40,7 +40,7 @@ module.exports = function ({ apiRateLimiter, authRateLimiter, requireAuth, logEr
   }));
 
   router.post('/api/auth/logout', apiRateLimiter, (req, res) => {
-    res.clearCookie('connect.sid');
+    res.clearCookie('connect.sid', { secure: true, httpOnly: true, sameSite: 'lax' });
     req.session.destroy((err) => {
       if (err) return res.status(500).json({ error: 'Logout failed' });
       res.json({ ok: true });
