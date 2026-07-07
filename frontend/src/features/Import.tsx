@@ -53,50 +53,9 @@ import {
 } from '../core/bankImport'
 import { loadBankImportMemory, rememberBankImportChoice } from '../core/bankImport/memory'
 import { classifyCategory } from '../core/categoryClassifier'
+import { autoDetectMapping, FIELD_NAMES } from '../core/importMapping'
 import styles from './Import.module.css'
 import type { BankId, CategoryRuleSet, StatementMeta, TransferRuleSet } from '../core/bankImport'
-
-// Column field names for mapping
-const FIELD_NAMES = [
-  { key: 'date', label: 'Date', required: true },
-  { key: 'description', label: 'Description', required: true },
-  { key: 'amount', label: 'Amount', required: true },
-  { key: 'category', label: 'Category', required: false },
-  { key: 'currency', label: 'Currency', required: false },
-  { key: 'beneficiary', label: 'Beneficiary', required: false },
-  { key: 'payor', label: 'Payor', required: false },
-  { key: 'means_of_payment', label: 'Means of Payment', required: false },
-  { key: 'exchange_rate', label: 'Exchange Rate', required: false },
-  { key: 'notes', label: 'Notes', required: false },
-  { key: 'type', label: 'Type', required: false },
-  { key: 'amount_local', label: 'Amount Local', required: false },
-] as const
-
-// Header name variants for auto-detection
-const HEADER_VARIANTS: Record<string, string[]> = {
-  date: ['date', 'datum', 'trans date', 'transaction date'],
-  description: ['description', 'desc', 'memo', 'note', 'narration', 'details'],
-  amount: ['amount', 'sum', 'total', 'value', 'suma'],
-  category: ['category', 'cat', 'kategoria'],
-  currency: ['currency', 'waluta', 'curr'],
-  beneficiary: ['beneficiary', 'beneficjent', 'recipient', 'payee'],
-  payor: ['payor', 'payer', 'płatnik', 'from'],
-  means_of_payment: ['payment', 'method', 'means', 'payment method'],
-  exchange_rate: ['rate', 'exchange rate', 'kurs'],
-  notes: ['notes', 'note', 'remark', 'comments'],
-  type: ['type', 'typ', 'tx type', 'transaction type'],
-  amount_local: [
-    'amount local',
-    'local amount',
-    'amount pln',
-    'amount in local currency',
-    'local currency',
-    'local curr',
-    'amount (local)',
-    'local value',
-    'domestic amount',
-  ],
-} as const
 
 /**
  * Indices of rows whose full (trimmed) content is identical to an earlier row in the
@@ -338,20 +297,6 @@ export default function Import() {
   // import), memoized as a Set for O(1) lookup in the preview table.
   const duplicateSet = createMemo(() => new Set(duplicateIndices()))
 
-  // Calculate auto-detection mapping
-  const autoDetectMapping = (headers: string[]) => {
-    const mapping: Record<string, number> = {}
-    FIELD_NAMES.forEach((field) => {
-      const variants = HEADER_VARIANTS[field.key]
-      const lowerHeaders = headers.map((h) => h.toLowerCase())
-      const idx = lowerHeaders.findIndex((h) => variants.some((v) => h.includes(v.toLowerCase())))
-      if (idx !== -1) {
-        mapping[field.key] = idx
-      }
-    })
-    return mapping
-  }
-
   // Detect unique categories
   const detectCategories = () => {
     const categories = new Set<string>()
@@ -526,7 +471,10 @@ export default function Import() {
   const addBankFiles = async (files: FileList | File[]) => {
     setError(null)
     const analyzed = await Promise.all(Array.from(files).map(analyzeBankFile))
-    setBankFiles([...bankFiles(), ...analyzed])
+    // Functional update: two quick drops both await here, so read the latest list
+    // at commit time rather than a stale snapshot (else the second drop clobbers
+    // the first).
+    setBankFiles((prev) => [...prev, ...analyzed])
   }
 
   const handleBankFileSelect = (event: Event) => {

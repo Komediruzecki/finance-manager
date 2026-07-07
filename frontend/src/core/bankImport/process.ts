@@ -101,6 +101,25 @@ export async function processFiles(
       }
       const ctx: TransformContext = { targetAccount, categoryRules, transferRules, knownAccounts }
       const txns = adapter.transform(parsed, ctx)
+      // Warn about transfer endpoints that aren't known accounts: the import links
+      // means_of_payment / category to EXISTING accounts only, so an unknown endpoint
+      // imports one-sided until the user creates that account. Only checked when a
+      // known-accounts list was supplied (otherwise we can't tell).
+      if (knownAccounts.length > 0) {
+        const known = new Set(knownAccounts.map((a) => a.toLowerCase()))
+        const unknown = new Set<string>()
+        for (const t of txns) {
+          if (t.type !== 'Transfer') continue
+          for (const name of [t.meansOfPayment, t.category]) {
+            if (name && !known.has(name.toLowerCase())) unknown.add(name)
+          }
+        }
+        if (unknown.size > 0) {
+          warnings.push(
+            `${file.filename}: transfer endpoint(s) not among your accounts — ${[...unknown].join(', ')}. These import one-sided until you create the account(s).`
+          )
+        }
+      }
       const table = txnsToTable(txns)
       headers = table.headers
       allRows.push(...table.rows)

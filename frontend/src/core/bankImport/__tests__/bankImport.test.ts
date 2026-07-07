@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { autoDetectMapping, FIELD_NAMES } from '../../importMapping'
 import { resolveTargetAccount, statementSignature } from '../accountResolver'
 import { ersteAdapter } from '../adapters/erste'
 import { pbzAdapter } from '../adapters/pbz'
@@ -83,6 +84,26 @@ describe('parse utils', () => {
     expect(rows).toEqual([
       ['a', 'b', 'c'],
       ['1', 'x;y', '3'],
+    ])
+  })
+
+  it('treats a stray mid-field quote as literal (does not collapse the row)', () => {
+    // The lone " must NOT open a quoted field, or the following ";" get swallowed
+    // and the 5-column row collapses (which would drop the transaction).
+    const rows = splitDelimited('1;PROMO 24" TV;9,99;EUR;x', ';')
+    expect(rows[0]).toHaveLength(5)
+    expect(rows[0]).toEqual(['1', 'PROMO 24" TV', '9,99', 'EUR', 'x'])
+  })
+
+  it('keeps balanced mid-field quotes and handles escaped quotes', () => {
+    expect(splitDelimited('a;KEKS za "I send";b', ';')[0]).toEqual(['a', 'KEKS za "I send"', 'b'])
+    // "" inside a properly quoted field is one literal quote.
+    expect(splitDelimited('"a""b";c', ';')[0]).toEqual(['a"b', 'c'])
+    // A comma inside a quoted Revolut field stays intact.
+    expect(splitDelimited('Card,"Top-up, extra",5.00', ',')[0]).toEqual([
+      'Card',
+      'Top-up, extra',
+      '5.00',
     ])
   })
 
@@ -322,47 +343,11 @@ describe('account resolver', () => {
 // canonical headers must auto-map onto the app's import fields (contract guard)
 // ---------------------------------------------------------------------------
 describe('canonical header auto-mapping', () => {
-  // Mirror of Import.tsx HEADER_VARIANTS — if that changes, this guard should too.
-  const FIELD_ORDER = [
-    'date',
-    'description',
-    'amount',
-    'category',
-    'currency',
-    'beneficiary',
-    'payor',
-    'means_of_payment',
-    'exchange_rate',
-    'notes',
-    'type',
-    'amount_local',
-  ]
-  const HEADER_VARIANTS: Record<string, string[]> = {
-    date: ['date', 'datum', 'trans date', 'transaction date'],
-    description: ['description', 'desc', 'memo', 'note', 'narration', 'details'],
-    amount: ['amount', 'sum', 'total', 'value', 'suma'],
-    category: ['category', 'cat', 'kategoria'],
-    currency: ['currency', 'waluta', 'curr'],
-    beneficiary: ['beneficiary', 'beneficjent', 'recipient', 'payee'],
-    payor: ['payor', 'payer', 'from'],
-    means_of_payment: ['payment', 'method', 'means', 'payment method'],
-    exchange_rate: ['rate', 'exchange rate', 'kurs'],
-    notes: ['notes', 'note', 'remark', 'comments'],
-    type: ['type', 'typ', 'tx type', 'transaction type'],
-    amount_local: ['amount local', 'local amount', 'amount in local currency'],
-  }
-  const autoDetect = (headers: string[]) => {
-    const mapping: Record<string, number> = {}
-    for (const field of FIELD_ORDER) {
-      const lower = headers.map((h) => h.toLowerCase())
-      const idx = lower.findIndex((h) => HEADER_VARIANTS[field].some((v) => h.includes(v)))
-      if (idx !== -1) mapping[field] = idx
-    }
-    return mapping
-  }
-
+  // Exercises the REAL importMapping.autoDetectMapping (not a hand-copy), so this
+  // guard actually fails if a HEADER_VARIANTS change ever misroutes the bank-import
+  // canonical headers in production.
   it('maps each canonical header to the intended field/index', () => {
-    const m = autoDetect([...CANONICAL_HEADERS])
+    const m = autoDetectMapping([...CANONICAL_HEADERS])
     expect(m.date).toBe(0)
     expect(m.type).toBe(1)
     expect(m.means_of_payment).toBe(2)
@@ -373,5 +358,12 @@ describe('canonical header auto-mapping', () => {
     expect(m.beneficiary).toBe(7)
     expect(m.payor).toBe(8)
     expect(m.notes).toBe(9)
+  })
+
+  it('maps every required import field', () => {
+    const m = autoDetectMapping([...CANONICAL_HEADERS])
+    for (const field of FIELD_NAMES.filter((f) => f.required)) {
+      expect(m[field.key], `required field "${field.key}" must auto-map`).toBeGreaterThanOrEqual(0)
+    }
   })
 })
