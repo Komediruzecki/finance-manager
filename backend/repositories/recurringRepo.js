@@ -45,20 +45,47 @@ class RecurringRepository extends BaseRepository {
     const r = this.getById(id, profileId);
     if (!r) return null;
     const date = r.next_date || new Date().toISOString().split('T')[0];
-    const result = this.run(
-      `INSERT INTO transactions (profile_id, description, amount, type, category_id, account_id, date, notes, beneficiary, payor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      profileId, r.description, r.amount, r.type, r.category_id, r.account_id ?? null, date, r.notes || '', '', ''
-    );
-    // Update linked account balance if account_id is set.
-    if (r.account_id != null) {
-      const delta = r.type === 'income' ? r.amount : -r.amount;
-      this.run(
-        'UPDATE accounts SET balance = balance + ? WHERE id = ? AND profile_id = ?',
-        delta, r.account_id, profileId
+    // Wrap in a transaction so the INSERT, balance UPDATE, and next_date advance
+    // are atomic. Matches the D1 batch semantics of the worker.
+    return this.transaction(() => {
+      const result = this.run(
+        `INSERT INTO transactions (profile_id, description, amount, type, category_id, account_id, date, notes, beneficiary, payor)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        profileId,
+        r.description,
+        r.amount,
+        r.type,
+        r.category_id,
+        r.account_id ?? null,
+        date,
+        r.notes || '',
+        '',
+        ''
       );
-    }
-    return { ...r, transactionId: result.lastInsertRowid };
+      // Update linked account balance if account_id is set.
+      if (r.account_id != null) {
+        const delta = r.type === 'income' ? r.amount : -r.amount;
+        this.run(
+          'UPDATE accounts SET balance = balance + ? WHERE id = ? AND profile_id = ?',
+          delta,
+          r.account_id,
+          profileId
+        );
+      }
+      // Advance next_date.
+      let next = new Date(date);
+      if (r.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
+      else if (r.frequency === 'weekly') next.setDate(next.getDate() + 7);
+      else if (r.frequency === 'yearly') next.setFullYear(next.getFullYear() + 1);
+      this.run(
+        'UPDATE recurring_transactions SET next_date = ? WHERE id = ? AND profile_id = ?',
+        next.toISOString().split('T')[0],
+        id,
+        profileId
+      );
+      const nextDate = next.toISOString().split('T')[0];
+      return { ...r, transactionId: result.lastInsertRowid, next_date: nextDate };
+    });
   }
 }
 

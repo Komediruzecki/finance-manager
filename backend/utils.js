@@ -10,7 +10,7 @@ const fs = require('fs');
  * backward compatibility during migration. New code should return objects
  * directly without wrapping in toCamelCase().
  *
- * TODO: Remove this function and all callers after audit phase 2.
+ * Remove this function and remaining references after audit phase 2.
  */
 function toCamelCase(obj) {
   return obj;
