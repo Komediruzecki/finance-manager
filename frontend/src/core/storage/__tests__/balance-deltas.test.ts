@@ -20,6 +20,30 @@ describe('computeBalanceDeltas', () => {
     expect(deltas).toEqual([{ accountId: 5, delta: -100 }])
   })
 
+  it('foreign-currency row uses amount_local (base) for the delta, not the raw amount', () => {
+    // amount is 750 HRK; amount_local is the 100 EUR base value the account is
+    // denominated in. The balance must move by the base value.
+    const expense = computeBalanceDeltas({
+      account_id: 5,
+      type: 'expense',
+      amount: 750,
+      amount_local: 100,
+    })
+    expect(expense).toEqual([{ accountId: 5, delta: -100 }])
+
+    const transfer = computeBalanceDeltas({
+      account_id: 1,
+      transfer_account_id: 2,
+      type: 'transfer',
+      amount: 750,
+      amount_local: 100,
+    })
+    expect(transfer).toEqual([
+      { accountId: 1, delta: -100 },
+      { accountId: 2, delta: 100 },
+    ])
+  })
+
   it('income for account-type (deposit into IB) increases balance', () => {
     // Simulates importing a bank statement line for IB deposit:
     // Amount is positive, type is income (from account's perspective)
