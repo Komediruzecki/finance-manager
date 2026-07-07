@@ -3,7 +3,7 @@
  * Quick transaction entry (Ctrl+Shift+T shortcut)
  */
 import { createSignal, For, onCleanup, onMount } from 'solid-js'
-import { api, toast, getLocalCurrency } from '../core/api'
+import { api, getLocalCurrency, toast } from '../core/api'
 import quickAddModalStyles from './QuickAddModal.module.css'
 import type { Category } from '../types/models'
 
