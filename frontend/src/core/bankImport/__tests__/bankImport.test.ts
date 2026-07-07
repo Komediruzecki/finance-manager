@@ -17,6 +17,7 @@ import {
 } from '../parse'
 import { processFiles, toDetectInput } from '../process'
 import { detectBank } from '../registry'
+import { resolveCounterpart } from '../transferRules'
 import type { CategoryRuleSet, TransferRuleSet, TransformContext } from '../types'
 
 const enc = (s: string) => new TextEncoder().encode(s)
@@ -52,6 +53,25 @@ describe('matchCategory (longest match)', () => {
   it('returns null when nothing matches', () => {
     expect(matchCategory('Kaufland', rules)).toBeNull()
     expect(matchCategory('', rules)).toBeNull()
+  })
+})
+
+describe('resolveCounterpart (longest signature wins)', () => {
+  it('prefers a specific card last-4 over a generic keyword', () => {
+    const rules = {
+      ownAccounts: [],
+      keywords: [],
+      counterparts: { revolut: 'Revolut EUR', '0418': 'Revolut USD' },
+    }
+    // A generic "revolut" is listed first but the specific "0418" must win.
+    expect(resolveCounterpart('POS Revolut**0418* Dublin', rules)).toBe('Revolut USD')
+    // Without the card suffix, the generic keyword still resolves.
+    expect(resolveCounterpart('POS Revolut Dublin', rules)).toBe('Revolut EUR')
+  })
+  it('falls back to an own-account name, else null', () => {
+    const rules = { ownAccounts: ['Erste Current'], keywords: [], counterparts: {} }
+    expect(resolveCounterpart('Top-up to Erste Current', rules)).toBe('Erste Current')
+    expect(resolveCounterpart('Nothing here', rules)).toBeNull()
   })
 })
 

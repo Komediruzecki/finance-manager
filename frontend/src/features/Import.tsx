@@ -685,8 +685,13 @@ export default function Import() {
       setSheetResult(null)
       setHeaders(result.headers)
       setRows(result.rows)
-      const mapping = autoDetectMapping(result.headers)
-      setColumnMapping(mapping)
+      // Headers are unchanged (fixed canonical set), so keep the user's column
+      // mapping rather than reverting a manual remap; only auto-detect if none set.
+      let mapping = columnMapping()
+      if (Object.keys(mapping).length === 0) {
+        mapping = autoDetectMapping(result.headers)
+        setColumnMapping(mapping)
+      }
       if (mapping['category'] !== undefined) {
         const existing = categoryTypes()
         const merged: Record<string, 'income' | 'expense' | 'account'> = {}
@@ -2120,9 +2125,12 @@ export default function Import() {
   // Preview step
   const previewStep = () => {
     const headers = currentHeaders()
-    const total = currentRows().length
-    const selected = selectedRows().size
-    const duplicates = duplicateIndices().length
+    // Getters (not plain consts) so the stats stay reactive — e.g. after
+    // Recalculate, which refreshes rows/selection/duplicates without remounting
+    // the preview (Show doesn't re-run previewStep on a preview→preview change).
+    const total = () => currentRows().length
+    const selected = () => selectedRows().size
+    const duplicates = () => duplicateIndices().length
 
     return (
       <>
@@ -2131,26 +2139,26 @@ export default function Import() {
           <div class={styles.previewStats}>
             <div class={styles.statItem}>
               <span class={styles.statLabel}>Total Rows</span>
-              <span class={styles.statValue}>{total}</span>
+              <span class={styles.statValue}>{total()}</span>
             </div>
             <div class={styles.statItem}>
               <span class={styles.statLabel}>Selected</span>
-              <span class={styles.statValue}>{selected}</span>
+              <span class={styles.statValue}>{selected()}</span>
             </div>
-            {duplicates > 0 && (
+            {duplicates() > 0 && (
               <div class={styles.statItem}>
                 <span class={styles.statLabel}>Duplicates</span>
-                <span class={`${styles.statValue} ${duplicates > 0 ? styles.duplicate : ''}`}>
-                  {duplicates}
+                <span class={`${styles.statValue} ${duplicates() > 0 ? styles.duplicate : ''}`}>
+                  {duplicates()}
                 </span>
               </div>
             )}
           </div>
-          {duplicates > 0 && (
+          {duplicates() > 0 && (
             <p style={{ margin: '0 0 12px', 'font-size': '12px', color: 'var(--text-secondary)' }}>
-              {duplicates} duplicate row{duplicates === 1 ? '' : 's'} (identical to an earlier row
-              in this import) unselected by default — check a row, or use "Import All", to include
-              it.
+              {duplicates()} duplicate row{duplicates() === 1 ? '' : 's'} (identical to an earlier
+              row in this import) unselected by default — check a row, or use "Import All", to
+              include it.
             </p>
           )}
           <label
@@ -2181,14 +2189,14 @@ export default function Import() {
               onClick={() => handleImport('selected')}
               disabled={selectedRows().size === 0}
             >
-              Import Selected ({selected})
+              Import Selected ({selected()})
             </button>
-            {duplicates > 0 && (
+            {duplicates() > 0 && (
               <button
                 class={`${styles.btn} ${styles.btnSecondary}`}
                 onClick={() => handleImport('new')}
               >
-                Import Only New (Skip {duplicates} Duplicates)
+                Import Only New (Skip {duplicates()} Duplicates)
               </button>
             )}
             <button
@@ -2216,7 +2224,7 @@ export default function Import() {
                 <th class={styles.selectCol}>
                   <input
                     type="checkbox"
-                    checked={selected === total}
+                    checked={selected() === total()}
                     onChange={(e) => {
                       toggleAll(e.currentTarget.checked)
                     }}
@@ -2261,7 +2269,7 @@ export default function Import() {
         </div>
 
         {/* Pagination */}
-        {total > rowsPerPage() && (
+        {total() > rowsPerPage() && (
           <div class={styles.pagination}>
             <button
               class={`${styles.btn} ${styles.btnSm} ${styles.btnGhost}`}
