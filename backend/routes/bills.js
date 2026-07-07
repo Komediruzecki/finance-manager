@@ -165,7 +165,7 @@ module.exports = function ({ apiRateLimiter, logError , requireAuth }) {
 
   router.post('/api/bills', apiRateLimiter, asyncHandler((req, res) => {
     const pid = getProfileId(req);
-    const { name, amount, frequency, day_of_month, category_id, notes, type, dueDate } = req.body;
+    const { name, amount, frequency, day_of_month, category_id, account_id, notes, type, dueDate } = req.body;
     if (!name || amount === undefined) {
       return res.status(400).json({ error: 'Name and amount are required' });
     }
@@ -185,6 +185,7 @@ module.exports = function ({ apiRateLimiter, logError , requireAuth }) {
       frequency: frequency || 'monthly',
       day_of_month: day_of_month || null,
       category_id: category_id || null,
+      account_id: account_id || null,
       notes: notes || '',
       type: type || 'bill',
       due_date: dueDate,
@@ -197,7 +198,7 @@ module.exports = function ({ apiRateLimiter, logError , requireAuth }) {
     const pid = getProfileId(req);
     const existing = req.repos.bills.getById(req.params.id, pid);
     if (!existing) return res.status(404).json({ error: 'Not found' });
-    const { name, amount, frequency, day_of_month, category_id, is_active, notes, type } =
+    const { name, amount, frequency, day_of_month, category_id, account_id, is_active, notes, type } =
       req.body;
     req.repos.bills.update(req.params.id, pid, {
       name: name ?? '',
@@ -205,6 +206,7 @@ module.exports = function ({ apiRateLimiter, logError , requireAuth }) {
       frequency: frequency ?? 'monthly',
       day_of_month: day_of_month ?? null,
       category_id: category_id ?? null,
+      account_id: account_id ?? null,
       is_active: is_active ?? 1,
       notes: notes ?? '',
       type: type ?? 'bill',
@@ -232,9 +234,18 @@ module.exports = function ({ apiRateLimiter, logError , requireAuth }) {
       amount: bill.amount,
       type: 'expense',
       category_id: bill.category_id,
+      account_id: bill.account_id ?? null,
       date: todayStr,
       notes: bill.notes || '',
     });
+
+    // Update linked account balance if account_id is set.
+    if (bill.account_id != null) {
+      req.repos.accounts.run(
+        'UPDATE accounts SET balance = balance + ? WHERE id = ? AND profile_id = ?',
+        -bill.amount, bill.account_id, pid
+      );
+    }
 
     req.repos.bills.markPaid(req.params.id, pid);
 

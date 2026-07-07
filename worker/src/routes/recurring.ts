@@ -16,6 +16,7 @@ interface RecurringRow {
   amount: number
   type: string
   category_id: number | null
+  account_id: number | null
   frequency: string
   day_of_month: number | null
   next_date: string | null
@@ -161,13 +162,14 @@ recurringRoutes.get('/api/recurring/:id', requireAuth, async (c) => {
 recurringRoutes.post('/api/recurring', requireAuth, async (c) => {
   const pid = await getProfileId(c)
   const b = (await c.req.json()) as Record<string, any>
-  const { description, amount, type, category_id, frequency, day_of_month, next_date, notes } = b
+  const { description, amount, type, category_id, account_id, frequency, day_of_month, next_date, notes } = b
   const res = await db.insert(c.env.DB, 'recurring_transactions', {
     profile_id: pid,
     description: description || '',
     amount,
     type: type || 'expense',
     category_id: category_id || null,
+    account_id: account_id || null,
     frequency: frequency || 'monthly',
     day_of_month: day_of_month || null,
     next_date: next_date || null,
@@ -187,7 +189,7 @@ recurringRoutes.put('/api/recurring/:id', requireAuth, async (c) => {
   )
   if (!existing) throw new HttpError(404, 'Not found')
   const b = (await c.req.json()) as Record<string, any>
-  const { description, amount, type, category_id, frequency, day_of_month, next_date, notes, active } = b
+  const { description, amount, type, category_id, account_id, frequency, day_of_month, next_date, notes, active } = b
   await db.update(
     c.env.DB,
     'recurring_transactions',
@@ -196,6 +198,7 @@ recurringRoutes.put('/api/recurring/:id', requireAuth, async (c) => {
       amount: amount ?? 0,
       type: type ?? 'expense',
       category_id: category_id ?? null,
+      account_id: account_id ?? null,
       frequency: frequency ?? 'monthly',
       day_of_month: day_of_month ?? null,
       next_date: next_date ?? null,
@@ -216,6 +219,9 @@ recurringRoutes.delete('/api/recurring/:id', requireAuth, async (c) => {
 })
 
 // "Process due": materializes a transaction from the recurring rule and advances next_date.
+// Executed in one atomic D1 batch: INSERT the transaction, adjust the linked account
+// balance (if account_id is set), and advance the next_date — so a mid-flight failure
+// cannot create a transaction without updating the balance.
 recurringRoutes.post('/api/recurring/:id/populate', requireAuth, async (c) => {
   const pid = await getProfileId(c)
   const id = c.req.param('id')
@@ -228,31 +234,46 @@ recurringRoutes.post('/api/recurring/:id/populate', requireAuth, async (c) => {
   if (!r) throw new HttpError(404, 'Not found')
 
   const date = r.next_date || new Date().toISOString().split('T')[0]
-  const tx = await db.run(
-    c.env.DB,
-    `INSERT INTO transactions (profile_id, description, amount, type, category_id, date, notes, beneficiary, payor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    pid,
-    r.description,
-    r.amount,
-    r.type,
-    r.category_id,
-    date,
-    r.notes || '',
-    '',
-    ''
-  )
 
   let next = new Date(date)
   if (r.frequency === 'monthly') next.setMonth(next.getMonth() + 1)
   else if (r.frequency === 'weekly') next.setDate(next.getDate() + 7)
   else if (r.frequency === 'yearly') next.setFullYear(next.getFullYear() + 1)
   const nextStr = next.toISOString().split('T')[0]
-  await db.update(c.env.DB, 'recurring_transactions', { next_date: nextStr }, 'id = ? AND profile_id = ?', id, pid)
+
+  const stmts: D1PreparedStatement[] = []
+
+  // 1. Insert the transaction, including account_id if set.
+  stmts.push(
+    c.env.DB.prepare(
+      `INSERT INTO transactions (profile_id, description, amount, type, category_id, account_id, date, notes, beneficiary, payor)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(pid, r.description, r.amount, r.type, r.category_id, r.account_id ?? null, date, r.notes || '', '', '')
+  )
+
+  // 2. Adjust the linked account balance if account_id is set.
+  if (r.account_id != null) {
+    const delta = r.type === 'income' ? r.amount : -r.amount
+    stmts.push(
+      c.env.DB.prepare(
+        'UPDATE accounts SET balance = balance + ? WHERE id = ? AND profile_id = ?'
+      ).bind(delta, r.account_id, pid)
+    )
+  }
+
+  // 3. Advance next_date.
+  stmts.push(
+    c.env.DB.prepare(
+      'UPDATE recurring_transactions SET next_date = ? WHERE id = ? AND profile_id = ?'
+    ).bind(nextStr, id, pid)
+  )
+
+  const results = await c.env.DB.batch(stmts)
+  const txLastRowId = results[0]?.meta?.last_row_id
 
   return c.json({
     ok: true,
-    transactionId: tx.meta.last_row_id,
+    transactionId: txLastRowId,
     next_date: nextStr,
   })
 })

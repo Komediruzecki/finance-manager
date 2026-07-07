@@ -389,13 +389,21 @@ analyticsRoutes.get('/api/analytics/sankey', requireAuth, async (c) => {
   })
 
   // If no budgets, use actual spending as flow.
+  // Batch-load categories in one query instead of N+1 db.first() calls.
   if (budgets.length === 0) {
-    for (const a of actualSpending) {
-      const cat = await db.first<{ name: string; color: string | null }>(
+    const catIds = actualSpending.map((a) => a.category_id).filter(Boolean) as number[]
+    const catMap = new Map<number, { name: string; color: string | null }>()
+    if (catIds.length > 0) {
+      const ph = catIds.map(() => '?').join(',')
+      const cats = await db.all<{ id: number; name: string; color: string | null }>(
         c.env.DB,
-        'SELECT name, color FROM categories WHERE id = ?',
-        a.category_id
+        `SELECT id, name, color FROM categories WHERE id IN (${ph})`,
+        ...catIds
       )
+      for (const cat of cats) catMap.set(cat.id, cat)
+    }
+    for (const a of actualSpending) {
+      const cat = a.category_id != null ? catMap.get(a.category_id) : undefined
       if (cat) {
         if (!nodeNames.has(cat.name)) {
           nodes.push({ name: cat.name, category: 'category', color: cat.color })

@@ -17,6 +17,7 @@ interface BillRow {
   frequency: string
   day_of_month: number | null
   category_id: number | null
+  account_id: number | null
   due_date: string | null
   is_active: number
   last_paid: string | null
@@ -296,7 +297,7 @@ billsRoutes.get('/api/bills/calendar', requireAuth, async (c) => {
 billsRoutes.post('/api/bills', requireAuth, async (c) => {
   const pid = await getProfileId(c)
   const b = (await c.req.json()) as Record<string, any>
-  const { name, amount, frequency, day_of_month, category_id, notes, type, dueDate } = b
+  const { name, amount, frequency, day_of_month, category_id, account_id, notes, type, dueDate } = b
   if (!name || amount === undefined) throw new HttpError(400, 'Name and amount are required')
   if (!dueDate) throw new HttpError(400, 'Due date is required')
   if (isNaN(Date.parse(dueDate))) throw new HttpError(400, 'Invalid due date format')
@@ -308,6 +309,7 @@ billsRoutes.post('/api/bills', requireAuth, async (c) => {
     frequency: frequency || 'monthly',
     day_of_month: day_of_month || null,
     category_id: category_id || null,
+    account_id: account_id || null,
     notes: notes || '',
     type: type || 'bill',
     due_date: dueDate,
@@ -321,7 +323,7 @@ billsRoutes.put('/api/bills/:id', requireAuth, async (c) => {
   const existing = await db.first<BillRow>(c.env.DB, 'SELECT * FROM bills WHERE id = ? AND profile_id = ?', id, pid)
   if (!existing) throw new HttpError(404, 'Not found')
   const b = (await c.req.json()) as Record<string, any>
-  const { name, amount, frequency, day_of_month, category_id, is_active, notes, type } = b
+  const { name, amount, frequency, day_of_month, category_id, account_id, is_active, notes, type } = b
   await db.update(
     c.env.DB,
     'bills',
@@ -331,6 +333,7 @@ billsRoutes.put('/api/bills/:id', requireAuth, async (c) => {
       frequency: frequency ?? 'monthly',
       day_of_month: day_of_month ?? null,
       category_id: category_id ?? null,
+      account_id: account_id ?? null,
       is_active: is_active ?? 1,
       notes: notes ?? '',
       type: type ?? 'bill',
@@ -355,19 +358,36 @@ billsRoutes.post('/api/bills/:id/mark-paid', requireAuth, async (c) => {
   if (!bill) throw new HttpError(404, 'Not found')
 
   const todayStr = new Date().toISOString().split('T')[0]
-  const tx = await db.insert(c.env.DB, 'transactions', {
-    profile_id: pid,
-    description: bill.name,
-    amount: bill.amount,
-    type: 'expense',
-    category_id: bill.category_id,
-    date: todayStr,
-    notes: bill.notes || '',
-  })
 
-  await db.update(c.env.DB, 'bills', { last_paid_date: todayStr }, 'id = ? AND profile_id = ?', id, pid)
+  // Atomic batch: INSERT transaction, adjust linked account balance (if
+  // account_id is set), and update last_paid_date on the bill.
+  const stmts: D1PreparedStatement[] = []
 
-  return c.json({ ok: true, transactionId: tx.meta.last_row_id })
+  stmts.push(
+    c.env.DB.prepare(
+      `INSERT INTO transactions (profile_id, description, amount, type, category_id, account_id, date, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(pid, bill.name, bill.amount, 'expense', bill.category_id, bill.account_id ?? null, todayStr, bill.notes || '')
+  )
+
+  if (bill.account_id != null) {
+    stmts.push(
+      c.env.DB.prepare(
+        'UPDATE accounts SET balance = balance - ? WHERE id = ? AND profile_id = ?'
+      ).bind(bill.amount, bill.account_id, pid)
+    )
+  }
+
+  stmts.push(
+    c.env.DB.prepare(
+      'UPDATE bills SET last_paid_date = ? WHERE id = ? AND profile_id = ?'
+    ).bind(todayStr, id, pid)
+  )
+
+  const results = await c.env.DB.batch(stmts)
+  const txLastRowId = results[0]?.meta?.last_row_id
+
+  return c.json({ ok: true, transactionId: txLastRowId })
 })
 
 // Registered after the specific /api/bills/* GET routes so it doesn't shadow them.
