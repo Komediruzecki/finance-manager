@@ -38,8 +38,22 @@
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { toast } from '../core/api'
 import { apiFetch } from '../core/apiFetch'
+import {
+  detectBank,
+  listAdapters,
+  loadCategoryRules,
+  loadTransferRules,
+  processFiles,
+  resetBankImportRules,
+  resolveTargetAccount,
+  saveCategoryRules,
+  saveTransferRules,
+  toDetectInput,
+} from '../core/bankImport'
+import { loadBankImportMemory, rememberBankImportChoice } from '../core/bankImport/memory'
 import { classifyCategory } from '../core/categoryClassifier'
 import styles from './Import.module.css'
+import type { BankId, StatementMeta } from '../core/bankImport'
 
 // Column field names for mapping
 const FIELD_NAMES = [
@@ -119,7 +133,7 @@ interface ImportLogEntry {
 
 export default function Import() {
   // Import method tab
-  type ImportTab = 'google-sheets' | 'file-upload' | 'paste-csv'
+  type ImportTab = 'google-sheets' | 'file-upload' | 'paste-csv' | 'bank-imports'
   const [activeImportTab, setActiveImportTab] = createSignal<ImportTab>('google-sheets')
 
   const profileHeaders = () => {
@@ -159,6 +173,32 @@ export default function Import() {
   // Paste CSV state
   const [pastedText, setPastedText] = createSignal('')
   const [pasteDelimiter, setPasteDelimiter] = createSignal<'auto' | 'comma' | 'tab'>('auto')
+
+  // Bank Imports state
+  interface BankFileRow {
+    file: File
+    bytes: Uint8Array
+    bankId: BankId | null
+    confidence: number
+    meta: StatementMeta
+    targetAccount: string
+  }
+  const [bankFiles, setBankFiles] = createSignal<BankFileRow[]>([])
+  const [bankAccounts, setBankAccounts] = createSignal<
+    { id: number; name: string; bank_name?: string | null }[]
+  >([])
+  const [bankWarnings, setBankWarnings] = createSignal<string[]>([])
+
+  // Editable categorization + transfer rules (persisted per profile). Keywords are
+  // edited as comma-separated strings for a friendlier input, split on save.
+  const [showBankRules, setShowBankRules] = createSignal(false)
+  const [categoryRuleDraft, setCategoryRuleDraft] = createSignal<
+    { category: string; keywords: string }[]
+  >([])
+  const [transferKeywordDraft, setTransferKeywordDraft] = createSignal('')
+  const [counterpartDraft, setCounterpartDraft] = createSignal<
+    { signature: string; account: string }[]
+  >([])
 
   const parsePastedData = (text: string) => {
     if (!text.trim()) return
@@ -397,6 +437,194 @@ export default function Import() {
     if (file) handleFileUpload(file)
   }
 
+  // ---- Bank Imports ----
+  const loadBankAccounts = async () => {
+    try {
+      const res = await apiFetch('/api/accounts', { headers: profileHeaders() })
+      if (!res.ok) return
+      const list = await res.json()
+      if (Array.isArray(list)) {
+        setBankAccounts(
+          list.map((a: Record<string, unknown>) => ({
+            id: a.id as number,
+            name: a.name as string,
+            bank_name: (a.bank_name as string) ?? null,
+          }))
+        )
+      }
+    } catch {
+      // Account picker simply falls back to manual entry
+    }
+  }
+
+  // Detect the bank + sniff metadata for one file, then best-effort resolve the
+  // target account (remembered choice → IBAN/name heuristic).
+  const analyzeBankFile = async (file: File): Promise<BankFileRow> => {
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const det = detectBank(toDetectInput(file.name, bytes))
+    let meta: StatementMeta = {}
+    if (det) {
+      try {
+        meta = (await det.adapter.parse(bytes, file.name)).meta
+      } catch {
+        // Metadata is best-effort; parsing runs again at process time
+      }
+    }
+    const targetAccount = det
+      ? (resolveTargetAccount(
+          det.adapter.id,
+          meta,
+          file.name,
+          bankAccounts(),
+          loadBankImportMemory()
+        ) ?? '')
+      : ''
+    return {
+      file,
+      bytes,
+      bankId: det?.adapter.id ?? null,
+      confidence: det?.confidence ?? 0,
+      meta,
+      targetAccount,
+    }
+  }
+
+  const addBankFiles = async (files: FileList | File[]) => {
+    setError(null)
+    const analyzed = await Promise.all(Array.from(files).map(analyzeBankFile))
+    setBankFiles([...bankFiles(), ...analyzed])
+  }
+
+  const handleBankFileSelect = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    if (target.files?.length) void addBankFiles(target.files)
+    target.value = ''
+  }
+
+  const handleBankDrop = (event: DragEvent) => {
+    event.preventDefault()
+    if (event.dataTransfer?.files?.length) void addBankFiles(event.dataTransfer.files)
+  }
+
+  const updateBankFile = (idx: number, patch: Partial<BankFileRow>) => {
+    setBankFiles(bankFiles().map((r, i) => (i === idx ? { ...r, ...patch } : r)))
+  }
+  const removeBankFile = (idx: number) => {
+    setBankFiles(bankFiles().filter((_, i) => i !== idx))
+  }
+
+  // Parse + transform every recognized file into the canonical table, then hand
+  // off to the existing mapping step (which the user confirms/remaps).
+  const processBankFiles = async () => {
+    const rows = bankFiles()
+    const recognized = rows.filter((r) => r.bankId)
+    if (recognized.length === 0) {
+      setError('None of the files were recognized as a supported bank statement')
+      return
+    }
+    if (recognized.some((r) => !r.targetAccount)) {
+      setError('Choose a target account for every recognized file')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setBankWarnings([])
+    try {
+      const knownAccounts = bankAccounts().map((a) => a.name)
+      const categoryRules = loadCategoryRules()
+      const stored = loadTransferRules()
+      // The user's own account names always count as transfer endpoints, on top of
+      // whatever they configured in the rules editor.
+      const transferRules = {
+        ...stored,
+        ownAccounts: Array.from(new Set([...stored.ownAccounts, ...knownAccounts])),
+      }
+      const result = await processFiles(
+        recognized.map((r) => ({
+          filename: r.file.name,
+          bytes: r.bytes,
+          bankId: r.bankId!,
+          targetAccount: r.targetAccount,
+        })),
+        { categoryRules, transferRules, knownAccounts }
+      )
+      setBankWarnings(result.warnings)
+      // Remember each account choice so the next matching statement auto-routes.
+      recognized.forEach((r) => {
+        rememberBankImportChoice(r.bankId!, r.meta, r.file.name, r.targetAccount)
+      })
+      if (result.rows.length === 0) {
+        setError('No transactions were found in the selected files')
+        return
+      }
+      setUploadResult({
+        headers: result.headers,
+        rows: result.rows,
+        filename:
+          recognized.length === 1 ? recognized[0].file.name : `${recognized.length} statements`,
+        fileId: `bank-${Date.now()}`,
+        sheetName: 'Bank Import',
+        sheetNames: ['Bank Import'],
+        totalRows: result.rows.length,
+        duplicateCount: 0,
+        duplicateIndices: [],
+      })
+      setSheetResult(null)
+      setHeaders(result.headers)
+      setRows(result.rows)
+      goToMapping()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process bank files')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ---- Bank import rules editor ----
+  const loadBankRules = () => {
+    setCategoryRuleDraft(
+      loadCategoryRules().map((r) => ({ category: r.category, keywords: r.keywords.join(', ') }))
+    )
+    const t = loadTransferRules()
+    setTransferKeywordDraft(t.keywords.join(', '))
+    setCounterpartDraft(
+      Object.entries(t.counterparts).map(([signature, account]) => ({ signature, account }))
+    )
+  }
+
+  const saveBankRules = () => {
+    const cats = categoryRuleDraft()
+      .map((r) => ({
+        category: r.category.trim(),
+        keywords: r.keywords
+          .split(',')
+          .map((k) => k.trim())
+          .filter(Boolean),
+      }))
+      .filter((r) => r.category && r.keywords.length > 0)
+    saveCategoryRules(cats)
+
+    const keywords = transferKeywordDraft()
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean)
+    const counterparts: Record<string, string> = {}
+    for (const c of counterpartDraft()) {
+      const sig = c.signature.trim().toLowerCase()
+      if (sig && c.account) counterparts[sig] = c.account
+    }
+    const existing = loadTransferRules()
+    saveTransferRules({ ownAccounts: existing.ownAccounts, keywords, counterparts })
+    loadBankRules()
+    setResultMessage({ type: 'success', text: 'Bank import rules saved.' })
+  }
+
+  const resetBankRules = () => {
+    resetBankImportRules()
+    loadBankRules()
+    setResultMessage({ type: 'success', text: 'Bank import rules reset to defaults.' })
+  }
+
   // Google Sheets fetch
   const fetchGoogleSheet = async () => {
     const url = sheetUrl()
@@ -597,7 +825,9 @@ export default function Import() {
         }),
       })
         .then(() => loadImportLogs())
-        .catch((e: unknown) => { console.error('Failed to record import log:', e); })
+        .catch((e: unknown) => {
+          console.error('Failed to record import log:', e)
+        })
 
       // Opt-in: set each historical month's budgets to that month's spending so the
       // budget-vs-spent charts aren't empty for imported history.
@@ -610,7 +840,10 @@ export default function Import() {
           })
           const bfData = await bf.json()
           if (bfData?.ok) {
-            toast(`Set budgets for ${bfData.months} month${bfData.months === 1 ? '' : 's'} from spending`, 'success')
+            toast(
+              `Set budgets for ${bfData.months} month${bfData.months === 1 ? '' : 's'} from spending`,
+              'success'
+            )
           }
         } catch (e) {
           console.error('Failed to backfill budgets after import:', e)
@@ -637,6 +870,8 @@ export default function Import() {
     })
     setCategoryTypes(types)
     void loadImportLogs()
+    void loadBankAccounts()
+    loadBankRules()
   })
 
   // Data entry step (with tabs for Google Sheets, File Upload, Paste CSV)
@@ -661,6 +896,12 @@ export default function Import() {
           onClick={() => setActiveImportTab('paste-csv')}
         >
           Paste CSV
+        </button>
+        <button
+          class={`${styles.tab} ${activeImportTab() === 'bank-imports' ? styles.active : ''}`}
+          onClick={() => setActiveImportTab('bank-imports')}
+        >
+          Bank Imports
         </button>
       </div>
 
@@ -1251,6 +1492,338 @@ export default function Import() {
           )}
         </>
       )}
+
+      {/* Bank Imports Tab */}
+      {activeImportTab() === 'bank-imports' && (
+        <>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">
+            Upload bank statements (Revolut, Erste, PBZ). We detect the bank, map each statement to
+            one of your accounts and convert it into the standard import table — which you confirm
+            on the next step. CSV and XLS supported.
+          </p>
+          <div
+            class={`${styles.dropzone} ${loading() ? styles.disabled : ''}`}
+            onDragOver={handleDragOver}
+            onDrop={handleBankDrop}
+          >
+            <input
+              type="file"
+              id="bank-file-input"
+              accept=".csv,.xls,.xlsx"
+              multiple
+              class={styles.fileInput}
+              disabled={loading()}
+              onChange={handleBankFileSelect}
+            />
+            <label for="bank-file-input" class={styles.uploadLabel}>
+              <svg
+                class={styles.dropzoneIcon}
+                width="48"
+                height="48"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M3 21h18M5 21V9l7-4 7 4v12M9 21v-6h6v6M8 12h.01M16 12h.01" />
+              </svg>
+              <p class={styles.dropzoneTitle}>Click or drag bank statements here</p>
+              <p class={styles.dropzoneHint}>
+                Revolut / Erste (CSV), PBZ (XLS) — multiple files OK
+              </p>
+            </label>
+          </div>
+
+          {bankAccounts().length === 0 && (
+            <p class={styles.error} style={{ 'margin-top': '8px' }}>
+              You have no accounts yet. Create an account first so statements can be linked to it.
+            </p>
+          )}
+
+          <Show when={bankFiles().length > 0}>
+            <div
+              style={{
+                'margin-top': '12px',
+                display: 'flex',
+                'flex-direction': 'column',
+                gap: '8px',
+              }}
+            >
+              <For each={bankFiles()}>
+                {(row, i) => (
+                  <div
+                    style={{
+                      display: 'flex',
+                      'align-items': 'center',
+                      gap: '8px',
+                      'flex-wrap': 'wrap',
+                      border: '1px solid var(--border)',
+                      'border-radius': '8px',
+                      padding: '8px 10px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        flex: '1 1 180px',
+                        'font-size': '13px',
+                        'overflow-wrap': 'anywhere',
+                      }}
+                    >
+                      {row.file.name}
+                      {row.meta.iban ? (
+                        <span style="color: var(--text-secondary);"> · {row.meta.iban}</span>
+                      ) : null}
+                    </span>
+                    <select
+                      class={styles.formControl}
+                      style={{ 'max-width': '130px' }}
+                      value={row.bankId ?? ''}
+                      onChange={(e) => {
+                        updateBankFile(i(), {
+                          bankId: (e.currentTarget.value || null) as BankId | null,
+                        })
+                      }}
+                    >
+                      <option value="">Unknown</option>
+                      <For each={listAdapters()}>
+                        {(a) => <option value={a.id}>{a.label}</option>}
+                      </For>
+                    </select>
+                    <select
+                      class={styles.formControl}
+                      style={{ 'max-width': '170px' }}
+                      value={row.targetAccount}
+                      onChange={(e) => {
+                        updateBankFile(i(), { targetAccount: e.currentTarget.value })
+                      }}
+                    >
+                      <option value="">Choose account…</option>
+                      <For each={bankAccounts()}>
+                        {(a) => <option value={a.name}>{a.name}</option>}
+                      </For>
+                    </select>
+                    <button
+                      class={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                      onClick={() => {
+                        removeBankFile(i())
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </For>
+            </div>
+
+            <button
+              class={`${styles.btn} ${styles.btnPrimary}`}
+              style={{ 'margin-top': '12px' }}
+              onClick={processBankFiles}
+              disabled={loading()}
+            >
+              Process &amp; Continue to Mapping
+            </button>
+          </Show>
+
+          <Show when={bankWarnings().length > 0}>
+            <ul
+              style={{ 'margin-top': '10px', color: 'var(--text-secondary)', 'font-size': '12px' }}
+            >
+              <For each={bankWarnings()}>{(w) => <li>{w}</li>}</For>
+            </ul>
+          </Show>
+
+          <div style={{ 'margin-top': '16px' }}>
+            <button
+              class={`${styles.btn} ${styles.btnOutline} ${styles.btnSm}`}
+              onClick={() => setShowBankRules(!showBankRules())}
+            >
+              {showBankRules() ? 'Hide' : 'Edit'} categorization &amp; transfer rules
+            </button>
+
+            <Show when={showBankRules()}>
+              <div
+                style={{
+                  'margin-top': '10px',
+                  border: '1px solid var(--border)',
+                  'border-radius': '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  'flex-direction': 'column',
+                  gap: '14px',
+                }}
+              >
+                <div>
+                  <p class={styles.mappingLabel} style={{ 'margin-bottom': '6px' }}>
+                    Category keyword rules
+                  </p>
+                  <p class={styles.dropzoneHint} style={{ 'margin-bottom': '8px' }}>
+                    A transaction gets the first category whose keywords appear in its description.
+                    Comma-separate keywords.
+                  </p>
+                  <div style={{ display: 'flex', 'flex-direction': 'column', gap: '6px' }}>
+                    <For each={categoryRuleDraft()}>
+                      {(rule, i) => (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '6px',
+                            'align-items': 'center',
+                            'flex-wrap': 'wrap',
+                          }}
+                        >
+                          <input
+                            class={styles.formControl}
+                            style={{ flex: '0 0 150px' }}
+                            placeholder="Category"
+                            value={rule.category}
+                            onInput={(e) => {
+                              const v = e.currentTarget.value
+                              setCategoryRuleDraft(
+                                categoryRuleDraft().map((r, j) =>
+                                  j === i() ? { ...r, category: v } : r
+                                )
+                              )
+                            }}
+                          />
+                          <input
+                            class={styles.formControl}
+                            style={{ flex: '1 1 220px' }}
+                            placeholder="keyword1, keyword2, ..."
+                            value={rule.keywords}
+                            onInput={(e) => {
+                              const v = e.currentTarget.value
+                              setCategoryRuleDraft(
+                                categoryRuleDraft().map((r, j) =>
+                                  j === i() ? { ...r, keywords: v } : r
+                                )
+                              )
+                            }}
+                          />
+                          <button
+                            class={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                            onClick={() =>
+                              setCategoryRuleDraft(categoryRuleDraft().filter((_, j) => j !== i()))
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                  <button
+                    class={`${styles.btn} ${styles.btnOutline} ${styles.btnSm}`}
+                    style={{ 'margin-top': '8px' }}
+                    onClick={() =>
+                      setCategoryRuleDraft([...categoryRuleDraft(), { category: '', keywords: '' }])
+                    }
+                  >
+                    Add category rule
+                  </button>
+                </div>
+
+                <div>
+                  <p class={styles.mappingLabel} style={{ 'margin-bottom': '6px' }}>
+                    Transfer rules
+                  </p>
+                  <p class={styles.dropzoneHint} style={{ 'margin-bottom': '8px' }}>
+                    A movement is treated as a transfer when its text contains one of these keywords
+                    or one of your account names. Map a counterpart signature (a keyword or a card's
+                    last 4 digits) to the account it represents so both sides are linked.
+                  </p>
+                  <input
+                    class={styles.formControl}
+                    style={{ width: '100%', 'margin-bottom': '8px' }}
+                    placeholder="Transfer keywords: top-up, transfer, ibkr, ..."
+                    value={transferKeywordDraft()}
+                    onInput={(e) => setTransferKeywordDraft(e.currentTarget.value)}
+                  />
+                  <div style={{ display: 'flex', 'flex-direction': 'column', gap: '6px' }}>
+                    <For each={counterpartDraft()}>
+                      {(cp, i) => (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '6px',
+                            'align-items': 'center',
+                            'flex-wrap': 'wrap',
+                          }}
+                        >
+                          <input
+                            class={styles.formControl}
+                            style={{ flex: '0 0 150px' }}
+                            placeholder="Signature (e.g. 1399)"
+                            value={cp.signature}
+                            onInput={(e) => {
+                              const v = e.currentTarget.value
+                              setCounterpartDraft(
+                                counterpartDraft().map((r, j) =>
+                                  j === i() ? { ...r, signature: v } : r
+                                )
+                              )
+                            }}
+                          />
+                          <span style="color: var(--text-secondary);">→</span>
+                          <select
+                            class={styles.formControl}
+                            style={{ flex: '0 0 170px' }}
+                            value={cp.account}
+                            onChange={(e) => {
+                              const v = e.currentTarget.value
+                              setCounterpartDraft(
+                                counterpartDraft().map((r, j) =>
+                                  j === i() ? { ...r, account: v } : r
+                                )
+                              )
+                            }}
+                          >
+                            <option value="">Account…</option>
+                            <For each={bankAccounts()}>
+                              {(a) => <option value={a.name}>{a.name}</option>}
+                            </For>
+                          </select>
+                          <button
+                            class={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                            onClick={() =>
+                              setCounterpartDraft(counterpartDraft().filter((_, j) => j !== i()))
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                  <button
+                    class={`${styles.btn} ${styles.btnOutline} ${styles.btnSm}`}
+                    style={{ 'margin-top': '8px' }}
+                    onClick={() =>
+                      setCounterpartDraft([...counterpartDraft(), { signature: '', account: '' }])
+                    }
+                  >
+                    Add counterpart
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    class={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}
+                    onClick={saveBankRules}
+                  >
+                    Save rules
+                  </button>
+                  <button
+                    class={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
+                    onClick={resetBankRules}
+                  >
+                    Reset to defaults
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </div>
+        </>
+      )}
     </div>
   )
 
@@ -1499,8 +2072,8 @@ export default function Import() {
               style={{ 'margin-top': '2px' }}
             />
             <span>
-              Set each month's budget to what was spent that month (fills the budget charts
-              for imported history; overwrites existing budgets).
+              Set each month's budget to what was spent that month (fills the budget charts for
+              imported history; overwrites existing budgets).
             </span>
           </label>
           <div class={styles.importButtons}>
@@ -1688,7 +2261,8 @@ export default function Import() {
                       <strong>{log.source || 'Import'}</strong>
                       <span style={{ color: 'var(--text-secondary)', 'margin-left': '8px' }}>
                         {new Date(log.created_at).toLocaleString()} — {log.imported} imported
-                        {log.duplicates_skipped > 0 && `, ${log.duplicates_skipped} duplicates skipped`}
+                        {log.duplicates_skipped > 0 &&
+                          `, ${log.duplicates_skipped} duplicates skipped`}
                       </span>
                     </summary>
                     <div
