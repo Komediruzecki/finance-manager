@@ -540,7 +540,7 @@ export default function Transactions() {
     setFormPayor('')
     setFormNotes('')
     setFormMeans('')
-    setFormAccountId(null)
+    setFormAccountId(defaultAccountId())
     setFormTransferAccountId(null)
     setFormAmountLocal('')
     setShowAdvanced(false)
@@ -562,6 +562,36 @@ export default function Transactions() {
       t.receipt_id ||
       (t.currency && t.currency !== getLocalCurrency())
     )
+
+  // Remembering the last account used speeds up adding many transactions in a row.
+  // Scoped per profile so switching profiles doesn't carry the wrong account over.
+  const lastAccountKey = () => `lastAccountId:${localStorage.getItem('currentProfileId') || '1'}`
+  // Prefill the account for a fresh entry: last-used if it still exists, else the
+  // first account (the de-facto primary), else none.
+  const defaultAccountId = (): number | null => {
+    const accs = accounts()
+    if (accs.length === 0) return null
+    const stored = parseInt(localStorage.getItem(lastAccountKey()) || '', 10)
+    if (Number.isFinite(stored) && accs.some((a) => a.id === stored)) return stored
+    return accs[0].id
+  }
+  // Create a starter "Cash" account inline when the user has none, then select it.
+  const createCashAccount = async () => {
+    try {
+      const acc = await api.createAccount({
+        name: 'Cash',
+        type: 'cash',
+        currency: getLocalCurrency(),
+        balance: 0,
+      } as unknown as Parameters<typeof api.createAccount>[0])
+      const acctData = await api.getAccounts()
+      if (Array.isArray(acctData)) setAccounts(acctData as any[])
+      setFormAccountId(acc.id)
+    } catch (error) {
+      console.error('Failed to create Cash account:', error)
+      toast('Failed to create account', 'error')
+    }
+  }
 
   const handleEditTransaction = (transaction: Transaction) => {
     setType(transaction.type)
@@ -995,9 +1025,18 @@ export default function Transactions() {
                 <Show
                   when={accounts().length > 0}
                   fallback={
-                    <div style="font-size: 13px; color: var(--text-secondary); padding: 6px 0">
-                      No accounts yet — add one (e.g. a "Cash" account) on the Accounts page, then
-                      you can record transactions against it.
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0">
+                      <span style="font-size: 13px; color: var(--text-secondary)">
+                        No accounts yet.
+                      </span>
+                      <button
+                        type="button"
+                        data-test-id="tx-create-cash-account"
+                        onClick={createCashAccount}
+                        style="padding: 6px 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500"
+                      >
+                        Create a "Cash" account
+                      </button>
                     </div>
                   }
                 >
@@ -1349,6 +1388,10 @@ export default function Transactions() {
                     }
                   }
 
+                  // Remember the account for the next quick entry.
+                  if (formAccountId() !== null) {
+                    localStorage.setItem(lastAccountKey(), String(formAccountId()))
+                  }
                   await refreshTransactions()
                   setTransactionModalOpen(false)
                   setSelectedFile(null)
