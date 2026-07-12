@@ -2,18 +2,14 @@
  * CategoryOrbits — concentric orbital-arc category chart.
  */
 
+/* auto-fit: side-by-side in wide cards, chart-over-legend in narrow ones
+   (e.g. the Analytics two-column grid) — no container queries needed. */
 .wrap {
   display: grid;
-  grid-template-columns: minmax(240px, 320px) 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   align-items: center;
-  gap: 26px;
-}
-
-@media (max-width: 720px) {
-  .wrap {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
+  justify-items: center;
+  gap: 20px 26px;
 }
 
 .orbits {
@@ -60,6 +56,7 @@
   gap: 2px;
   min-width: 0;
   width: 100%;
+  max-width: 460px;
 }
 
 .legendRow {

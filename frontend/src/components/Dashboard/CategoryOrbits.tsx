@@ -17,6 +17,8 @@ export interface CategoryOrbitsProps {
   categories: { category_name: string; category_color?: string | null; amount: number }[]
   /** Shown under the total in the core, e.g. "July 2026". */
   periodText?: string
+  /** Core verb — "spent" (default) or "earned" for income breakdowns. */
+  label?: string
   maxRings?: number
 }
 
@@ -154,7 +156,7 @@ export default function CategoryOrbits(props: CategoryOrbitsProps) {
             {money(rings().total)}
           </text>
           <text x={C} y={C + 14} text-anchor="middle" class={styles.coreLabel}>
-            {(props.periodText ? `spent · ${props.periodText}` : 'spent').toUpperCase()}
+            {`${props.label ?? 'spent'}${props.periodText ? ` · ${props.periodText}` : ''}`.toUpperCase()}
           </text>
         </svg>
 
