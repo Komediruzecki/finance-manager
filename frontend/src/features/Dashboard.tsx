@@ -10,14 +10,17 @@ import BudgetAlertsCard from '../components/Dashboard/BudgetAlertsCard'
 import { PeriodNavigator } from '../components/Dashboard/PeriodNavigator'
 import RecurringInsightsCard from '../components/Dashboard/RecurringInsightsCard'
 import SavingsRateCard from '../components/Dashboard/SavingsRateCard'
+import Sparkline from '../components/Dashboard/Sparkline'
 import { DashboardSettings } from '../components/DashboardSettings'
 import InfoTip from '../components/InfoTip'
 import { PeriodPills } from '../components/PeriodPills'
-import { api, formatCurrency, formatDate, getLocalCurrency, toast } from '../core/api'
+import SankeyChart from '../components/SankeyChart'
+import { api, apiGet, formatCurrency, formatDate, getLocalCurrency, toast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { theme } from '../core/theme'
 import styles from './DashboardPage.module.css'
 import type { CalcTrace } from '../components/CalcTracer'
+import type { SankeyData } from '../types/models'
 import type * as Models from '../types/models'
 
 // Format money in the user's selected currency (not the EUR default of formatCurrency).
@@ -25,6 +28,7 @@ const money = (amount: number) => formatCurrency(amount, getLocalCurrency())
 
 const DEFAULT_WIDGET_ORDER = [
   'metrics',
+  'cash-flow-sankey',
   'category-chart',
   'recent-transactions',
   'upcoming-bills',
@@ -36,6 +40,7 @@ const DEFAULT_WIDGET_ORDER = [
 
 const DEFAULT_VISIBLE = [
   'metrics',
+  'cash-flow-sankey',
   'category-chart',
   'recent-transactions',
   'upcoming-bills',
@@ -56,6 +61,14 @@ function loadWidgetPrefs() {
         parsed.widgetOrder && Array.isArray(parsed.widgetOrder) && parsed.widgetOrder.length > 0
           ? parsed.widgetOrder
           : DEFAULT_WIDGET_ORDER
+      // Widgets added after the user saved their layout: splice them in (a saved
+      // order that predates a widget would otherwise hide it forever). An id
+      // missing from the saved order is new — user-hidden ids stay in order.
+      const newIds = DEFAULT_WIDGET_ORDER.filter((id) => !order.includes(id))
+      for (const id of newIds) {
+        order.splice(DEFAULT_WIDGET_ORDER.indexOf(id), 0, id)
+        if (DEFAULT_VISIBLE.includes(id) && !visible.includes(id)) visible.push(id)
+      }
       return { visible, order }
     } catch {
       /* ignore */
@@ -286,8 +299,36 @@ export default function Dashboard() {
 
   const isWidgetVisible = (id: string) => visibleWidgets().includes(id)
 
+  // Cash-flow Sankey (income → categories) for the selected month — the same
+  // instrument as on Analytics, following the dashboard's period navigator.
+  const [sankeyData, setSankeyData] = createSignal<SankeyData | null>(null)
+  createEffect(() => {
+    const y = year()
+    const m = month()
+    void state.profileVersion
+    apiGet<{ nodes: SankeyData['nodes']; links: SankeyData['links'] }>(
+      `/api/analytics/sankey?year=${y}&month=${m}`
+    )
+      .then((res) => setSankeyData({ nodes: res.nodes || [], links: res.links || [] }))
+      .catch(() => setSankeyData(null))
+  })
+
   const renderWidget = (id: string) => {
     switch (id) {
+      case 'cash-flow-sankey':
+        return (
+          <Show when={sankeyData()?.nodes?.length && sankeyData()?.links?.length}>
+            <div class={styles.card}>
+              <div class={styles.cardHeader}>
+                <div class={styles.cardTitle}>Cash Flow — {periodText()}</div>
+                <a href="#analytics" class={styles.widgetLink}>
+                  Full analytics
+                </a>
+              </div>
+              <SankeyChart data={sankeyData()!} height={360} />
+            </div>
+          </Show>
+        )
       case 'budget-alerts':
         return (
           <div class={styles.widgetCard}>
@@ -653,6 +694,14 @@ export default function Dashboard() {
                     <span class={styles.metricDeltaLabel}>vs last month</span>
                   </div>
                 )}
+                <Show when={monthlyData()}>
+                  <div class={styles.metricSpark}>
+                    <Sparkline
+                      data={monthlyData()!.netWorth.slice(-12)}
+                      color="var(--accent-warm)"
+                    />
+                  </div>
+                </Show>
               </div>
               <div
                 class={`${styles.metricCard} ${styles.income}`}
@@ -696,6 +745,11 @@ export default function Dashboard() {
                     <span class={styles.metricDeltaLabel}>vs last month</span>
                   </div>
                 )}
+                <Show when={monthlyData()}>
+                  <div class={styles.metricSpark}>
+                    <Sparkline data={monthlyData()!.income.slice(-12)} color="var(--income)" />
+                  </div>
+                </Show>
               </div>
               <div
                 class={`${styles.metricCard} ${styles.expense}`}
@@ -739,6 +793,11 @@ export default function Dashboard() {
                     <span class={styles.metricDeltaLabel}>vs last month</span>
                   </div>
                 )}
+                <Show when={monthlyData()}>
+                  <div class={styles.metricSpark}>
+                    <Sparkline data={monthlyData()!.expenses.slice(-12)} color="var(--expense)" />
+                  </div>
+                </Show>
               </div>
               <div
                 class={`${styles.metricCard} ${styles.balance}`}
@@ -762,6 +821,16 @@ export default function Dashboard() {
                   {money(metrics()!.totalIncome - metrics()!.totalExpenses)}
                 </div>
                 <div class={styles.metricSubtext}>Monthly net</div>
+                <Show when={monthlyData()}>
+                  <div class={styles.metricSpark}>
+                    <Sparkline
+                      data={monthlyData()!
+                        .income.slice(-12)
+                        .map((v, i) => v - monthlyData()!.expenses.slice(-12)[i])}
+                      color="var(--primary)"
+                    />
+                  </div>
+                </Show>
               </div>
             </div>
           </Show>
