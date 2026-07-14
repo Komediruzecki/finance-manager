@@ -321,7 +321,8 @@ export const DEFAULT_CATEGORY_RULES_WORLDWIDE: CategoryRuleSet = [
   },
   {
     category: 'Housing',
-    keywords: ['rent', 'mortgage', 'landlord', 'property management'],
+    // NB: avoid a bare "rent" — as a substring it false-matches "current" (e.g. "Current Account").
+    keywords: ['rent payment', 'monthly rent', 'mortgage', 'landlord', 'property management'],
   },
 ]
 

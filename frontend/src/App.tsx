@@ -382,6 +382,8 @@ export function App() {
       const el = document.activeElement as HTMLElement | null
       const tag = el?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return
+      // Don't stack on top of an already-open modal/menu.
+      if (isQuickAddOpen() || isLoginModalOpen() || isProfileModalOpen() || showDropdown()) return
       e.preventDefault()
       setShowShortcuts(true)
     }

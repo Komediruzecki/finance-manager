@@ -1050,9 +1050,21 @@ export default function Import() {
               value={ruleGroup()}
               onChange={(e) => {
                 const id = e.currentTarget.value
+                // Switching re-seeds the rules to the group's defaults; warn first if the user
+                // has edited their rules, so a stray dropdown change can't silently wipe them.
+                const customized =
+                  JSON.stringify(loadCategoryRules()) !== JSON.stringify(rulesForGroup(ruleGroup()))
+                if (
+                  customized &&
+                  !window.confirm(
+                    "Switching the mapping replaces your edited category rules with the selected group's defaults. Your edits will be lost. Continue?"
+                  )
+                ) {
+                  e.currentTarget.value = ruleGroup()
+                  return
+                }
                 setRuleGroup(id)
                 saveRuleGroup(id)
-                // Re-seed the editable rules to the chosen group's defaults, then recalc.
                 saveCategoryRules(rulesForGroup(id))
                 loadBankRules()
                 opts.onRecalculate?.()
