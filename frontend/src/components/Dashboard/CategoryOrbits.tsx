@@ -27,6 +27,11 @@ const C = 130 // svg center
 const R_OUTER = 104
 const R_STEP = 13
 const STROKE = 7.5
+// With only 2-3 rows (e.g. a small portfolio's allocation) the standard tight
+// spacing reads as one broken blob — spread the few rings out and bolden them
+// so the chart looks intentional at low counts too.
+const R_STEP_SPARSE = 24
+const STROKE_SPARSE = 10
 
 export default function CategoryOrbits(props: CategoryOrbitsProps) {
   const [hover, setHover] = createSignal<number | null>(null)
@@ -58,9 +63,19 @@ export default function CategoryOrbits(props: CategoryOrbitsProps) {
     return { total, rows }
   })
 
+  const sparse = () => rings().rows.length <= 3
+  const ringStep = () => (sparse() ? R_STEP_SPARSE : R_STEP)
+  const strokeW = () => (sparse() ? STROKE_SPARSE : STROKE)
+
   const dash = (r: number, share: number) => {
     const c = 2 * Math.PI * r
-    return `${Math.max(0.02, share) * c} ${c}`
+    // Floor tiny shares to a visible dot (a 6% holding must still read), and
+    // cap near-full sweeps so the round end cap never collides with its own
+    // start cap — a ~95%+ arc used to look like a glitched, notched ring.
+    const minLen = strokeW() * 1.5
+    const maxLen = c - strokeW() * 2.4
+    const len = Math.min(Math.max(share * c, minLen), maxLen)
+    return `${len} ${c}`
   }
 
   const dimmed = (i: number) => hover() !== null && hover() !== i
@@ -93,7 +108,7 @@ export default function CategoryOrbits(props: CategoryOrbitsProps) {
 
           <For each={rings().rows}>
             {(row, i) => {
-              const r = R_OUTER - i() * R_STEP
+              const r = R_OUTER - i() * ringStep()
               return (
                 <g
                   class={styles.ring}
@@ -119,10 +134,13 @@ export default function CategoryOrbits(props: CategoryOrbitsProps) {
                     r={r}
                     fill="none"
                     stroke={row.color}
-                    stroke-width={STROKE}
+                    stroke-width={strokeW()}
                     stroke-linecap="round"
                     stroke-dasharray={dash(r, row.share)}
-                    transform={`rotate(-90 ${C} ${C})`}
+                    // Sparse charts stagger each ring's launch angle so two or
+                    // three big arcs interleave around the circle (orbit-like)
+                    // instead of all piling onto the right half from 12 o'clock.
+                    transform={`rotate(${-90 + (sparse() ? i() * (360 / rings().rows.length) : 0)} ${C} ${C})`}
                     filter="url(#co-glow)"
                     opacity="0.92"
                   >
