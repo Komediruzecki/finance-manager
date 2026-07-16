@@ -16,6 +16,8 @@ interface OrbitalDividerProps {
   label: string
   /** Anchor id — SectionRail scrolls to it (scroll-margin is built in). */
   id?: string
+  /** Small muted note after the label (a count, a monthly total, …). */
+  meta?: string
   /** Right-side slot for section actions; use <OrbitalAction/> for brand styling. */
   actions?: JSX.Element
   testId?: string
@@ -71,6 +73,9 @@ export default function OrbitalDivider(props: OrbitalDividerProps) {
       <div class={styles.labelWrap}>
         <span class={styles.sun} aria-hidden="true" />
         <h2 class={styles.label}>{props.label}</h2>
+        <Show when={props.meta}>
+          <span class={styles.meta}>{props.meta}</span>
+        </Show>
       </div>
       {/* The orbit: a gently bowed arc (viewBox height is fixed, width stretches) with
           planets absolutely positioned ON the curve — y(t) = 17 - 28·t·(1-t). */}

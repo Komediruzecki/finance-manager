@@ -34,6 +34,7 @@ import { createMemo, createSignal, For } from 'solid-js'
 import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
 import GoalRing from '../components/GoalRing'
+import OrbitalDivider from '../components/OrbitalDivider'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
@@ -510,7 +511,7 @@ export default function Goals() {
       {/* Goals Progress — an orbital ring per goal */}
       {goals().length > 0 && (
         <div class={styles.goalsChartSection}>
-          <h3>Goals Progress</h3>
+          <OrbitalDivider id="goals-sec-progress" label="Goals Progress" />
           <div class={styles.progressRings}>
             <For each={goals()}>
               {(g) => (
@@ -529,7 +530,7 @@ export default function Goals() {
       {/* Goal Projection Timeline */}
       {projectionGoals().length > 0 && (
         <div class={styles.goalsChartSection}>
-          <h3>Goal Projections</h3>
+          <OrbitalDivider id="goals-sec-projections" label="Goal Projections" />
           <div class={styles.chartWrapper}>
             <Chart
               id="goals-projection-chart"

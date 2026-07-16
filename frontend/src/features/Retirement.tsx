@@ -34,6 +34,7 @@ import { createSignal, For, onMount } from 'solid-js'
 import Badge from '../components/Badge'
 import Chart from '../components/Chart'
 import ConfirmButton from '../components/ConfirmButton'
+import OrbitalDivider from '../components/OrbitalDivider'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { theme } from '../core/theme'
@@ -321,7 +322,7 @@ export default function Retirement() {
 
       {/* Projected Balances Chart */}
       <div class={styles.retirementProjections} data-test-id="retirement-projections">
-        <h2 class={styles.sectionTitle}>Projected Balances Over Time</h2>
+        <OrbitalDivider id="retirement-sec-projections" label="Projected Balances Over Time" />
         {projection() ? (
           <div data-test-id="retirement-chart">
             <Chart
@@ -466,7 +467,7 @@ export default function Retirement() {
           class={styles.retirementGoals}
           data-tour="retirement-goals"
         >
-          <h2 class={styles.sectionTitle}>Retirement Goals</h2>
+          <OrbitalDivider id="retirement-sec-goals" label="Retirement Goals" />
           {initialLoad() && goals().length === 0 ? (
             <div data-test-id="loading-state" class={styles.emptyState}>
               Loading goals...

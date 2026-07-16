@@ -45,10 +45,12 @@ export default function Chart(props: ChartProps) {
         // Same chart type → update the live instance in place. Destroy/recreate blanked
         // the canvas (plus an async-import gap) on every data change, so stepping the
         // focus period made every chart on the page flash and re-animate from zero.
+        // 'none' skips the update tween too: rapid period-stepping reads as calm data
+        // changes instead of every chart re-animating at once (creation still animates).
         if (chart !== undefined && chartType === type) {
           chart.data = chartData
           chart.options = mergedOptions
-          chart.update()
+          chart.update('none')
           onReady?.(chart)
           return
         }

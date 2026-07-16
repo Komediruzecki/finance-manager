@@ -5,6 +5,7 @@
 
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import CategoryOrbits from '../components/Dashboard/CategoryOrbits'
+import OrbitalDivider from '../components/OrbitalDivider'
 import {
   apiDelete,
   apiGet,
@@ -347,7 +348,7 @@ export default function Portfolio() {
           <div class={styles.contentGrid}>
             {/* Holdings Table */}
             <div class={styles.tableSection}>
-              <h2 class={styles.sectionTitle}>Holdings</h2>
+              <OrbitalDivider id="portfolio-sec-holdings" label="Holdings" />
               <div class={styles.tableWrapper}>
                 <table data-test-id="portfolio-holdings" class={styles.table}>
                   <thead>
@@ -435,7 +436,7 @@ export default function Portfolio() {
 
             {/* Allocation Sidebar — holdings as a value constellation */}
             <div class={styles.sidebar}>
-              <h2 class={styles.sectionTitle}>Allocation</h2>
+              <OrbitalDivider id="portfolio-sec-allocation" label="Allocation" />
               <Show when={summary()}>
                 <div data-test-id="portfolio-allocation">
                   <CategoryOrbits

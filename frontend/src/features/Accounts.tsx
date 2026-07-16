@@ -35,6 +35,7 @@ import { createEffect, createMemo, createResource, createSignal, For, Show } fro
 import AccountConstellation from '../components/AccountConstellation'
 import Badge from '../components/Badge'
 import ConfirmButton from '../components/ConfirmButton'
+import OrbitalDivider from '../components/OrbitalDivider'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
@@ -368,8 +369,8 @@ export default function Accounts() {
       </div>
 
       <Show when={accounts().length > 0}>
+        <OrbitalDivider id="accounts-sec-networth" label="Net Worth Map" />
         <div class={styles.netWorthMap}>
-          <h3 class={styles.netWorthMapTitle}>Net worth map</h3>
           <AccountConstellation
             accounts={accounts().map((a) => ({
               id: a.id,
