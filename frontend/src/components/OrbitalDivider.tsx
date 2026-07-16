@@ -9,6 +9,7 @@
  * in a <SectionRail/> to make the section jumpable.
  */
 import { onCleanup, onMount, Show } from 'solid-js'
+import InfoTip from './InfoTip'
 import styles from './OrbitalDivider.module.css'
 import type { JSX } from 'solid-js'
 
@@ -18,6 +19,8 @@ interface OrbitalDividerProps {
   id?: string
   /** Small muted note after the label (a count, a monthly total, …). */
   meta?: string
+  /** Tooltip copy — renders an InfoTip right after the label. */
+  info?: string
   /** Right-side slot for section actions; use <OrbitalAction/> for brand styling. */
   actions?: JSX.Element
   testId?: string
@@ -73,6 +76,9 @@ export default function OrbitalDivider(props: OrbitalDividerProps) {
       <div class={styles.labelWrap}>
         <span class={styles.sun} aria-hidden="true" />
         <h2 class={styles.label}>{props.label}</h2>
+        <Show when={props.info}>
+          <InfoTip text={props.info!} />
+        </Show>
         <Show when={props.meta}>
           <span class={styles.meta}>{props.meta}</span>
         </Show>

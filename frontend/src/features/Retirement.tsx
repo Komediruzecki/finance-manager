@@ -321,8 +321,8 @@ export default function Retirement() {
       </div>
 
       {/* Projected Balances Chart */}
+      <OrbitalDivider id="retirement-sec-projections" label="Projected Balances Over Time" />
       <div class={styles.retirementProjections} data-test-id="retirement-projections">
-        <OrbitalDivider id="retirement-sec-projections" label="Projected Balances Over Time" />
         {projection() ? (
           <div data-test-id="retirement-chart">
             <Chart

@@ -437,19 +437,21 @@ export default function Portfolio() {
             {/* Allocation Sidebar — holdings as a value constellation */}
             <div class={styles.sidebar}>
               <OrbitalDivider id="portfolio-sec-allocation" label="Allocation" />
-              <Show when={summary()}>
-                <div data-test-id="portfolio-allocation">
-                  <CategoryOrbits
-                    categories={liveSummary()!.allocation.map((a, i) => ({
-                      category_name: a.ticker,
-                      category_color: paletteColor(i),
-                      amount: a.value,
-                    }))}
-                    label="value"
-                    maxRings={8}
-                  />
-                </div>
-              </Show>
+              <div class={styles.sidebarCard}>
+                <Show when={summary()}>
+                  <div data-test-id="portfolio-allocation">
+                    <CategoryOrbits
+                      categories={liveSummary()!.allocation.map((a, i) => ({
+                        category_name: a.ticker,
+                        category_color: paletteColor(i),
+                        amount: a.value,
+                      }))}
+                      label="value"
+                      maxRings={8}
+                    />
+                  </div>
+                </Show>
+              </div>
             </div>
           </div>
         )}

@@ -382,6 +382,17 @@
   margin-bottom: 16px;
 }
 
+/* Header rows whose title moved into the OrbitalDivider above — controls dock right. */
+.heatmap-header-end {
+  justify-content: flex-end;
+}
+
+/* Two-col grid cell: a plain column holding an OrbitalDivider + its chart card, so the
+   divider sits on the page background instead of inside the glass. */
+.chart-col {
+  min-width: 0;
+}
+
 .heatmap-header .chart-title {
   margin-bottom: 0;
 }

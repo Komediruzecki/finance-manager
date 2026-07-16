@@ -42,7 +42,9 @@ import D3HeatmapChart from '../components/D3HeatmapChart'
 import CategoryOrbits from '../components/Dashboard/CategoryOrbits'
 import ExportChartButton from '../components/ExportChartButton'
 import InfoTip from '../components/InfoTip'
+import OrbitalDivider from '../components/OrbitalDivider'
 import SankeyChart from '../components/SankeyChart'
+import SectionRail from '../components/SectionRail'
 import { api, formatCurrency } from '../core/api'
 import { apiGet, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
@@ -530,9 +532,25 @@ export default function Analytics() {
       <div class={styles.pageHeader}>
         <h1 data-test-id="analytics-header" data-tour="analytics-header">
           Analytics
+          {/* Subtitle copy lives in a tooltip (a text line wraps badly on phones). */}
+          <InfoTip text="Visualize your financial data and track trends" />
         </h1>
-        <p class={styles.pageSubtitle}>Visualize your financial data and track trends</p>
       </div>
+
+      {/* Jump-to-section orbit rail (desktop) — anchors are the OrbitalDividers below. */}
+      <SectionRail
+        sections={[
+          { id: 'analytics-sec-overview', label: 'Overview' },
+          { id: 'analytics-sec-trends', label: 'Category Trends' },
+          { id: 'analytics-sec-by-category', label: 'By Category' },
+          { id: 'analytics-sec-monthly', label: 'Monthly Income vs Expense' },
+          { id: 'analytics-sec-heatmap', label: 'Spending Heatmap' },
+          { id: 'analytics-sec-flow', label: 'Budget Flow' },
+          { id: 'analytics-sec-savings', label: 'Savings Rate' },
+          { id: 'analytics-sec-top-categories', label: 'Top Categories' },
+          { id: 'analytics-sec-recent', label: 'Recent Transactions' },
+        ]}
+      />
 
       {loading() && !data() ? (
         <div class={styles.emptyState}>Loading analytics...</div>
@@ -544,7 +562,11 @@ export default function Analytics() {
       ) : (
         <>
           {/* Summary Stats */}
-          <div class={styles.analyticsStats}>
+          <div
+            id="analytics-sec-overview"
+            class={styles.analyticsStats}
+            style={{ 'scroll-margin-top': '18px' }}
+          >
             <div
               class={styles.statCard}
               {...traceCardProps(() => ({
@@ -774,22 +796,26 @@ export default function Analytics() {
 
           {/* Stacked Trends - Full Width */}
           <div class={styles.chartsFullWidth}>
+            <OrbitalDivider
+              id="analytics-sec-trends"
+              label="Category Trends"
+              meta={`${
+                stackedView() === 'year'
+                  ? stackedYear()
+                  : new Date(stackedYear(), stackedMonth() - 1).toLocaleDateString('en-US', {
+                      month: 'long',
+                      year: 'numeric',
+                    })
+              }${
+                compareEnabled()
+                  ? stackedView() === 'year'
+                    ? ` vs ${compareYear()}`
+                    : ` vs ${new Date(stackedYear(), compareMonth() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                  : ''
+              }`}
+            />
             <div class={styles.analyticsChart}>
-              <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>
-                  Category Trends (
-                  {stackedView() === 'year'
-                    ? stackedYear()
-                    : new Date(stackedYear(), stackedMonth() - 1).toLocaleDateString('en-US', {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                  {compareEnabled() &&
-                    (stackedView() === 'year'
-                      ? ` vs ${compareYear()}`
-                      : ` vs ${new Date(stackedYear(), compareMonth() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`)}
-                  )
-                </h3>
+              <div class={`${styles.heatmapHeader} ${styles.heatmapHeaderEnd}`}>
                 <div class={styles.heatmapControls}>
                   <ExportChartButton
                     chart={stackedChart()}
@@ -1086,123 +1112,132 @@ export default function Analytics() {
 
           {/* Two Column: Category Doughnut + Monthly Trends */}
           <div class={styles.chartsTwoCol}>
-            <div class={styles.analyticsChart}>
-              <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>
-                  {categoryType() === 'expense' ? 'Spending' : 'Income'} by Category (
-                  {stackedYear()})
-                </h3>
-                <div class={styles.heatmapControls}>
-                  <select
-                    class={styles.heatmapTypeSelect}
-                    value={categoryType()}
-                    onchange={(e) => {
-                      setCategoryType(e.currentTarget.value as 'expense' | 'income')
-                      loadStackedData()
-                    }}
-                  >
-                    <option value="expense">Expenses</option>
-                    <option value="income">Income</option>
-                  </select>
+            <div class={styles.chartCol}>
+              <OrbitalDivider
+                id="analytics-sec-by-category"
+                label={categoryType() === 'expense' ? 'Spending by Category' : 'Income by Category'}
+                meta={String(stackedYear())}
+              />
+              <div class={styles.analyticsChart}>
+                <div class={`${styles.heatmapHeader} ${styles.heatmapHeaderEnd}`}>
+                  <div class={styles.heatmapControls}>
+                    <select
+                      class={styles.heatmapTypeSelect}
+                      value={categoryType()}
+                      onchange={(e) => {
+                        setCategoryType(e.currentTarget.value as 'expense' | 'income')
+                        loadStackedData()
+                      }}
+                    >
+                      <option value="expense">Expenses</option>
+                      <option value="income">Income</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <div class={styles.chartContainer}>
-                {data()!.byCategory.length === 0 ? (
-                  <div class={styles.emptyState}>No {categoryType()} data</div>
-                ) : (
-                  <CategoryOrbits
-                    categories={data()!.byCategory}
-                    periodText={String(stackedYear())}
-                    label={categoryType() === 'income' ? 'earned' : 'spent'}
-                    maxRings={7}
-                  />
-                )}
+                <div class={styles.chartContainer}>
+                  {data()!.byCategory.length === 0 ? (
+                    <div class={styles.emptyState}>No {categoryType()} data</div>
+                  ) : (
+                    <CategoryOrbits
+                      categories={data()!.byCategory}
+                      periodText={String(stackedYear())}
+                      label={categoryType() === 'income' ? 'earned' : 'spent'}
+                      maxRings={7}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
-            <div class={styles.analyticsChart}>
-              <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>Monthly Income vs Expense ({stackedYear()})</h3>
-                <div class={styles.heatmapControls}>
-                  <ExportChartButton
-                    chart={monthlyChart()}
-                    filename="monthly-trends"
-                    variant="inline"
-                  />
+            <div class={styles.chartCol}>
+              <OrbitalDivider
+                id="analytics-sec-monthly"
+                label="Monthly Income vs Expense"
+                meta={String(stackedYear())}
+              />
+              <div class={styles.analyticsChart}>
+                <div class={`${styles.heatmapHeader} ${styles.heatmapHeaderEnd}`}>
+                  <div class={styles.heatmapControls}>
+                    <ExportChartButton
+                      chart={monthlyChart()}
+                      filename="monthly-trends"
+                      variant="inline"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div class={styles.chartContainer}>
-                {data()!.byMonth.length === 0 ? (
-                  <div class={styles.emptyState}>No data available</div>
-                ) : (
-                  <Chart
-                    type="line"
-                    onReady={setMonthlyChart}
-                    data={{
-                      labels: data()!.byMonth.map((item) =>
-                        new Date(item.month).toLocaleDateString('en-US', { month: 'short' })
-                      ),
-                      datasets: [
-                        {
-                          label: 'Income',
-                          data: data()!.byMonth.map((item) => item.income),
-                          borderColor: '#22c55e',
-                          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                        },
-                        {
-                          label: 'Expense',
-                          data: data()!.byMonth.map((item) => item.expense),
-                          borderColor: '#dc2626',
-                          backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                        },
-                      ],
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      scales: {
-                        x: {
-                          ticks: { color: chartColors().text },
-                          grid: { color: chartColors().border },
-                        },
-                        y: {
-                          beginAtZero: true,
-                          ticks: {
-                            callback: (value: string | number) => formatCurrency(value as number),
-                            color: chartColors().text,
+                <div class={styles.chartContainer}>
+                  {data()!.byMonth.length === 0 ? (
+                    <div class={styles.emptyState}>No data available</div>
+                  ) : (
+                    <Chart
+                      type="line"
+                      onReady={setMonthlyChart}
+                      data={{
+                        labels: data()!.byMonth.map((item) =>
+                          new Date(item.month).toLocaleDateString('en-US', { month: 'short' })
+                        ),
+                        datasets: [
+                          {
+                            label: 'Income',
+                            data: data()!.byMonth.map((item) => item.income),
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.4,
                           },
-                          grid: { color: chartColors().border },
-                        },
-                      },
-                      plugins: {
-                        legend: {
-                          position: 'top',
-                          labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            font: { size: 12 },
-                            color: chartColors().text,
+                          {
+                            label: 'Expense',
+                            data: data()!.byMonth.map((item) => item.expense),
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          x: {
+                            ticks: { color: chartColors().text },
+                            grid: { color: chartColors().border },
+                          },
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              callback: (value: string | number) => formatCurrency(value as number),
+                              color: chartColors().text,
+                            },
+                            grid: { color: chartColors().border },
                           },
                         },
-                      },
-                    }}
-                    height={300}
-                    width="100%"
-                  />
-                )}
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                            labels: {
+                              usePointStyle: true,
+                              padding: 15,
+                              font: { size: 12 },
+                              color: chartColors().text,
+                            },
+                          },
+                        },
+                      }}
+                      height={300}
+                      width="100%"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Heatmap - Full Width */}
           <div class={styles.chartsFullWidth}>
+            <OrbitalDivider id="analytics-sec-heatmap" label="Spending Heatmap" />
             <div class={styles.analyticsChart}>
-              <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>Spending Heatmap</h3>
+              <div class={`${styles.heatmapHeader} ${styles.heatmapHeaderEnd}`}>
                 <div class={styles.heatmapControls}>
                   <button
                     class={styles.exportButton}
@@ -1335,9 +1370,9 @@ export default function Analytics() {
 
           {/* Budget Flow Diagram - Full Width */}
           <div class={styles.chartsFullWidth}>
+            <OrbitalDivider id="analytics-sec-flow" label="Budget Flow Diagram" />
             <div class={styles.analyticsChart}>
-              <div class={styles.heatmapHeader}>
-                <h3 class={styles.chartTitle}>Budget Flow Diagram</h3>
+              <div class={`${styles.heatmapHeader} ${styles.heatmapHeaderEnd}`}>
                 <div class={styles.heatmapControls}>
                   <button
                     class={styles.exportButton}
@@ -1429,8 +1464,8 @@ export default function Analytics() {
 
           {/* Savings Rate - Full Width */}
           <div class={styles.chartsFullWidth}>
+            <OrbitalDivider id="analytics-sec-savings" label="Savings Rate" />
             <div class={styles.analyticsChart}>
-              <h3 class={styles.chartTitle}>Savings Rate</h3>
               <div class={styles.chartContainer}>
                 <div class={styles.savingsRateDisplay}>
                   <div class={styles.rateCircle}>
@@ -1528,13 +1563,13 @@ export default function Analytics() {
           {/* Top Categories Breakdown - Full Width */}
           {data()!.byCategory.length > 0 && (
             <div class={styles.chartsFullWidth}>
+              <OrbitalDivider
+                id="analytics-sec-top-categories"
+                label="Top Categories Breakdown"
+                meta={String(stackedYear())}
+                info={`Top ${data()!.byCategory.length} ${categoryType()} categories of ${stackedYear()}, ranked by yearly total. Follows the year selected on the Category Trends chart.`}
+              />
               <div class={styles.analyticsChart}>
-                <h3 class={styles.chartTitle}>
-                  Top Categories Breakdown ({stackedYear()})
-                  <InfoTip
-                    text={`Top ${data()!.byCategory.length} ${categoryType()} categories of ${stackedYear()}, ranked by yearly total. Follows the year selected on the Category Trends chart.`}
-                  />
-                </h3>
                 <div class={styles.chartContainer}>
                   <div class={styles.categoryBars}>
                     {(() => {
@@ -1649,7 +1684,7 @@ export default function Analytics() {
 
           {/* Recent Transactions */}
           <div class={styles.analyticsRecent}>
-            <h3 class={styles.sectionTitle}>Recent Transactions</h3>
+            <OrbitalDivider id="analytics-sec-recent" label="Recent Transactions" />
             <div class={styles.transactionList}>
               <For each={data()!.recentTransactions}>
                 {(tx: Transaction) => (
