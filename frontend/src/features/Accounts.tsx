@@ -77,9 +77,11 @@ export default function Accounts() {
     }
   )
   const [initialLoad, setInitialLoad] = createSignal(true)
-  const accounts = () => accountsResource()?.accounts ?? []
-  const transactions = () => accountsResource()?.transactions ?? []
-  const profiles = () => accountsResource()?.profiles ?? []
+  // `.latest` keeps the previous value during a refetch and never re-triggers the page-level
+  // <Suspense>, so period/profile changes update in place instead of flashing the fallback.
+  const accounts = () => accountsResource.latest?.accounts ?? []
+  const transactions = () => accountsResource.latest?.transactions ?? []
+  const profiles = () => accountsResource.latest?.profiles ?? []
   createEffect(() => {
     if (!accountsResource.loading) setInitialLoad(false)
   })

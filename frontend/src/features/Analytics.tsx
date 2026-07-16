@@ -160,8 +160,10 @@ export default function Analytics() {
   )
 
   // Derived: loading when resource is in initial fetch and no data yet
-  const loading = () => analyticsData.loading && !analyticsData()
-  const data = () => analyticsData() ?? null
+  // `.latest` keeps the previous value during a refetch and never re-triggers the page-level
+  // <Suspense>, so period/profile changes update in place instead of flashing the fallback.
+  const loading = () => analyticsData.loading && !analyticsData.latest
+  const data = () => analyticsData.latest ?? null
 
   // Surface fetch errors to the user (restores toast lost during createResource migration)
   createEffect(() => {
@@ -305,7 +307,7 @@ export default function Analytics() {
       return { income: 0, expense: 0, savingsRate: 0 }
     }
   )
-  const monthlyStats = () => monthlyStatsResource() ?? null
+  const monthlyStats = () => monthlyStatsResource.latest ?? null
 
   // Available years resource — auto-fetches on profile change
   const [yearsResource] = createResource(
@@ -318,7 +320,7 @@ export default function Analytics() {
   )
   // Propagate years to signal and validate selections
   createEffect(() => {
-    const sorted = yearsResource()
+    const sorted = yearsResource.latest
     if (sorted && sorted.length > 0) {
       setAvailableYears(sorted)
       if (!sorted.includes(stackedYear())) setStackedYear(sorted[0])

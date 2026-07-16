@@ -124,9 +124,11 @@ export default function Bills() {
       }
     }
   )
-  const initialLoad = () => billsResource.loading && !billsResource()
-  const bills = () => billsResource()?.bills ?? []
-  const categories = () => billsResource()?.categories ?? []
+  // `.latest` keeps the previous value during a refetch and never re-triggers the page-level
+  // <Suspense>, so period/profile changes update in place instead of flashing the fallback.
+  const initialLoad = () => billsResource.loading && !billsResource.latest
+  const bills = () => billsResource.latest?.bills ?? []
+  const categories = () => billsResource.latest?.categories ?? []
   const [showAddModal, setShowAddModal] = createSignal(false)
   const [showCatalog, setShowCatalog] = createSignal(false)
   const [showCategoryModal, setShowCategoryModal] = createSignal(false)

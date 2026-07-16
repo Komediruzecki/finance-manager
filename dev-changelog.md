@@ -7,6 +7,18 @@ All notable changes to Token Circles are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- OrbitalDivider — the brand's section separator: a thin orbit arc spanning the row with small planets resting on it (one warm, two muted, placed on the curve), the section title docked left like a station label, and an actions slot on the right. The arc draws itself in and planets drift into place when scrolled into view (rect-check based — no IntersectionObserver/rAF, so it also behaves in throttled tabs; disabled under prefers-reduced-motion). Ships with OrbitalAction, a glass pill button whose leading planet-dot orbits on hover (primary variant uses the warm accent instead of solid blue). First applied across the Budgets page; intended to roll out app-wide.
+- SectionRail — a fixed vertical orbit on the right edge (desktop ≥1280px) listing the page's sections as small planets: the one nearest the viewport focus lights up with a slowly rotating dashed orbit ring, hovering shows a label chip, clicking glides to the section. Anchors are OrbitalDivider ids; sampled on Budgets.
+
+### Changed
+
+- Stepping the focus period no longer flashes/reloads the whole view. Two causes fixed: (1) resource-backed pages (Budgets, Bills, Accounts, Categories, Analytics, Bill calendar) read `resource.latest` instead of `resource()`, so a refetch keeps the previous data on screen rather than re-triggering the page-level Suspense fallback; (2) the shared Chart.js wrapper now updates the live chart in place (`chart.update()`) instead of destroy + async re-create, so Dashboard's charts transition smoothly between periods instead of blanking and re-animating from zero.
+- Budgets: section headers are now OrbitalDividers — the bulk allocation tools and "Add Allocation" dock in the Category Allocations divider, "Add Category" docks in the Categories divider (orbital pill style replaces the solid blue buttons), and the Budget Forecast card lost its duplicate inner title. Sections breathe again (the forecast card no longer sits glued to the chart above), the categories gallery shows ~3–4 rows before scrolling (was ~2), and the "Zero-based budgeting" subtitle moved into an info tooltip next to the page title (it wrapped badly on phones).
+
 ## [5.5.0] — 2026-07-15
 
 ### Added
