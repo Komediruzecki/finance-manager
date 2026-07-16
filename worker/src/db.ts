@@ -12,38 +12,57 @@ function assertIdent(name: string): void {
 }
 
 /**
- * D1 briefly rejects queries while a `d1 export` backup runs (see the pre-migration backup in
- * .github/workflows/deploy-worker.yml) — "D1_ERROR: Currently processing a long-running export" —
- * and during transient connection blips. These are safe to retry: the same read/write succeeds
- * once the short lock clears. Callers that go through the helpers below get this transparently.
+ * Transient D1 failures worth retrying on a READ: the `d1 export` backup lock (see the
+ * pre-migration backup in .github/workflows/deploy-worker.yml — "D1_ERROR: Currently processing a
+ * long-running export"), plus connection blips and the storage reset a Worker code update causes.
+ * Reads are idempotent, so retrying any of these just re-runs the same query once the blip clears.
  */
 export function isTransientD1Error(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
   if (!msg) return false;
   return (
-    /long-running export/i.test(msg) ||
+    isExportLock(msg) ||
     /Network connection lost/i.test(msg) ||
     /storage caused object to be reset/i.test(msg) ||
     /reset because its code was updated/i.test(msg)
   );
 }
 
+/**
+ * The export lock specifically rejects a statement BEFORE it runs, so retrying is exactly-once
+ * safe even for a WRITE. The other transient errors can strike after a write has committed but
+ * before its response arrives, so retrying those on a write risks a duplicate — writes retry only
+ * this one.
+ */
+function isExportLock(msg: string): boolean {
+  return /long-running export/i.test(msg);
+}
+
 // Bounded backoff (~2s total) — long enough to ride out a small DB's export, short enough not to
 // hold a request open. A longer lock falls through to the 503 mapping in index.ts.
 const D1_RETRY_DELAYS_MS = [150, 300, 600, 1000];
 
-async function withD1Retry<T>(op: () => Promise<T>): Promise<T> {
+async function withD1Retry<T>(
+  op: () => Promise<T>,
+  retriable: (err: unknown) => boolean = isTransientD1Error
+): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= D1_RETRY_DELAYS_MS.length; attempt++) {
     try {
       return await op();
     } catch (err) {
       lastErr = err;
-      if (!isTransientD1Error(err) || attempt === D1_RETRY_DELAYS_MS.length) break;
+      if (!retriable(err) || attempt === D1_RETRY_DELAYS_MS.length) break;
       await new Promise((resolve) => setTimeout(resolve, D1_RETRY_DELAYS_MS[attempt]));
     }
   }
   throw lastErr;
+}
+
+/** Retry predicate for writes — only the export lock (see isExportLock), never a mid-write blip. */
+function isRetriableWriteError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  return isExportLock(msg);
 }
 
 export async function all<T = Record<string, unknown>>(
@@ -97,11 +116,14 @@ export async function accountBelongsToProfile(
 }
 
 export async function run(db: D1Database, sql: string, ...params: unknown[]): Promise<D1Result> {
-  return withD1Retry(() =>
-    db
-      .prepare(sql)
-      .bind(...params)
-      .run()
+  // Writes retry ONLY the export lock (rejected before commit) — see isRetriableWriteError.
+  return withD1Retry(
+    () =>
+      db
+        .prepare(sql)
+        .bind(...params)
+        .run(),
+    isRetriableWriteError
   );
 }
 
