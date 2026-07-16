@@ -1468,9 +1468,12 @@ export default function Analytics() {
             <div class={styles.analyticsChart}>
               <div class={styles.chartContainer}>
                 <div class={styles.savingsRateDisplay}>
-                  <div class={styles.rateCircle}>
-                    <span class={styles.rateValue}>{formatPercent(data()!.savingsRate)}</span>
-                    <span class={styles.rateLabel}>Savings Rate</span>
+                  {/* Hero stat: big value with the label + period stacked beneath it — the
+                      old 100px "circle" crammed the % and label side by side and wrapped. */}
+                  <div class={styles.rateHero}>
+                    <span class={styles.rateHeroValue}>{formatPercent(data()!.savingsRate)}</span>
+                    <span class={styles.rateHeroLabel}>Savings Rate</span>
+                    <span class={styles.rateHeroPeriod}>across {stackedYear()}</span>
                   </div>
                   <div class={styles.rateInfo}>
                     <div class={styles.rateRow}>
