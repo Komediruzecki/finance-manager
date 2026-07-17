@@ -171,7 +171,13 @@ export function OnboardingWizard() {
     { name: string; type: AccountType; currency: string; balance: number }[]
   >([])
   const [importSummary, setImportSummary] = createSignal<ImportSummary | null>(null)
+  // True between "Import more files" and the next successful import: the
+  // summary is kept (so batch totals accumulate) but the embedded importer
+  // shows instead of the summary panel.
+  const [importingMore, setImportingMore] = createSignal(false)
   const [subsAdded, setSubsAdded] = createSignal(0)
+  // The summary panel replaces the importer only when we're not mid-"more files".
+  const showingSummary = () => importSummary() !== null && !importingMore()
 
   // ---- step: your space ----
   const [spaceName, setSpaceName] = createSignal('')
@@ -211,9 +217,20 @@ export function OnboardingWizard() {
     initialTab: 'bank-imports',
     autoResetAfterImport: false,
     onImported: (summary) => {
+      // Accumulate across "Import more files" batches — the summary is kept
+      // (not nulled) while the user is back in the flow, so `prev` carries the
+      // earlier batches' totals.
       setImportSummary((prev) =>
-        prev ? { ...summary, imported: prev.imported + summary.imported } : summary
+        prev
+          ? {
+              ...summary,
+              imported: prev.imported + summary.imported,
+              duplicatesSkipped: prev.duplicatesSkipped + summary.duplicatesSkipped,
+              createdAccounts: [...new Set([...prev.createdAccounts, ...summary.createdAccounts])],
+            }
+          : summary
       )
+      setImportingMore(false)
     },
   })
   let importInitialized = false
@@ -360,7 +377,7 @@ export function OnboardingWizard() {
   }
 
   const continueFromImport = async () => {
-    if (importSummary()) {
+    if (showingSummary()) {
       nextOnboardingStep()
       return
     }
@@ -382,7 +399,7 @@ export function OnboardingWizard() {
   // and clobber a manual remap. Once the summary is showing, Back leaves the
   // step; "Import more files" is the designed way back into the flow.
   const backFromImport = () => {
-    if (importSummary()) {
+    if (showingSummary()) {
       prevOnboardingStep()
       return
     }
@@ -398,16 +415,37 @@ export function OnboardingWizard() {
   }
 
   // Welcome-step escape hatch (server mode only): run the app local-only.
-  // Mirrors the pristine serverless state the E2E zero-state helper uses:
-  // suppress the example-data seed a first serverless init would create, flip
-  // the mode, reload — the pristine local workspace reopens this wizard.
+  // Fresh browser → mirror the pristine serverless state the E2E zero-state
+  // helper uses (suppress the example-data seed, flip the mode, reload — the
+  // pristine local workspace reopens this wizard). But this browser may
+  // already hold a local IndexedDB (the demo, or earlier local use) — then the
+  // switch continues with THAT workspace and the confirm must say so instead
+  // of promising a clean start.
   const chooseLocalOnly = async () => {
+    let hasLocalData = false
+    try {
+      const dbs = await window.indexedDB.databases()
+      hasLocalData = dbs.some((d) => d.name === 'finance-manager')
+    } catch {
+      // indexedDB.databases() unsupported/blocked — keep the generic wording.
+    }
     const sure = await showConfirm(
-      'Use Token Circles locally on this device? Your data stays in this browser and never syncs to the cloud — no account needed. You can switch back any time in Settings.'
+      hasLocalData
+        ? 'Use Token Circles locally on this device? This browser already has a local workspace (e.g. from the demo) — you will continue with that data, and nothing syncs to the cloud. You can switch back any time in Settings.'
+        : 'Use Token Circles locally on this device? Your data stays in this browser and never syncs to the cloud — no account needed. You can switch back any time in Settings.'
     )
     if (!sure) return
     try {
       localStorage.setItem('finance_had_profiles', '1')
+      // A relaunched wizard may carry a completed/skipped flag; a fresh local
+      // workspace should offer setup again. (Harmless when local data exists —
+      // a non-pristine profile never auto-opens the wizard.)
+      localStorage.removeItem('finance_onboarding')
+      // Server-mode profile selection is meaningless against the local DB;
+      // stale ids would make the profile picker read empty or heal onto the
+      // wrong profile (mirrors handleLogout's cleanup).
+      localStorage.removeItem('currentProfileId')
+      localStorage.removeItem('selectedProfileIds')
     } catch {
       // Non-fatal: worst case the first init seeds the demo profiles.
     }
@@ -656,14 +694,16 @@ export function OnboardingWizard() {
           {importFlow.resultMessage()!.text}
         </div>
       </Show>
-      <Show when={importFlow.loading()}>
+      {/* dropProcessing has its own inline spinner in the dropzone — don't
+          stack the page-sized overlay on top of it. */}
+      <Show when={importFlow.loading() && !importFlow.dropProcessing()}>
         <div class={importStyles.loadingOverlay} data-test-id="onboarding-import-loading">
           <OrbitSpinner size={72} label="Processing your data…" />
         </div>
       </Show>
 
       <Show
-        when={importSummary()}
+        when={showingSummary()}
         fallback={
           <div class={styles.importEmbed}>
             <Show when={importFlow.activeStep() === 'upload'}>
@@ -705,7 +745,9 @@ export function OnboardingWizard() {
             class={styles.secondaryAction}
             onClick={() => {
               importFlow.resetForm()
-              setImportSummary(null)
+              // Keep the summary — totals accumulate across batches; the flag
+              // swaps the panel back to the embedded importer.
+              setImportingMore(true)
             }}
           >
             Import more files
@@ -811,7 +853,7 @@ export function OnboardingWizard() {
       case 'import': {
         // The footer carries the import flow's true forward action at each
         // sub-step, so the user never has to hunt for it mid-scroll.
-        if (importSummary()) {
+        if (showingSummary()) {
           return {
             label: 'Continue',
             run: () => {
@@ -920,6 +962,7 @@ export function OnboardingWizard() {
               <button
                 class={styles.ghostBtn}
                 data-test-id="onboarding-back"
+                disabled={onboardingStep() === 'import' && importFlow.loading()}
                 onClick={() => {
                   if (onboardingStep() === 'import') backFromImport()
                   else prevOnboardingStep()
@@ -933,6 +976,7 @@ export function OnboardingWizard() {
                 <button
                   class={styles.ghostBtn}
                   data-test-id="onboarding-skip"
+                  disabled={onboardingStep() === 'import' && importFlow.loading()}
                   onClick={() => void requestSkipAll()}
                 >
                   Skip setup

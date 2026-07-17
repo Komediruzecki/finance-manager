@@ -49,7 +49,9 @@ export const n26Adapter: BankAdapter = {
     if (head.startsWith('bookingdate,valuedate,partnername')) return 0.97
     if (head.startsWith('date,payee,accountnumber,transactiontype')) return 0.95
     if (head.startsWith('datum,empfänger,kontonummer,transaktionstyp')) return 0.95
-    if (/n26/i.test(input.filename)) return 0.6
+    // Word-bounded: "jan26.csv" / "plan26.csv" must NOT read as N26 —
+    // month+year filenames are common and a false 0.6 would beat "unknown".
+    if (/\bn26\b/i.test(input.filename)) return 0.6
     return 0
   },
 
@@ -82,6 +84,9 @@ export const n26Adapter: BankAdapter = {
         counterparty: payee,
         beneficiary: amount < 0 ? payee : undefined,
         payor: amount > 0 ? payee : undefined,
+        // Card rows carry no time/balance/reference, so two genuinely distinct
+        // same-day/partner/amount purchases collide — the preview flags them
+        // as duplicates (deselected) for the user to re-check.
         dedupKey: r.join('\x01'),
       }
       out.push(buildTxn(raw, ctx))

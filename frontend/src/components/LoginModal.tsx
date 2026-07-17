@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js'
+import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { api } from '../core/api'
 import styles from './LoginModal.module.css'
 import { OrbitSpinner } from './OrbitSpinner'
@@ -23,13 +23,31 @@ export default function LoginModal(props: LoginModalProps) {
   const [stage, setStage] = createSignal<'form' | 'signing-in'>('form')
   const [turnstileToken, setTurnstileToken] = createSignal('')
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') props.onClose()
+  // Set when the user closes the modal; the register → auto-sign-in
+  // continuation checks it so a completed login can't reload the page out from
+  // under someone who dismissed the dialog and moved on.
+  let dismissed = false
+  const close = () => {
+    dismissed = true
+    props.onClose()
   }
+
+  // Document-level so Escape keeps working during the 'signing-in' stage, when
+  // the form (and with it any focused child) is unmounted.
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    onCleanup(() => {
+      document.removeEventListener('keydown', handleKeyDown)
+    })
+  })
 
   const submit = async (e: Event) => {
     e.preventDefault()
     setError('')
+    setNotice('')
     const em = email().trim()
     const pw = password()
     if (!em || !pw) {
@@ -54,11 +72,17 @@ export default function LoginModal(props: LoginModalProps) {
         setTurnstileToken('')
         try {
           const token = await waitForTurnstileToken(turnstileToken, 20000)
+          // The user closed the modal while we waited — drop the handoff
+          // (the account exists; they can sign in whenever) instead of
+          // reloading the page out from under them.
+          if (dismissed) return
           await api.loginWithPassword(em, pw, token)
+          if (dismissed) return
           // Cookie is set; reload so the app re-checks /auth/me.
           window.location.reload()
           return
         } catch {
+          if (dismissed) return
           // Existing account or a captcha hiccup — hand over to manual sign-in
           // without revealing which it was.
           setStage('form')
@@ -98,10 +122,10 @@ export default function LoginModal(props: LoginModalProps) {
     <div
       class={styles.overlay}
       onClick={(e) => {
-        if (e.target === e.currentTarget) props.onClose()
+        if (e.target === e.currentTarget) close()
       }}
     >
-      <div class={styles.modal} onKeyDown={handleKeyDown}>
+      <div class={styles.modal}>
         <h3 class={styles.title}>{mode() === 'register' ? 'Create account' : 'Sign In'}</h3>
         <p style={{ 'margin-bottom': '16px', color: 'var(--text-secondary)', 'font-size': '14px' }}>
           {stage() === 'signing-in'
@@ -255,7 +279,7 @@ export default function LoginModal(props: LoginModalProps) {
           </div>
 
           <div class={styles.actions}>
-            <button class={styles.btnCancel} onClick={props.onClose} type="button">
+            <button class={styles.btnCancel} onClick={close} type="button">
               Cancel
             </button>
             <button

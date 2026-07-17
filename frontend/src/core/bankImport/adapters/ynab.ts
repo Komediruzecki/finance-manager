@@ -71,16 +71,17 @@ export const ynabAdapter: BankAdapter = {
     const [header, ...data] = parsed.rows
     if (!header) return []
     const col = indexHeader(header)
+    const toDate = makeDateNormalizer(data.map((r) => r[col.date ?? -1] || ''))
     const out: CanonicalTxn[] = []
     for (const r of data) {
-      const date = normalizeDate(r[col.date ?? -1])
+      const date = toDate(r[col.date ?? -1] || '')
       if (!date) continue
-      const outflow = parseFlexibleNumber(r[col.outflow ?? -1] || '')
-      const inflow = parseFlexibleNumber(r[col.inflow ?? -1] || '')
+      const outflow = parseYnabAmount(r[col.outflow ?? -1] || '')
+      const inflow = parseYnabAmount(r[col.inflow ?? -1] || '')
       const amount =
         col.outflow !== undefined || col.inflow !== undefined
           ? inflow - Math.abs(outflow)
-          : parseFlexibleNumber(r[col.amount ?? -1] || '0')
+          : parseYnabAmount(r[col.amount ?? -1] || '0')
       const payee = r[col.payee ?? -1] || ''
       const memo = r[col.memo ?? -1] || ''
       const raw: RawTxn = {
@@ -91,6 +92,9 @@ export const ynabAdapter: BankAdapter = {
         currency: '',
         description: memo || payee,
         counterparty: payee,
+        // The format carries no time/balance/reference, so two genuinely
+        // distinct same-day/payee/amount rows collide — the preview flags
+        // them as duplicates (deselected) for the user to re-check.
         dedupKey: r.join('\x01'),
       }
       const txn = buildTxn(raw, ctx)
@@ -101,4 +105,51 @@ export const ynabAdapter: BankAdapter = {
     }
     return out
   },
+}
+
+const SLASHED_DATE = /^(\d{1,2})([./-])(\d{1,2})[./-](\d{4})/
+
+/**
+ * Decide the file's date order ONCE and apply it to every row — per-row
+ * guessing would interpret "06/22/2026" and "06/07/2026" from the same US
+ * export under two different conventions. Any date whose second segment can't
+ * be a month proves month-first (US YNAB examples); any whose first can't
+ * proves day-first and wins outright. Ambiguous files default to day-first
+ * (the European convention, as documented in the header).
+ */
+function makeDateNormalizer(dateCells: string[]): (value: string) => string {
+  let monthFirst = false
+  for (const cell of dateCells) {
+    const m = cell.trim().match(SLASHED_DATE)
+    if (!m) continue
+    const first = parseInt(m[1], 10)
+    const second = parseInt(m[3], 10)
+    if (first > 12 && second <= 12) {
+      monthFirst = false
+      break
+    }
+    if (second > 12 && first <= 12) monthFirst = true
+  }
+  return (value: string) => {
+    const trimmed = value.trim()
+    if (monthFirst) {
+      const m = trimmed.match(SLASHED_DATE)
+      // Rewrite MM?DD?YYYY as day-first and let normalizeDate validate it.
+      if (m) return normalizeDate(`${m[3]}${m[2]}${m[1]}${m[2]}${m[4]}`)
+    }
+    return normalizeDate(trimmed)
+  }
+}
+
+/**
+ * YNAB files come from arbitrary third-party tools: tolerate currency symbols
+ * and codes ("$4.50", "4,50 €", "4.50 EUR") and accounting negatives
+ * ("(4.50)") instead of silently parsing them as 0.
+ */
+function parseYnabAmount(value: string): number {
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+  const negative = /^\(.*\)$/.test(trimmed)
+  const n = parseFlexibleNumber(trimmed.replace(/[^0-9.,-]/g, ''))
+  return negative ? -Math.abs(n) : n
 }

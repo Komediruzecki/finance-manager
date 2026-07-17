@@ -437,9 +437,21 @@ describe('parse utils — EU adapter additions', () => {
     expect(normalizeDate('28-01-2026')).toBe('2026-01-28') // Wise day-first hyphens
     expect(normalizeDate('14.07.26')).toBe('2026-07-14') // Sparkasse/DKB DD.MM.YY
     expect(normalizeDate('31.12.99')).toBe('1999-12-31') // century pivot
-    expect(normalizeDate('06/22/2026')).toBe('2026-06-22') // US order, month>12 impossible → swap
     expect(normalizeDate('22.13.2026')).toBe('') // impossible either way
     expect(normalizeDate('99999999')).toBe('') // 8 digits but month 99
+  })
+
+  it('is strictly day-first and never fabricates impossible dates', () => {
+    // US-order handling is the YNAB adapter's file-level job, never per value.
+    expect(normalizeDate('06/22/2026')).toBe('')
+    // A non-'' return is used as a row-validity test by every adapter, so a
+    // stray number in a date position must stay invalid.
+    expect(normalizeDate('20251232')).toBe('') // day 32
+    expect(normalizeDate('20260000')).toBe('') // month/day 0
+    expect(normalizeDate('00000000')).toBe('')
+    expect(normalizeDate('99.01.26')).toBe('') // day 99
+    expect(normalizeDate('00.00.26')).toBe('')
+    expect(normalizeDate('0.0.2026')).toBe('')
   })
 
   it('indexes headers by normalized name', () => {
@@ -465,6 +477,12 @@ describe('n26 adapter', () => {
     '2025-03-04,2025-03-05,"Erika Beispiel","DE02120300000000202051","Outgoing Transfer","Miete Maerz","Main Account",-850.0,,,',
     '2025-03-05,2025-03-05,"Acme GmbH","DE02500105170137075030","Credit Transfer","Gehalt 03/2025","Main Account",2600.0,,,',
   ].join('\n')
+
+  it('filename hint is word-bounded — month+year names are not N26', () => {
+    expect(n26Adapter.detect(toDetectInput('jan26.csv', enc('Date,Vendor,Total')))).toBe(0)
+    expect(n26Adapter.detect(toDetectInput('budget-plan26.csv', enc('')))).toBe(0)
+    expect(n26Adapter.detect(toDetectInput('n26-csv-transactions.csv', enc('')))).toBeCloseTo(0.6)
+  })
 
   it('detects the current and legacy headers', () => {
     expect(n26Adapter.detect(toDetectInput('x.csv', enc(csv)))).toBeGreaterThan(0.9)
@@ -512,6 +530,8 @@ describe('wise adapter', () => {
     expect(
       wiseAdapter.detect(toDetectInput('statement_23243482_EUR_2025-01-04_2025-06-02.csv', enc('')))
     ).toBeGreaterThan(0.6)
+    // The full export shape is required — date-fragment lookalikes are not Wise.
+    expect(wiseAdapter.detect(toDetectInput('statement_2026_jan_export.csv', enc('')))).toBe(0)
   })
 
   it('parses day-first hyphen dates, merchants, and flags top-ups as transfers', async () => {
@@ -672,6 +692,39 @@ describe('ynab adapter', () => {
     const txns = ynabAdapter.transform(parsed, baseCtx())
     expect(txns[0]).toMatchObject({ type: 'Expense', amount: 4.5 })
   })
+
+  it('applies ONE date order to the whole file (US export stays consistent)', async () => {
+    // 06/22 proves month-first for the file, so ambiguous 06/07 must be June 7.
+    const us = [
+      'Date,Payee,Memo,Amount',
+      '06/22/2026,Shop A,,-1.00',
+      '06/07/2026,Shop B,,-2.00',
+    ].join('\n')
+    const usTxns = ynabAdapter.transform(await ynabAdapter.parse(enc(us), 'x.csv'), baseCtx())
+    expect(usTxns.map((t) => t.date)).toEqual(['2026-06-22', '2026-06-07'])
+    // 22/06 proves day-first, so ambiguous 06/07 must be July 6.
+    const eu = [
+      'Date,Payee,Memo,Amount',
+      '22/06/2026,Shop A,,-1.00',
+      '06/07/2026,Shop B,,-2.00',
+    ].join('\n')
+    const euTxns = ynabAdapter.transform(await ynabAdapter.parse(enc(eu), 'x.csv'), baseCtx())
+    expect(euTxns.map((t) => t.date)).toEqual(['2026-06-22', '2026-07-06'])
+  })
+
+  it('tolerates currency symbols and accounting negatives in amounts', async () => {
+    const csv = [
+      'Date,Payee,Memo,Outflow,Inflow',
+      '2026-06-22,Coffee Corner,Latte,$4.50,',
+      '2026-06-23,Acme Payroll,,,"2,500.00 EUR"',
+    ].join('\n')
+    const txns = ynabAdapter.transform(await ynabAdapter.parse(enc(csv), 'x.csv'), baseCtx())
+    expect(txns[0]).toMatchObject({ type: 'Expense', amount: 4.5 })
+    expect(txns[1]).toMatchObject({ type: 'Income', amount: 2500 })
+    const paren = ['Date,Payee,Memo,Amount', '2026-06-22,Shop,,(4.50)'].join('\n')
+    const parenTxns = ynabAdapter.transform(await ynabAdapter.parse(enc(paren), 'x.csv'), baseCtx())
+    expect(parenTxns[0]).toMatchObject({ type: 'Expense', amount: 4.5 })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -716,5 +769,21 @@ describe('registry cross-detection', () => {
   it.each(fixtures)('routes the %s fixture to its adapter', (id, filename, content) => {
     const det = detectBank(toDetectInput(filename, enc(content)))
     expect(det?.adapter.id).toBe(id)
+  })
+
+  it('leaves a generic CSV undetected, even with a month+year filename', () => {
+    const generic = 'Date,Vendor,Total\n2026-01-05,Some Shop,12.00'
+    expect(detectBank(toDetectInput('expenses-jan26.csv', enc(generic)))).toBeNull()
+  })
+
+  it('detects the DKB comma-delimited new-export variant by content', () => {
+    const commaDkb = [
+      '"Girokonto","DE88120300001056358037"',
+      '""',
+      '"Kontostand vom 15.07.2026:","1,00 EUR"',
+      '""',
+      '"Buchungsdatum","Wertstellung","Status","Zahlungspflichtige*r","Zahlungsempfänger*in","Verwendungszweck","Umsatztyp","IBAN","Betrag (€)"',
+    ].join('\n')
+    expect(dkbAdapter.detect(toDetectInput('x.csv', enc(commaDkb)))).toBeGreaterThan(0.9)
   })
 })

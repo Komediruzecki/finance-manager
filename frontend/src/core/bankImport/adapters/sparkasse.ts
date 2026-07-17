@@ -84,6 +84,9 @@ export const sparkasseAdapter: BankAdapter = {
         counterparty: payee,
         beneficiary: amount < 0 ? payee : undefined,
         payor: amount > 0 ? payee : undefined,
+        // Kundenreferenz is often empty, so two genuinely distinct same-day/
+        // payee/amount rows can collide — the preview flags them as duplicates
+        // (deselected) for the user to re-check.
         dedupKey: r.join('\x01'),
       }
       out.push(buildTxn(raw, ctx))

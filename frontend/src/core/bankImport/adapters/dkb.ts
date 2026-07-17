@@ -55,11 +55,8 @@ export const dkbAdapter: BankAdapter = {
   detect(input: DetectInput): number {
     const head = input.textPreview.slice(0, 800).toLowerCase().replace(/["\s]/g, '')
     // New banking: preamble + Buchungsdatum/Umsatztyp header (giro or visa).
-    if (
-      (head.includes('buchungsdatum;') || head.includes('belegdatum;')) &&
-      head.includes('umsatztyp')
-    )
-      return 0.97
+    // [;,] — parse() supports the comma-delimited variant, so detect must too.
+    if (/(?:buchungsdatum|belegdatum)[;,]/.test(head) && head.includes('umsatztyp')) return 0.97
     // Legacy: "Auftraggeber / Begünstigter" is unique to DKB's old header
     // (Sparkasse uses Beguenstigter/Zahlungspflichtiger).
     if (head.includes('buchungstag') && head.includes('auftraggeber/beg')) return 0.95
@@ -119,6 +116,9 @@ export const dkbAdapter: BankAdapter = {
         counterparty: payee,
         beneficiary: amount < 0 ? payee || undefined : undefined,
         payor: amount > 0 ? payee || undefined : undefined,
+        // Dates are day-granular and references often empty, so two genuinely
+        // distinct same-day/payee/amount rows can collide — the preview flags
+        // them as duplicates (deselected) for the user to re-check.
         dedupKey: r.join('\x01'),
       }
       out.push(buildTxn(raw, ctx))

@@ -35,7 +35,10 @@ export const wiseAdapter: BankAdapter = {
   detect(input: DetectInput): number {
     const head = (input.textPreview.split(/\r?\n/, 1)[0] ?? '').toLowerCase().replace(/["\s]/g, '')
     if (head.startsWith('transferwiseid,date')) return 0.97
-    if (/^statement_\d+_[a-z]{3}_/i.test(input.filename)) return 0.7
+    // Full export shape (statement_<id>_<CCY>_<from>_<to>.csv) — a loose
+    // prefix would catch date-fragment names like "statement_2026_jan_…".
+    if (/^statement_\d+_[a-z]{3}_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/i.test(input.filename))
+      return 0.7
     return 0
   },
 

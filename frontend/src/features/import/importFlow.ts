@@ -125,8 +125,8 @@ export interface ImportFlowOptions {
  * actually painted before a long synchronous parse (XLSX.read) blocks the main
  * thread. Raced against a short timeout: hidden/backgrounded documents pause
  * rAF entirely, and a paint yield must never turn into a hang — worst case the
- * spinner misses a frame. Falls back to a macrotask where rAF doesn't exist
- * (unit tests).
+ * spinner misses a frame. Falls back to a macrotask in environments without
+ * rAF. (Under fake timers, advance 120ms to release it.)
  */
 const nextPaint = () =>
   new Promise<void>((resolve) => {
@@ -460,6 +460,9 @@ export function createImportFlow(opts: ImportFlowOptions = {}) {
     setResultMessage(null)
 
     try {
+      // In serverless mode this POST is routed in-process to a synchronous
+      // XLSX parse — same paint yield as the bank path so the spinner shows.
+      await nextPaint()
       const formData = new FormData()
       formData.append('file', file)
 

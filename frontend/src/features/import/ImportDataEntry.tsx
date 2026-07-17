@@ -4,7 +4,7 @@
  * Import page and the onboarding wizard — pass `compact` to drop the page-sized
  * explainer table.
  */
-import { createSignal, createUniqueId, For, Show } from 'solid-js'
+import { createSignal, createUniqueId, For, onCleanup, onMount, Show } from 'solid-js'
 import { AccountSelect } from '../../components/AccountSelect'
 import { OrbitSpinner } from '../../components/OrbitSpinner'
 import { Pill } from '../../components/Pill'
@@ -66,6 +66,22 @@ export function ImportDataEntry(props: { flow: ImportFlow; compact?: boolean }) 
   }
   const uploadDrag = createDragState()
   const bankDrag = createDragState()
+
+  // Belt and braces: if a browser quirk swallows the final dragleave (the drag
+  // is cancelled outside the window, etc.), the end of the drag operation or a
+  // window blur still clears the highlight.
+  onMount(() => {
+    const resetAll = () => {
+      uploadDrag.reset()
+      bankDrag.reset()
+    }
+    window.addEventListener('dragend', resetAll)
+    window.addEventListener('blur', resetAll)
+    onCleanup(() => {
+      window.removeEventListener('dragend', resetAll)
+      window.removeEventListener('blur', resetAll)
+    })
+  })
 
   return (
     <div class={styles.uploadArea}>
