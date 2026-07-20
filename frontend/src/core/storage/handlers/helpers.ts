@@ -7,11 +7,13 @@ import { getDB, IndexedDBAdapter } from '../idb'
 // Multiple instances cause in-memory state divergence (caches, locks).
 export const adapter = new IndexedDBAdapter()
 
-export const json = (data: unknown, status = 200): Response =>
-  new Response(JSON.stringify(data), {
+export const json = (data: unknown, status = 200, pretty = false): Response => {
+  const body = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data)
+  return new Response(body, {
     status,
     headers: { 'Content-Type': 'application/json' },
   })
+}
 
 export const ok = (data: Record<string, unknown> = {}): Response => json({ ok: true, ...data })
 

@@ -180,3 +180,23 @@ describe('localApiRouter - body parsing', () => {
     expect(res.status).toBe(201)
   })
 })
+
+describe('localApiRouter - profile override header', () => {
+  it('applies and clears profileIdOverride from x-profile-id header', async () => {
+    const { routeApiRequest } = await loadModule()
+    const { adapter } = await import('../handlers/helpers.js')
+
+    const setSpy = vi.spyOn(adapter, 'setProfileIdOverride')
+    const clearSpy = vi.spyOn(adapter, 'clearProfileIdOverride')
+
+    await routeApiRequest('http://localhost/api/health', {
+      headers: { 'x-profile-id': '42' },
+    })
+
+    expect(setSpy).toHaveBeenCalledWith(42)
+    expect(clearSpy).toHaveBeenCalledOnce()
+
+    setSpy.mockRestore()
+    clearSpy.mockRestore()
+  })
+})

@@ -636,19 +636,22 @@ export default function Settings() {
 
   const [csvExporting, setCsvExporting] = createSignal<string | null>(null)
   const [exportFormat, setExportFormat] = createSignal('csv')
+  const [prettyPrintJson, setPrettyPrintJson] = createSignal(true)
 
   // Data Management
   const handleExport = async () => {
     try {
-      const response = await apiFetch('/api/export', {
+      const response = await apiFetch(`/api/export?pretty=${prettyPrintJson()}`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'X-Profile-Id': householdIds().join(','),
+        },
       })
 
       if (!response.ok) throw new Error('Export failed')
 
-      const data = await response.json()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -664,9 +667,13 @@ export default function Settings() {
     const fmt = exportFormat()
     setCsvExporting(type)
     try {
-      const response = await apiFetch(`/api/export/${type}?format=${fmt}`, {
+      const prettyParam = fmt === 'json' && prettyPrintJson() ? '&pretty=true' : ''
+      const response = await apiFetch(`/api/export/${type}?format=${fmt}${prettyParam}`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'X-Profile-Id': householdIds().join(','),
+        },
       })
       if (!response.ok) throw new Error('Export failed')
       const blob = await response.blob()
@@ -740,10 +747,10 @@ export default function Settings() {
     }
   }
 
-  const handleDeleteProfile = async () => {
-    const profileId = localStorage.getItem('currentProfileId') || '1'
+  const handleDeleteProfile = async (profileId?: string | number) => {
+    const pid = profileId ? profileId.toString() : localStorage.getItem('currentProfileId') || '1'
     try {
-      const res = await apiFetch(`/api/profiles/${profileId}`, {
+      const res = await apiFetch(`/api/profiles/${pid}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -752,12 +759,30 @@ export default function Settings() {
         toast(data.error || 'Failed to delete profile', 'error')
         return
       }
-      // Switch to the next available profile
+
+      const currentProfileId = localStorage.getItem('currentProfileId') || '1'
       const profilesRes = await apiFetch('/api/profiles', { credentials: 'include' })
       const profiles = await profilesRes.json()
-      if (profiles.length > 0) {
-        localStorage.setItem('currentProfileId', profiles[0].id.toString())
-        localStorage.setItem('selectedProfileIds', JSON.stringify([profiles[0].id]))
+
+      if (currentProfileId === pid) {
+        if (profiles.length > 0) {
+          localStorage.setItem('currentProfileId', profiles[0].id.toString())
+          localStorage.setItem('selectedProfileIds', JSON.stringify([profiles[0].id]))
+        } else {
+          localStorage.removeItem('currentProfileId')
+          localStorage.removeItem('selectedProfileIds')
+        }
+      } else {
+        const selected = localStorage.getItem('selectedProfileIds')
+        if (selected) {
+          try {
+            const ids = JSON.parse(selected) as number[]
+            const filtered = ids.filter((id) => id.toString() !== pid)
+            localStorage.setItem('selectedProfileIds', JSON.stringify(filtered))
+          } catch {
+            // Ignore JSON parsing issues
+          }
+        }
       }
       window.location.reload()
     } catch {
@@ -1186,52 +1211,6 @@ export default function Settings() {
 
               <div class={styles.card}>
                 <CardHead
-                  icon={<IconDownload />}
-                  title="Data management"
-                  desc="Export your data or reset the workspace."
-                />
-                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                  <label style="font-size: 13px; color: var(--text-secondary);">
-                    Export Format:
-                  </label>
-                  <select
-                    class={styles.formControl}
-                    value={exportFormat()}
-                    onchange={(e) => setExportFormat(e.currentTarget.value)}
-                    style="max-width: 120px;"
-                  >
-                    <option value="csv">CSV</option>
-                    <option value="json">JSON</option>
-                  </select>
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                  <button class={styles.btnSecondary} onclick={handleExport}>
-                    Export All (JSON)
-                  </button>
-                  {[
-                    { type: 'transactions', label: 'Transactions' },
-                    { type: 'categories', label: 'Categories' },
-                    { type: 'budgets', label: 'Budgets' },
-                    { type: 'accounts', label: 'Accounts' },
-                    { type: 'loans', label: 'Loans' },
-                    { type: 'recurring', label: 'Recurring' },
-                  ].map(({ type, label }) => (
-                    <button
-                      class={styles.btnSecondary}
-                      onclick={() => handleCsvExport(type)}
-                      disabled={csvExporting() === type}
-                    >
-                      {csvExporting() === type
-                        ? 'Exporting...'
-                        : `${label} (${exportFormat().toUpperCase()})`}
-                    </button>
-                  ))}
-                </div>
-                <DangerZone onReset={handleReset} onDeleteProfile={handleDeleteProfile} />
-              </div>
-
-              <div class={styles.card}>
-                <CardHead
                   icon={<IconUsers />}
                   title="Household view"
                   desc="Combine data across multiple profiles."
@@ -1410,7 +1389,69 @@ export default function Settings() {
                     </table>
                   </div>
                 </Show>
+                <div style="margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--border);">
+                  <div style="font-size: 14px; color: var(--text); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <IconDownload />
+                    </div>
+                    <span>Export Household Data</span>
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Export combined data for the selected profiles.
+                  </div>
+                  <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 13px; color: var(--text-secondary);">
+                      Export Format:
+                    </label>
+                    <select
+                      class={styles.formControl}
+                      value={exportFormat()}
+                      onchange={(e) => setExportFormat(e.currentTarget.value)}
+                      style="max-width: 120px;"
+                    >
+                      <option value="csv">CSV</option>
+                      <option value="json">JSON</option>
+                    </select>
+
+                    <Show when={exportFormat() === 'json'}>
+                      <div style="margin-left: 16px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">
+                          Format JSON
+                        </span>
+                        <Toggle
+                          checked={prettyPrintJson}
+                          onChange={setPrettyPrintJson}
+                          aria-label="Format JSON"
+                        />
+                      </div>
+                    </Show>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button class={styles.btnSecondary} onclick={handleExport}>
+                      Export All (JSON)
+                    </button>
+                    {[
+                      { type: 'transactions', label: 'Transactions' },
+                      { type: 'categories', label: 'Categories' },
+                      { type: 'budgets', label: 'Budgets' },
+                      { type: 'accounts', label: 'Accounts' },
+                      { type: 'loans', label: 'Loans' },
+                      { type: 'recurring', label: 'Recurring' },
+                    ].map(({ type, label }) => (
+                      <button
+                        class={styles.btnSecondary}
+                        onclick={() => handleCsvExport(type)}
+                        disabled={csvExporting() === type}
+                      >
+                        {csvExporting() === type
+                          ? 'Exporting...'
+                          : `${label} (${exportFormat().toUpperCase()})`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+              <DangerZone onReset={handleReset} onDeleteProfile={handleDeleteProfile} />
             </Show>
 
             {/* ─────────────── BILLING (server mode only) ─────────────── */}

@@ -221,7 +221,18 @@ export function computeBalanceDeltas(tx: {
 }
 
 export class IndexedDBAdapter implements StorageAdapter {
+  private _profileIdOverride: number | null = null
+
+  setProfileIdOverride(id: number): void {
+    this._profileIdOverride = id
+  }
+
+  clearProfileIdOverride(): void {
+    this._profileIdOverride = null
+  }
+
   private getProfileId(): number {
+    if (this._profileIdOverride !== null) return this._profileIdOverride
     const stored = localStorage.getItem('currentProfileId')
     return stored ? parseInt(stored, 10) : 1
   }
@@ -231,6 +242,7 @@ export class IndexedDBAdapter implements StorageAdapter {
    * Falls back to the single current profile ID if nothing stored.
    */
   getCurrentProfileIds(): number[] {
+    if (this._profileIdOverride !== null) return [this._profileIdOverride]
     const stored = localStorage.getItem('selectedProfileIds')
     if (stored) {
       try {
@@ -248,19 +260,28 @@ export class IndexedDBAdapter implements StorageAdapter {
   async getCurrentProfileId(): Promise<number> {
     const db = await getDB()
     const profiles = await db.getAll('profiles')
+
+    // No profiles exist — only seed demo on first init, never after user deletes all
+    if (profiles.length === 0) {
+      const hadProfiles = localStorage.getItem('finance_had_profiles')
+      if (!hadProfiles) {
+        localStorage.setItem('finance_had_profiles', '1')
+        await seedDemoProfiles()
+        const seeded = await db.getAll('profiles')
+        if (seeded.length > 0) {
+          if (this._profileIdOverride !== null) return this._profileIdOverride
+          return seeded[0].id
+        }
+      }
+    }
+
+    if (this._profileIdOverride !== null) return this._profileIdOverride
+
     const profileId = this.getProfileId()
     if (profiles.find((p) => p.id === profileId)) return profileId
     if (profiles.length > 0) {
       localStorage.setItem('currentProfileId', String(profiles[0].id))
       return profiles[0].id
-    }
-    // No profiles exist — only seed demo on first init, never after user deletes all
-    const hadProfiles = localStorage.getItem('finance_had_profiles')
-    if (!hadProfiles) {
-      localStorage.setItem('finance_had_profiles', '1')
-      await seedDemoProfiles()
-      const seeded = await db.getAll('profiles')
-      if (seeded.length > 0) return seeded[0].id
     }
     // If user deleted all profiles, don't force-create one — return 0 so UI can handle it
     localStorage.removeItem('currentProfileId')
@@ -756,7 +777,7 @@ export class IndexedDBAdapter implements StorageAdapter {
 
   // ---- Export/Import ----
 
-  async exportData(): Promise<ExportData> {
+  async exportData(profileIds?: number[]): Promise<ExportData> {
     const db = await getDB()
     const [
       transactions,
@@ -794,25 +815,38 @@ export class IndexedDBAdapter implements StorageAdapter {
       this.getSettings(),
     ])
 
+    const pids = profileIds && profileIds.length > 0 ? new Set(profileIds) : null
+
+    const filterByProfile = <T extends { profile_id?: number }>(arr: T[]): T[] => {
+      if (!pids) return arr
+      return arr.filter((x) => x.profile_id !== undefined && pids.has(x.profile_id))
+    }
+
+    const exportedAccounts = filterByProfile(accounts)
+    const exportedAccountIds = new Set(exportedAccounts.map((a) => a.id))
+    const exportedBalanceHistory = pids
+      ? balanceHistoryRows.filter((r) => exportedAccountIds.has(r.account_id))
+      : balanceHistoryRows
+
     return {
       version: '2.0.0',
       export_date: new Date().toISOString(),
       storage_mode: 'serverless',
-      profiles,
-      categories,
-      transactions,
-      accounts,
-      budgets,
-      goals,
-      loans,
-      portfolioHoldings,
-      bills,
-      recurring,
-      tags,
-      housings,
-      categoryMappings,
-      receipts,
-      balanceHistoryRows,
+      profiles: pids ? profiles.filter((p) => pids.has(p.id)) : profiles,
+      categories: filterByProfile(categories),
+      transactions: filterByProfile(transactions),
+      accounts: exportedAccounts,
+      budgets: filterByProfile(budgets),
+      goals: filterByProfile(goals),
+      loans: filterByProfile(loans),
+      portfolioHoldings: filterByProfile(portfolioHoldings),
+      bills: filterByProfile(bills),
+      recurring: filterByProfile(recurring),
+      tags: filterByProfile(tags),
+      housings: filterByProfile(housings),
+      categoryMappings: filterByProfile(categoryMappings),
+      receipts: filterByProfile(receipts),
+      balanceHistoryRows: exportedBalanceHistory,
       settings,
     }
   }

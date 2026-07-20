@@ -1,4 +1,5 @@
 import { validateBody } from '../validation'
+import { adapter } from './handlers/helpers'
 import * as h from './localHandlers'
 
 // ── Route types ──────────────────────────────────────────────────────────────
@@ -9,6 +10,7 @@ interface RouteContext {
   params: Record<string, string>
   query: URLSearchParams
   body: unknown
+  headers?: HeadersInit
 }
 
 type Handler = (ctx: RouteContext) => Promise<Response>
@@ -478,11 +480,15 @@ const routes: RouteDef[] = [
   },
 
   // ── Export / Import / Clear ──
-  { pattern: /^\/export$/, methods: ['GET'], handler: dispatch({ GET: () => h.exportAll() }) },
+  {
+    pattern: /^\/export$/,
+    methods: ['GET'],
+    handler: dispatch({ GET: (ctx) => h.exportAll(ctx.query, ctx.headers) }),
+  },
   {
     pattern: /^\/export\/([a-z-]+)$/,
     methods: ['GET'],
-    handler: dispatch({ GET: (ctx) => h.exportByType(ctx.params, ctx.query) }),
+    handler: dispatch({ GET: (ctx) => h.exportByType(ctx.params, ctx.query, ctx.headers) }),
   },
   {
     pattern: /^\/import$/,
@@ -897,6 +903,24 @@ function extractParams(pattern: RegExp, path: string): Record<string, string> | 
   return params
 }
 
+function getProfileIdFromHeaders(headers?: HeadersInit): number | null {
+  if (!headers) return null
+  if (headers instanceof Headers) {
+    const val = headers.get('x-profile-id')
+    return val ? parseInt(val, 10) : null
+  }
+  if (Array.isArray(headers)) {
+    const pair = headers.find(([key]) => key.toLowerCase() === 'x-profile-id')
+    return pair ? parseInt(pair[1], 10) : null
+  }
+  if (typeof headers === 'object') {
+    const record = headers as Record<string, string>
+    const key = Object.keys(record).find((k) => k.toLowerCase() === 'x-profile-id')
+    return key ? parseInt(record[key], 10) : null
+  }
+  return null
+}
+
 export async function routeApiRequest(url: string, init?: RequestInit): Promise<Response> {
   const urlObj = new URL(url, window.location.origin)
   const method = init?.method ?? 'GET'
@@ -940,7 +964,22 @@ export async function routeApiRequest(url: string, init?: RequestInit): Promise<
       }
     }
 
-    return route.handler({ method, path: `/api${path}`, params, query, body })
+    const profileIdOverride = getProfileIdFromHeaders(init?.headers)
+    try {
+      if (profileIdOverride !== null && !isNaN(profileIdOverride)) {
+        adapter.setProfileIdOverride(profileIdOverride)
+      }
+      return await route.handler({
+        method,
+        path: `/api${path}`,
+        params,
+        query,
+        body,
+        headers: init?.headers,
+      })
+    } finally {
+      adapter.clearProfileIdOverride()
+    }
   }
 
   return notFound(`/api${path}`)
