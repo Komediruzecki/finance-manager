@@ -2,33 +2,20 @@
  * ExportImport handlers — IndexedDB-backed implementations
  */
 import { getDB, seedDefaultCategories, seedDemoProfiles } from '../idb'
-import { adapter, getAmount, json, monthEnd, monthStart, nextMonth, ok, prevMonth } from './helpers'
-
-function getProfileIdsFromHeaders(headers?: HeadersInit): number[] | undefined {
-  if (!headers) return undefined
-  let val: string | null = null
-  if (headers instanceof Headers) {
-    val = headers.get('x-profile-id')
-  } else if (Array.isArray(headers)) {
-    const pair = headers.find(([key]) => key.toLowerCase() === 'x-profile-id')
-    val = pair ? pair[1] : null
-  } else if (typeof headers === 'object') {
-    const record = headers as Record<string, string>
-    const key = Object.keys(record).find((k) => k.toLowerCase() === 'x-profile-id')
-    val = key ? record[key] : null
-  }
-  if (val) {
-    const ids = val
-      .split(',')
-      .map((x: string) => parseInt(x, 10))
-      .filter((x: number) => !isNaN(x))
-    return ids.length > 0 ? ids : undefined
-  }
-  return undefined
-}
+import {
+  adapter,
+  getAmount,
+  json,
+  monthEnd,
+  monthStart,
+  nextMonth,
+  ok,
+  prevMonth,
+  targetProfileIdsFromHeaders,
+} from './helpers'
 
 export async function exportAll(query?: URLSearchParams, headers?: HeadersInit): Promise<Response> {
-  const pids = getProfileIdsFromHeaders(headers)
+  const pids = targetProfileIdsFromHeaders(headers)
   const data = await adapter.exportData(pids)
   const pretty = query?.get('pretty') === 'true'
   return json(data, 200, pretty)
@@ -42,7 +29,7 @@ export async function exportByType(
   const type = params.p1
   const fmt = query.get('format') || 'json'
   const pretty = query.get('pretty') === 'true'
-  const pids = getProfileIdsFromHeaders(headers)
+  const pids = targetProfileIdsFromHeaders(headers)
   const data = await adapter.exportData(pids)
 
   if (fmt === 'csv') {
@@ -207,14 +194,17 @@ export async function clearAll(): Promise<Response> {
   return ok({ message: 'All data cleared' })
 }
 
-export async function deleteAllTransactions(): Promise<Response> {
-  await adapter.deleteAllTransactions()
+export async function deleteAllTransactions(headers?: HeadersInit): Promise<Response> {
+  // Target the profile(s) named in the request header (Danger Zone can act on a
+  // non-active profile); fall back to the active profile when none is given.
+  const pids = targetProfileIdsFromHeaders(headers) ?? adapter.getCurrentProfileIds()
+  await adapter.deleteAllTransactions(pids)
   return ok({ message: 'All transactions deleted' })
 }
 
-export async function deleteAllCategories(): Promise<Response> {
+export async function deleteAllCategories(headers?: HeadersInit): Promise<Response> {
   const db = await getDB()
-  const pid = await adapter.getCurrentProfileId()
+  const pid = targetProfileIdsFromHeaders(headers)?.[0] ?? (await adapter.getCurrentProfileId())
   const cats = await db.getAllFromIndex('categories', 'by_profile', pid)
   for (const c of cats) {
     await db.delete('categories', c.id)

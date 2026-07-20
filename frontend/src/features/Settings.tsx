@@ -638,15 +638,40 @@ export default function Settings() {
   const [exportFormat, setExportFormat] = createSignal('csv')
   const [prettyPrintJson, setPrettyPrintJson] = createSignal(true)
 
+  // Turn the exported profile selection into a filename-safe label so a download makes
+  // clear which profile it is for: a single profile -> its slugified name, a multi-profile
+  // household -> "household", nothing resolvable -> "profile".
+  const profileFileLabel = (): string => {
+    const names = householdIds()
+      .map((id) => allProfiles().find((p) => p.id === id)?.name)
+      .filter((n): n is string => !!n)
+    const raw = names.length === 1 ? names[0] : names.length > 1 ? 'household' : 'profile'
+    return (
+      raw
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'profile'
+    )
+  }
+
+  // Header(s) telling the server which profile(s) to export. A household sends the
+  // X-Profile-Ids JSON array (the shape backend/worker read) plus a single X-Profile-Id
+  // fallback; a single profile just sends X-Profile-Id. (Previously a comma-joined
+  // X-Profile-Id made the server export only the first profile of a household.)
+  const exportProfileHeaders = (): Record<string, string> => {
+    const ids = householdIds()
+    const headers: Record<string, string> = { 'X-Profile-Id': String(ids[0] ?? '') }
+    if (ids.length > 1) headers['X-Profile-Ids'] = JSON.stringify(ids)
+    return headers
+  }
+
   // Data Management
   const handleExport = async () => {
     try {
       const response = await apiFetch(`/api/export?pretty=${prettyPrintJson()}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'X-Profile-Id': householdIds().join(','),
-        },
+        headers: exportProfileHeaders(),
       })
 
       if (!response.ok) throw new Error('Export failed')
@@ -655,7 +680,7 @@ export default function Settings() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `finance-export-${new Date().toISOString().split('T')[0]}.json`
+      a.download = `finance-export-${profileFileLabel()}-${new Date().toISOString().split('T')[0]}.json`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -671,16 +696,14 @@ export default function Settings() {
       const response = await apiFetch(`/api/export/${type}?format=${fmt}${prettyParam}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'X-Profile-Id': householdIds().join(','),
-        },
+        headers: exportProfileHeaders(),
       })
       if (!response.ok) throw new Error('Export failed')
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${type}-${new Date().toISOString().split('T')[0]}.${fmt}`
+      a.download = `${type}-${profileFileLabel()}-${new Date().toISOString().split('T')[0]}.${fmt}`
       a.click()
       URL.revokeObjectURL(url)
     } catch {

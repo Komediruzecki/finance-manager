@@ -221,18 +221,7 @@ export function computeBalanceDeltas(tx: {
 }
 
 export class IndexedDBAdapter implements StorageAdapter {
-  private _profileIdOverride: number | null = null
-
-  setProfileIdOverride(id: number): void {
-    this._profileIdOverride = id
-  }
-
-  clearProfileIdOverride(): void {
-    this._profileIdOverride = null
-  }
-
   private getProfileId(): number {
-    if (this._profileIdOverride !== null) return this._profileIdOverride
     const stored = localStorage.getItem('currentProfileId')
     return stored ? parseInt(stored, 10) : 1
   }
@@ -242,7 +231,6 @@ export class IndexedDBAdapter implements StorageAdapter {
    * Falls back to the single current profile ID if nothing stored.
    */
   getCurrentProfileIds(): number[] {
-    if (this._profileIdOverride !== null) return [this._profileIdOverride]
     const stored = localStorage.getItem('selectedProfileIds')
     if (stored) {
       try {
@@ -269,13 +257,10 @@ export class IndexedDBAdapter implements StorageAdapter {
         await seedDemoProfiles()
         const seeded = await db.getAll('profiles')
         if (seeded.length > 0) {
-          if (this._profileIdOverride !== null) return this._profileIdOverride
           return seeded[0].id
         }
       }
     }
-
-    if (this._profileIdOverride !== null) return this._profileIdOverride
 
     const profileId = this.getProfileId()
     if (profiles.find((p) => p.id === profileId)) return profileId
@@ -459,10 +444,10 @@ export class IndexedDBAdapter implements StorageAdapter {
     await t.done
   }
 
-  async deleteAllTransactions(): Promise<void> {
+  async deleteAllTransactions(pids?: number[]): Promise<void> {
     const db = await getDB()
-    const pids = this.getCurrentProfileIds()
-    for (const pid of pids) {
+    const targets = pids && pids.length > 0 ? pids : this.getCurrentProfileIds()
+    for (const pid of targets) {
       const accts = await db.getAllFromIndex('accounts', 'by_profile', pid)
       for (const a of accts) {
         a.balance = a.starting_balance ?? 0

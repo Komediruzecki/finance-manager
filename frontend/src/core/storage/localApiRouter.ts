@@ -1,5 +1,4 @@
 import { validateBody } from '../validation'
-import { adapter } from './handlers/helpers'
 import * as h from './localHandlers'
 
 // ── Route types ──────────────────────────────────────────────────────────────
@@ -118,7 +117,7 @@ const routes: RouteDef[] = [
   {
     pattern: /^\/profile\/data$/,
     methods: ['DELETE'],
-    handler: dispatch({ DELETE: () => h.profileResetData() }),
+    handler: dispatch({ DELETE: (ctx) => h.profileResetData(ctx.headers) }),
   },
   {
     pattern: /^\/profiles\/reseed-demo$/,
@@ -215,7 +214,7 @@ const routes: RouteDef[] = [
     handler: dispatch({
       GET: (ctx) => h.transactionsList(ctx.query),
       POST: (ctx) => h.transactionsCreate(ctx.body),
-      DELETE: () => h.deleteAllTransactions(),
+      DELETE: (ctx) => h.deleteAllTransactions(ctx.headers),
     }),
   },
   {
@@ -260,7 +259,7 @@ const routes: RouteDef[] = [
     handler: dispatch({
       GET: (ctx) => h.categoriesList(ctx.query),
       POST: (ctx) => h.categoriesCreate(ctx.body),
-      DELETE: () => h.deleteAllCategories(),
+      DELETE: (ctx) => h.deleteAllCategories(ctx.headers),
     }),
   },
   {
@@ -903,24 +902,6 @@ function extractParams(pattern: RegExp, path: string): Record<string, string> | 
   return params
 }
 
-function getProfileIdFromHeaders(headers?: HeadersInit): number | null {
-  if (!headers) return null
-  if (headers instanceof Headers) {
-    const val = headers.get('x-profile-id')
-    return val ? parseInt(val, 10) : null
-  }
-  if (Array.isArray(headers)) {
-    const pair = headers.find(([key]) => key.toLowerCase() === 'x-profile-id')
-    return pair ? parseInt(pair[1], 10) : null
-  }
-  if (typeof headers === 'object') {
-    const record = headers as Record<string, string>
-    const key = Object.keys(record).find((k) => k.toLowerCase() === 'x-profile-id')
-    return key ? parseInt(record[key], 10) : null
-  }
-  return null
-}
-
 export async function routeApiRequest(url: string, init?: RequestInit): Promise<Response> {
   const urlObj = new URL(url, window.location.origin)
   const method = init?.method ?? 'GET'
@@ -964,22 +945,18 @@ export async function routeApiRequest(url: string, init?: RequestInit): Promise<
       }
     }
 
-    const profileIdOverride = getProfileIdFromHeaders(init?.headers)
-    try {
-      if (profileIdOverride !== null && !isNaN(profileIdOverride)) {
-        adapter.setProfileIdOverride(profileIdOverride)
-      }
-      return await route.handler({
-        method,
-        path: `/api${path}`,
-        params,
-        query,
-        body,
-        headers: init?.headers,
-      })
-    } finally {
-      adapter.clearProfileIdOverride()
-    }
+    // The target profile is resolved per-request from the request's headers inside each
+    // handler (see targetProfileIdsFromHeaders) — there is deliberately NO shared mutable
+    // profile state on the adapter, so concurrent requests can never clobber one another's
+    // target and a Danger Zone delete always hits the profile it was issued for.
+    return route.handler({
+      method,
+      path: `/api${path}`,
+      params,
+      query,
+      body,
+      headers: init?.headers,
+    })
   }
 
   return notFound(`/api${path}`)
