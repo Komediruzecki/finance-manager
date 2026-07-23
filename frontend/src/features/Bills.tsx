@@ -70,6 +70,7 @@ import { useAppState } from '../core/appStore'
 import { gatedSource } from '../core/pageVisibility'
 import { monthlyEquivalent } from '../core/subscriptionMath'
 import BillCalendar from './BillCalendar'
+import { buildBillMutationPayload } from './billForm'
 import styles from './BillsPage.module.css'
 import { matchBrand } from './subscriptionBrands'
 import type { SubscriptionCardBill } from '../components/SubscriptionCard'
@@ -223,14 +224,7 @@ export default function Bills() {
   // Handle form submit
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
-    const data = {
-      name: formData().name,
-      amount: parseFloat(formData().amount),
-      dueDate: formData().due_date,
-      category_id: formData().category ? parseInt(formData().category, 10) : undefined,
-      frequency: formData().frequency,
-      type: formData().type,
-    }
+    const data = buildBillMutationPayload(formData())
 
     try {
       const id = editingId()
