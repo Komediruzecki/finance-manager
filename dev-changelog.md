@@ -19,6 +19,7 @@ All notable changes to Token Circles are documented here. The format is based on
 - Manual account creation and import-created accounts now use the configured local currency in both the IndexedDB/serverless and Cloudflare Worker paths. Missing or malformed currency preferences fall back to EUR; currency-less imported transactions use the same fallback so their account and ledger currency cannot diverge. Worker account/settings defaults were aligned to EUR.
 - Subscription catalogue custom prices now have separate draft and committed state: typing preserves raw comma/dot input and caret position, the row checkmark validates and visibly commits the normalized price/total, and batch Add validates and commits any remaining drafts. Invalid, zero, or ambiguous values stay highlighted and never reach `/api/bills`; component tests cover checkmark commit, API payload, malformed input, and caret preservation.
 - Bill and Housing modal headers now share the compact `OrbitalAccent`, replacing their straight header rule with the branded orbit. Their shared `ToggleField` keeps Autopay as a borderless title/subtitle and switch row with stable narrow-modal layout and `aria-labelledby`/`aria-describedby` wiring.
+- Account recent-activity amounts now use `accountActivityPresentation()` for explicit income, expense, and transfer states. Transfers use `var(--transfer)` and a neutral `±` prefix rather than falling through to the green income presentation.
 
 ## [5.8.0] — 2026-07-21
 
