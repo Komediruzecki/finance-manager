@@ -183,6 +183,12 @@ recurringRoutes.post('/api/recurring', requireAuth, async (c) => {
       throw new HttpError(403, 'Account does not belong to this profile');
     }
   }
+  if (
+    category_id != null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(category_id), pid))
+  ) {
+    throw new HttpError(403, 'Category does not belong to this profile');
+  }
   const res = await db.insert(c.env.DB, 'recurring_transactions', {
     profile_id: pid,
     description: description || '',
@@ -228,6 +234,12 @@ recurringRoutes.put('/api/recurring/:id', requireAuth, async (c) => {
     if (acc != null && !(await db.accountBelongsToProfile(c.env.DB, Number(acc), pid))) {
       throw new HttpError(403, 'Account does not belong to this profile');
     }
+  }
+  if (
+    category_id != null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(category_id), pid))
+  ) {
+    throw new HttpError(403, 'Category does not belong to this profile');
   }
   await db.update(
     c.env.DB,

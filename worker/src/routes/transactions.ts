@@ -349,7 +349,8 @@ transactionsRoutes.get('/api/transactions/summary', requireAuth, async (c) => {
 // ── PUT /api/transactions/bulk — bulk update/delete across many ids ───────────
 // Registered before /api/transactions/:id so it isn't shadowed.
 transactionsRoutes.put('/api/transactions/bulk', requireAuth, async (c) => {
-  const pids = await getProfileIds(c);
+  const pid = await getProfileId(c);
+  const pids = [pid];
   const inClause = pids.map(() => '?').join(',');
   const b = (await c.req.json()) as Record<string, any>;
   // Support both 'ids' and 'transactionIds' field names.
@@ -438,6 +439,12 @@ transactionsRoutes.put('/api/transactions/bulk', requireAuth, async (c) => {
   if (typeof action === 'string' && action.toLowerCase() === 'update') {
     if (!data || typeof data !== 'object') {
       throw new HttpError(400, 'No update data provided');
+    }
+    if (
+      data.category_id != null &&
+      !(await db.categoryBelongsToProfile(c.env.DB, Number(data.category_id), pid))
+    ) {
+      throw new HttpError(403, 'Category does not belong to this profile');
     }
 
     const allowedFields = [
@@ -646,6 +653,12 @@ transactionsRoutes.post('/api/transactions', requireAuth, async (c) => {
     throw new HttpError(403, 'Account does not belong to this profile');
   }
   if (
+    category_id != null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(category_id), pid))
+  ) {
+    throw new HttpError(403, 'Category does not belong to this profile');
+  }
+  if (
     transfer_account_id != null &&
     !(await db.accountBelongsToProfile(c.env.DB, Number(transfer_account_id), pid))
   ) {
@@ -660,9 +673,9 @@ transactionsRoutes.post('/api/transactions', requireAuth, async (c) => {
   if (!resolvedAccountId && means_of_payment) {
     const matched = await db.first<{ id: number }>(
       c.env.DB,
-      `SELECT id FROM accounts WHERE LOWER(name) = LOWER(?) AND profile_id IN (${inClause})`,
+      'SELECT id FROM accounts WHERE LOWER(name) = LOWER(?) AND profile_id = ?',
       String(means_of_payment).trim(),
-      ...pids
+      pid
     );
     if (matched) resolvedAccountId = matched.id;
   }
@@ -670,16 +683,16 @@ transactionsRoutes.post('/api/transactions', requireAuth, async (c) => {
   if (!resolvedTransferAccountId && category_id) {
     const cat = await db.first<{ name: string }>(
       c.env.DB,
-      `SELECT name FROM categories WHERE id = ? AND profile_id IN (${inClause})`,
+      'SELECT name FROM categories WHERE id = ? AND profile_id = ?',
       category_id,
-      ...pids
+      pid
     );
     if (cat) {
       const matched = await db.first<{ id: number }>(
         c.env.DB,
-        `SELECT id FROM accounts WHERE LOWER(name) = LOWER(?) AND profile_id IN (${inClause})`,
+        'SELECT id FROM accounts WHERE LOWER(name) = LOWER(?) AND profile_id = ?',
         String(cat.name).trim(),
-        ...pids
+        pid
       );
       if (matched) resolvedTransferAccountId = matched.id;
     }
@@ -754,7 +767,6 @@ transactionsRoutes.post('/api/transactions', requireAuth, async (c) => {
       ).bind(balanceValue, resolvedTransferAccountId, ...pids)
     );
   }
-
   const [insertResult] = await c.env.DB.batch(stmts);
 
   // Return the created transaction with all fields including timestamps.
@@ -845,6 +857,12 @@ transactionsRoutes.put('/api/transactions/:id', requireAuth, async (c) => {
     !(await db.accountBelongsToProfile(c.env.DB, Number(transfer_account_id), pid))
   ) {
     throw new HttpError(403, 'Transfer account does not belong to this profile');
+  }
+  if (
+    category_id != null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(category_id), pid))
+  ) {
+    throw new HttpError(403, 'Category does not belong to this profile');
   }
 
   const updates: string[] = [];

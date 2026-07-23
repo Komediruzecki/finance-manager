@@ -34,6 +34,13 @@ describe('localHandlers - transactions', () => {
       type: 'expense',
       color: '#ff0000',
     })
+    await db.add('categories', {
+      id: 2,
+      profile_id: 1,
+      name: 'Other',
+      type: 'expense',
+      color: '#00ff00',
+    })
   })
 
   it('creates, lists, and gets a transaction', async () => {
@@ -389,13 +396,8 @@ describe('localHandlers - transactions', () => {
   })
 
   it('updates transaction not found returns 404', async () => {
-    // The local handler uses adapter.updateTransaction which calls db.get
-    // for the IndexedDB adapter — if the record doesn't exist, it returns early
-    // but the handler itself returns ok() unconditionally.
-    // In practice, the sub-handler (transactionsUpdate) wraps adapter.updateTransaction
-    // which is a fire-and-forget for non-existent records (idempotent).
     const res = await transactionsUpdate({ p1: '99999' }, { amount: 500, description: 'Ghost' })
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(404)
   })
 
   it('CSV export escapes embedded double-quotes and commas', async () => {
