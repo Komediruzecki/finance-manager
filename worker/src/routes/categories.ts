@@ -54,6 +54,12 @@ categoriesRoutes.post('/api/categories', requireAuth, async (c) => {
   const icon = b.icon ?? 'tag';
   const type = b.type ?? 'expense';
   const parent_id = b.parent_id !== undefined ? b.parent_id : b.parentId || null;
+  if (
+    parent_id !== null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(parent_id), pid))
+  ) {
+    throw new HttpError(403, 'Parent category does not belong to this profile');
+  }
 
   const existing = await db.first(
     c.env.DB,
@@ -110,6 +116,9 @@ categoriesRoutes.post('/api/categories/mappings', requireAuth, async (c) => {
   const category_id = b.category_id;
   if (!category_id || typeof category_id !== 'number' || category_id <= 0) {
     throw new HttpError(400, 'Valid category_id is required');
+  }
+  if (!(await db.categoryBelongsToProfile(c.env.DB, category_id, pid))) {
+    throw new HttpError(403, 'Category does not belong to this profile');
   }
   const confidence = b.confidence || 0.9;
 
@@ -446,6 +455,11 @@ categoriesRoutes.post('/api/categories/apply-mappings', requireAuth, async (c) =
   if (!mappings || !Array.isArray(mappings)) {
     throw new HttpError(400, 'Invalid mappings array');
   }
+  for (const mapping of mappings) {
+    if (!(await db.categoryBelongsToProfile(c.env.DB, Number(mapping.category_id), pid))) {
+      throw new HttpError(403, 'Category does not belong to this profile');
+    }
+  }
 
   let updated = 0;
 
@@ -538,6 +552,12 @@ categoriesRoutes.put('/api/categories/:id', requireAuth, async (c) => {
 
   const b = (await c.req.json()) as Record<string, any>;
   const parent_id = b.parent_id !== undefined ? b.parent_id : b.parentId || null;
+  if (
+    parent_id !== null &&
+    !(await db.categoryBelongsToProfile(c.env.DB, Number(parent_id), pid))
+  ) {
+    throw new HttpError(403, 'Parent category does not belong to this profile');
+  }
   const res = await db.update(
     c.env.DB,
     'categories',
