@@ -39,6 +39,7 @@ import OrbitalDivider from '../components/OrbitalDivider'
 import {
   apiDelete,
   apiGet,
+  apiHouseholdGet,
   apiPost,
   apiPut,
   formatCurrency,
@@ -74,8 +75,8 @@ export default function Accounts() {
     gatedSource('accounts', () => state.profileVersion),
     async () => {
       const [accountsRes, txRes, profilesRes] = await Promise.all([
-        apiGet<Account[]>('/api/accounts'),
-        apiGet<any>(`/api/transactions?limit=500`),
+        apiHouseholdGet<Account[]>('/api/accounts'),
+        apiHouseholdGet<any>(`/api/transactions?limit=500`),
         apiGet<Array<{ id: number; name: string }>>('/api/profiles').catch(() => []),
       ])
       const txList = Array.isArray(txRes) ? txRes : txRes?.transactions || txRes?.rows || []
