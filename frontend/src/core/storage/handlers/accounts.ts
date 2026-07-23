@@ -2,7 +2,7 @@
  * Accounts handlers — IndexedDB-backed implementations
  */
 import { getLocalCurrency } from '../../api'
-import { normalizeCurrencyCode } from '../../currencies'
+import { BaseCurrencyConflictError, ensureBaseCurrency } from '../baseCurrency'
 import { AccountInUseError, getDB } from '../idb'
 import { adapter, idParam, json, notFound, ok } from './helpers'
 import { normalizeAccount } from './normalize'
@@ -16,7 +16,12 @@ export async function accountsCreate(body: unknown): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid account data' }, 400)
   const acct = body as Record<string, unknown>
   acct.profile_id = await adapter.getCurrentProfileId()
-  acct.currency = normalizeCurrencyCode(acct.currency, getLocalCurrency())
+  try {
+    acct.currency = await ensureBaseCurrency(acct.currency ?? getLocalCurrency())
+  } catch (error) {
+    if (error instanceof BaseCurrencyConflictError) return json({ error: error.message }, 409)
+    throw error
+  }
   const id = await adapter.createAccount(
     acct as unknown as Parameters<typeof adapter.createAccount>[0]
   )
@@ -35,7 +40,16 @@ export async function accountsUpdate(
   body: unknown
 ): Promise<Response> {
   if (!body || typeof body !== 'object') return json({ error: 'Invalid data' }, 400)
-  await adapter.updateAccount(idParam(params), body as Record<string, unknown>)
+  const update = { ...(body as Record<string, unknown>) }
+  if (update.currency !== undefined) {
+    try {
+      update.currency = await ensureBaseCurrency(update.currency)
+    } catch (error) {
+      if (error instanceof BaseCurrencyConflictError) return json({ error: error.message }, 409)
+      throw error
+    }
+  }
+  await adapter.updateAccount(idParam(params), update)
   return ok()
 }
 
