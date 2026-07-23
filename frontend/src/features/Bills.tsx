@@ -64,7 +64,7 @@ import SubscriptionCatalogModal from '../components/SubscriptionCatalogModal'
 import { SubscriptionScanModal } from '../components/SubscriptionScan'
 import Toggle from '../components/Toggle'
 import { formatCurrency } from '../core/api'
-import { apiDelete, apiGet, apiPost, apiPut, showToast } from '../core/api'
+import { apiDelete, apiHouseholdGet, apiPost, apiPut, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
 import { gatedSource } from '../core/pageVisibility'
 import { monthlyEquivalent } from '../core/subscriptionMath'
@@ -118,8 +118,8 @@ export default function Bills() {
     gatedSource('bills', () => state.profileVersion),
     async () => {
       const [allRes, categoryRes] = await Promise.all([
-        apiGet<Bill[]>('/api/bills'),
-        apiGet<Category[]>('/api/categories'),
+        apiHouseholdGet<Bill[]>('/api/bills'),
+        apiHouseholdGet<Category[]>('/api/categories'),
       ])
       return {
         bills: allRes,
