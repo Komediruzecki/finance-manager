@@ -4,6 +4,7 @@ import type { AppEnv } from '../index';
 import { requireAuth } from '../auth';
 import { getProfileId, getProfileIds } from '../profile';
 import { HttpError } from '../http';
+import { parseImportNumber } from '../import-number';
 import { enforce } from '../ratelimit';
 import * as db from '../db';
 import { normalizeCurrencyCode } from '../currency';
@@ -149,34 +150,6 @@ function parseDateString(dateStr: unknown): string {
     return format(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
   }
   return today();
-}
-
-// ── parseFlexibleAmount — mirror of the frontend bankImport parseFlexibleNumber (I1) ──
-// EU bank exports write amounts with either convention. When BOTH separators are present the
-// LAST one is the decimal separator ("1.234,56" and "1,234.56" both → 1234.56); a lone comma is
-// a decimal comma ("1234,56" → 1234.56); otherwise it is a plain dot-decimal number. A value that
-// is already a JS number passes straight through. Unparseable → 0 (the prior `Number()`/`|| 0`
-// default). Used for the transaction amount(s) that feed account balances in /import/execute.
-function parseFlexibleAmount(value: unknown): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (value === null || value === undefined) return 0;
-  const s = String(value).replace(/\s/g, '');
-  if (!s) return 0;
-  const hasDot = s.includes('.');
-  const hasComma = s.includes(',');
-  // European: strip '.' thousands, treat ',' as the decimal point.
-  const european = () => parseFloat(s.replace(/\./g, '').replace(',', '.'));
-  // US/JS: strip ',' thousands, '.' is already the decimal point.
-  const dot = () => parseFloat(s.replace(/,/g, ''));
-  let n: number;
-  if (hasDot && hasComma) {
-    n = s.lastIndexOf(',') > s.lastIndexOf('.') ? european() : dot();
-  } else if (hasComma) {
-    n = european();
-  } else {
-    n = dot();
-  }
-  return Number.isFinite(n) ? n : 0;
 }
 
 // Cap the uploaded file size BEFORE parsing (S8). /import/upload parses xlsx/csv entirely in
@@ -434,22 +407,110 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   // Currency for accounts this import creates — the client's base currency (Settings; EUR by
   // default), falling back to EUR when the request does not contain a valid code.
   const defaultCurrency = normalizeCurrencyCode(b.defaultCurrency, 'EUR');
+  const rowsArr = rows as Array<Record<string, any>>;
+  const skippedItems: Array<{ index: number; reason: string }> = [];
+  const validatedRows: Array<{
+    index: number;
+    row: Record<string, any>;
+    amountRaw: number;
+    amount: number;
+    amountLocal: number;
+    exchangeRate: number;
+  }> = [];
+  for (let index = 0; index < rowsArr.length; index++) {
+    const row = rowsArr[index]!;
+    const amountRaw = parseImportNumber(pick(row, mapping, 'amount'));
+    const amountLocalSource = pick(row, mapping, 'amount_local');
+    const amountLocal =
+      amountLocalSource === null ||
+      amountLocalSource === undefined ||
+      String(amountLocalSource).trim() === ''
+        ? amountRaw
+        : parseImportNumber(amountLocalSource);
+    const exchangeRateSource = pick(row, mapping, 'exchange_rate');
+    const exchangeRate =
+      exchangeRateSource === null ||
+      exchangeRateSource === undefined ||
+      String(exchangeRateSource).trim() === ''
+        ? 1
+        : parseImportNumber(exchangeRateSource);
+    const invalidFields: string[] = [];
+    if (amountRaw === null) invalidFields.push('amount');
+    if (amountLocal === null) invalidFields.push('amount_local');
+    if (exchangeRate === null || exchangeRate <= 0) invalidFields.push('exchange_rate');
+    if (
+      invalidFields.length > 0 ||
+      amountRaw === null ||
+      amountLocal === null ||
+      exchangeRate === null ||
+      exchangeRate <= 0
+    ) {
+      skippedItems.push({
+        index,
+        reason: `Invalid ${invalidFields.join(', ')} on row ${index + 1}`,
+      });
+      continue;
+    }
+    validatedRows.push({
+      index,
+      row,
+      amountRaw,
+      amount: Math.abs(amountRaw),
+      amountLocal: Math.abs(amountLocal),
+      exchangeRate,
+    });
+  }
+  const validRows = validatedRows.map(({ row }) => row);
 
   // Batch-create accounts for the category names the user flagged as 'account' type (+ history).
   // Skipped in dry-run (preview must not mutate).
   let accountsCreated = 0;
   const createdAccountNames: string[] = [];
-  if (!dryRun && categoryTypes) {
-    const toCreate = Object.entries(categoryTypes as Record<string, string>)
-      .filter(
-        ([name, t]) => t === 'account' && !accountIdMap.has(String(name).trim().toLowerCase())
-      )
-      .map(([name]) => ({
+  const validAccountNames = new Set(
+    validRows
+      .flatMap((row) => [
+        String(pick(row, mapping, 'category') || ''),
+        String(pick(row, mapping, 'means_of_payment') || ''),
+      ])
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const accountValidationErrors: Array<{ field: string; reason: string }> = [];
+  const toCreate = Object.entries((categoryTypes || {}) as Record<string, string>)
+    .filter(
+      ([name, type]) =>
+        type === 'account' &&
+        (rowsArr.length === 0 || validAccountNames.has(String(name).trim().toLowerCase())) &&
+        !accountIdMap.has(String(name).trim().toLowerCase())
+    )
+    .map(([name]) => {
+      const rawBalance = (accountBalances && accountBalances[name]) || '';
+      const balance =
+        String(rawBalance).trim() === '' ? 0 : parseImportNumber(String(rawBalance).trim());
+      if (balance === null) {
+        accountValidationErrors.push({
+          field: `accountBalances.${name}`,
+          reason: 'Use an unambiguous number such as 1234.56 or 1.234,56.',
+        });
+      }
+      return {
         name: name.trim(),
         accType: (accountTypes && accountTypes[name]) || 'giro',
-        balance: parseFloat((accountBalances && accountBalances[name]) || '0') || 0,
+        balance: balance ?? 0,
         balanceDate: (accountBalanceDates && accountBalanceDates[name]) || today(),
-      }));
+      };
+    });
+  if (accountValidationErrors.length > 0) {
+    return c.json(
+      {
+        error: 'One or more account starting balances are invalid or ambiguous.',
+        validation_errors: accountValidationErrors,
+        skipped_items: skippedItems,
+      },
+      422
+    );
+  }
+  if (!dryRun && toCreate.length > 0) {
     if (toCreate.length) {
       await DB.batch(
         toCreate.map((a) =>
@@ -490,7 +551,7 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   let colorIndex = 0;
   const newCats: string[] = [];
   const seenNew = new Set<string>();
-  for (const row of rows as Array<Record<string, any>>) {
+  for (const row of validRows) {
     const raw = pick(row, mapping, 'category');
     if (!raw || !String(raw).trim()) continue;
     const name = String(raw).trim();
@@ -509,7 +570,7 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   const ctLower: Record<string, string> = {};
   if (categoryTypes)
     for (const [k, v] of Object.entries(categoryTypes)) ctLower[k.toLowerCase().trim()] = String(v);
-  for (const row of rows as Array<Record<string, any>>) {
+  for (const row of validRows) {
     const raw = pick(row, mapping, 'category');
     if (!raw || !String(raw).trim()) continue;
     const name = String(raw).trim();
@@ -591,16 +652,13 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   }
   const duplicateIndices: number[] = [];
 
-  const rowsArr = rows as Array<Record<string, any>>;
-  for (let ri = 0; ri < rowsArr.length; ri++) {
-    const row = rowsArr[ri]!;
+  for (const validated of validatedRows) {
+    const { index: ri, row, amountRaw, amount, amountLocal, exchangeRate } = validated;
     const catRaw = pick(row, mapping, 'category');
     const catName = catRaw ? String(catRaw).trim() : '';
     const catLower = catName.toLowerCase();
     const categoryId = catLower && categoryMap.has(catLower) ? categoryMap.get(catLower)! : null;
 
-    const amountRaw = parseFlexibleAmount(pick(row, mapping, 'amount'));
-    const amount = Math.abs(amountRaw);
     const dateRaw = pick(row, mapping, 'date') ?? today();
     const currency = normalizeCurrencyCode(pick(row, mapping, 'currency'), defaultCurrency);
     const catType = catName ? categoryTypes && categoryTypes[catName] : null;
@@ -673,9 +731,9 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
         pick(row, mapping, 'payor') || '',
         categoryId,
         currency,
-        parseFlexibleAmount(pick(row, mapping, 'amount_local') ?? amount) || amount,
+        amountLocal,
         mopName,
-        parseFloat(pick(row, mapping, 'exchange_rate') ?? 1.0) || 1.0,
+        exchangeRate,
         validatedType,
         pick(row, mapping, 'notes') || '',
         pid,
@@ -690,6 +748,8 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
   if (dryRun) {
     return c.json({
       imported: txStmts.length,
+      skipped: skippedItems.length,
+      skipped_items: skippedItems,
       dry_run: true,
       duplicates: duplicateIndices.length,
       duplicate_indices: duplicateIndices,
@@ -726,6 +786,8 @@ importRoutes.post('/api/import/execute', requireAuth, async (c) => {
 
   return c.json({
     imported,
+    skipped: skippedItems.length,
+    skipped_items: skippedItems,
     duplicates: duplicateIndices.length,
     duplicate_indices: duplicateIndices,
     new_categories: newCats,
