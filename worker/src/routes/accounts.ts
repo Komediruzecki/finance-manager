@@ -4,7 +4,7 @@ import { requireAuth } from '../auth';
 import { getProfileId, getProfileIds } from '../profile';
 import { HttpError } from '../http';
 import * as db from '../db';
-import { normalizeCurrencyCode } from '../currency';
+import { resolveProfileBaseCurrency } from '../base-currency';
 import { recomputeBalancesForAccounts } from '../recompute-balances';
 
 // Port of backend/routes/accounts.js + backend/repositories/accountsRepo.js.
@@ -35,11 +35,12 @@ accountsRoutes.post('/api/accounts', requireAuth, async (c) => {
     b.starting_balance !== undefined ? parseFloat(b.starting_balance) : parseFloat(b.balance);
   const startBalance = Number.isFinite(startBalanceRaw) ? startBalanceRaw : 0;
   const startDate = b.starting_date || null;
+  const baseCurrency = await resolveProfileBaseCurrency(c.env.DB, pid, b.currency, true);
   const res = await db.insert(c.env.DB, 'accounts', {
     name: String(b.name).trim(),
     bank_name: b.bank_name || '',
     type: accountType,
-    currency: normalizeCurrencyCode(b.currency, 'EUR'),
+    currency: baseCurrency,
     balance: startBalance,
     notes: b.notes || '',
     profile_id: pid,
@@ -114,7 +115,9 @@ accountsRoutes.put('/api/accounts/:id', requireAuth, async (c) => {
   if (typeof b.name === 'string' && b.name.trim()) data.name = b.name.trim();
   if (b.bank_name !== undefined) data.bank_name = b.bank_name ?? '';
   if (b.type !== undefined) data.type = VALID_TYPES.includes(b.type) ? b.type : existing.type;
-  if (b.currency !== undefined && b.currency) data.currency = b.currency;
+  if (b.currency !== undefined && b.currency) {
+    data.currency = await resolveProfileBaseCurrency(c.env.DB, pid, b.currency);
+  }
   if (b.notes !== undefined) data.notes = b.notes ?? '';
   if (b.balance !== undefined) {
     const v = parseFloat(b.balance);
