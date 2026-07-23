@@ -31,7 +31,7 @@ import Badge from '../components/Badge'
 import ConfirmButton from '../components/ConfirmButton'
 import OrbitalDivider from '../components/OrbitalDivider'
 import RenewalCycle from '../components/RenewalCycle'
-import Toggle from '../components/Toggle'
+import ToggleField from '../components/ToggleField'
 import { formatCurrency } from '../core/api'
 import { apiDelete, apiGet, apiPost, showToast } from '../core/api'
 import { useAppState } from '../core/appStore'
@@ -509,29 +509,12 @@ export default function HousingForm() {
                 </div>
               </div>
               <div class={styles.formGroup}>
-                <label class={styles.formLabel}>
-                  <span>
-                    <svg
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>{' '}
-                    Autopay
-                  </span>
-                  <span style="font-size: 14px; color: var(--text-secondary)">
-                    Automatically pay this expense
-                  </span>
-                </label>
-                <Toggle
+                <ToggleField
+                  title="Autopay"
+                  description="Indicate that this housing expense is handled automatically."
                   data-test-id="housing-autopay-toggle"
                   checked={() => formData().autopay}
                   onChange={(v) => setFormData({ ...formData(), autopay: v })}
-                  aria-label="Automatically pay this expense"
                 />
               </div>
               <div class={styles.formGroup}>
